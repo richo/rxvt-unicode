@@ -1,0 +1,11 @@
+#! /bin/sh
+# postinst script for rxvt-unicode
+set -e
+if [ "$1" = remove ]; then
+    update-alternatives --remove rxvt /usr/bin/urxvt
+    update-alternatives --remove x-terminal-emulator /usr/bin/urxvt
+fi
+
+#DEBHELPER#
+
+exit 0

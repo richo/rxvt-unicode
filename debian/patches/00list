@@ -1,0 +1,6 @@
+#03_build_fixes
+#04_graceful_exit
+05_no_Xdefaults
+#06_bugfixes
+07_bad_font_drawing
+08_correct_debian_rant.dpatch

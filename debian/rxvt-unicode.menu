@@ -1,0 +1,10 @@
+?package(rxvt-unicode):needs="x11" section="XShells" \
+   longtitle="Rxvt-Unicode: terminal emulator for X" title="Rxvt-Unicode"\
+   command="urxvt" \
+   icon="/usr/share/pixmaps/urxvt.xpm"
+
+?package(rxvt-unicode):needs="x11" section="XShells" \
+   longtitle="Rxvt-Unicode: terminal emulator for X" \
+   title="Rxvt-Unicode (Black,Xft)" \
+   command="urxvt -fn \"xft:Courier New\" -rv" \
+   icon="/usr/share/pixmaps/urxvt.xpm"

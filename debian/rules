@@ -1,0 +1,150 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+# Sample debian/rules that uses debhelper.
+# GNU copyright 1997 to 1999 by Joey Hess.
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+include /usr/share/dpatch/dpatch.make
+
+CFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
+	INSTALL_PROGRAM += -s
+endif
+
+cfgcommon = --enable-mousewheel --enable-xgetdefault  --enable-iso14755  --enable-font-styles --enable-utmp --enable-wtmp --with-term=rxvt
+
+config.status: configure
+	dh_testdir
+	cp -f /usr/share/misc/config.sub config.sub
+	cp -f /usr/share/misc/config.guess config.guess
+
+conf-code:
+	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info $(cfgcommon) --enable-rxvt-scroll --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-transparency --enable-fading --enable-linespace --enable-xft --enable-tinting --with-res-name=urxvt --with-res-class=URxvt
+
+conf-code-lite:
+	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info $(cfgcommon) --with-res-name=urxvt-lite --with-res-class=URxvt-lite --enable-fallback=URxvt 
+
+conf-code-ml:
+	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info $(cfgcommon) --enable-everything --enable-rxvt-scroll  --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-unicode3 --enable-transparency --enable-fading --enable-linespace --enable-combining --with-res-name=urxvt-ml --with-res-class=URxvt-ml --enable-fallback=URxvt --enable-tinting --enable-frills
+
+build: patch build-stamp
+
+build-stamp:  config.status
+	dh_testdir
+
+	mkdir -p tmp
+	dh_installdirs -A usr/bin etc/X11/app-defaults usr/share/pixmaps # etc/terminfo/r
+	set -e ; for x in code code-lite code-ml ; do \
+		cp -f debian/rxvt-unicode-base.postinst debian/rxvt-uni$$x.postinst ;\
+		cp -f debian/rxvt-unicode-base.prerm debian/rxvt-uni$$x.prerm ;\
+		y=$(CURDIR)/debian/rxvt-uni$$x ; z=$(CURDIR)/tmp/$$x ;\
+		$(MAKE) $(MFLAGS) -f debian/rules conf-$$x && \
+		perl -pe s,..tag.CXX,, -i src/Makefile ;\
+		$(MAKE) ;\
+		mkdir -p tmp/$$x ;\
+		$(MAKE) -C doc alldoc ;\
+		TERMINFO=$$y/etc/terminfo $(MAKE) DESTDIR=$$y install ;\
+		ln -sf urxvt $$y/usr/bin/rxvt-unicode ;\
+		ln -sf urxvt.1.gz $$y/usr/share/man/man1/rxvt-unicode.1.gz ;\
+		chrpath -d $$y/usr/bin/* ;\
+		install -m644 -D debian/*.xpm $$y/usr/share/pixmaps/ ;\
+		ln -sf urxvt.xpm $$y/usr/share/pixmaps/urxvt_32x32.xpm ;\
+		cp debian/app-defaults $$y/etc/X11/app-defaults/URxvt$${x#code} ;\
+	done
+
+	touch build-stamp
+
+clean: unpatch
+	dh_testdir
+	dh_testroot
+	rm -rf build-stamp tmp
+
+	# Add here commands to clean up after the build process.
+	-$(MAKE) distclean
+	rm -f config.guess config.sub
+#ifneq "$(wildcard /usr/share/misc/config.sub)" ""
+#	cp -f /usr/share/misc/config.sub config.sub
+#endif
+#ifneq "$(wildcard /usr/share/misc/config.guess)" ""
+#	cp -f /usr/share/misc/config.guess config.guess
+#endif
+	dh_clean 
+
+install: build
+#	dh_testdir
+#	dh_testroot
+#	dh_clean -k 
+#	dh_installdirs -A usr/bin etc/X11/app-defaults usr/share/pixmaps etc/terminfo/r
+#	$(MAKE) install prefix=$(CURDIR)/debian/rxvt-unicode/usr
+#	cd debian/rxvt-unicode/usr/share/man/man1 && mv rxvt.1 rxvt-unicode.1 && cp $(CURDIR)/debian/rxvtc.1 . && ln -sf rxvtc.1.gz rxvtd.1.gz
+#	cd $(CURDIR)/debian/rxvt-unicode/usr/bin && rm -f *-1.* && mv rxvt rxvt-unicode && chrpath -d *
+# and the icon
+# now clone to -lite and -ml	
+#	set -e ; for x in code code-lite code-ml ; do \
+#		y=debian/rxvt-uni$$x ; z=tmp/$$x ;\
+#			#fixme VVV
+#		cp -f debian/rxvt-unicode-base.postinst debian/rxvt-uni$$x.postinst ;\
+#		cp -f debian/rxvt-unicode-base.prerm debian/rxvt-uni$$x.prerm ;\
+#		cp -af $$z/rxvt $$y/usr/bin/urxvt ;\
+#		cp -af $$z/rxvtd $$y/usr/bin/urxvtd ;\
+#		cp -af $$z/rxvtc $$y/usr/bin/urxvtc ;\
+#		ln -sf urxvt $$y/usr/bin/rxvt-unicode ;\
+#		chrpath -d $$y/usr/bin/* ;\
+#		dh_installman -prxvt-uni$$x $$z/urxvt.1 $$z/urxvt.7 debian/urxvtc.1 ;\
+#		ln -sf urxvtc.1.gz $$y/usr/share/man/man1/urxvtd.1.gz ;\
+#		ln -sf urxvt.1.gz $$y/usr/share/man/man1/rxvt-unicode.1.gz ;\
+#		install -m644 -D debian/*.xpm $$y/usr/share/pixmaps/ ;\
+#		cp -lf $$y/usr/share/pixmaps/urxvt.xpm $$y/usr/share/pixmaps/urxvt_32x32.xpm ;\
+#		TERMINFO=$$y/etc/terminfo tic doc/etc/rxvt-unicode.terminfo ;\
+#		cp debian/app-defaults $$y/etc/X11/app-defaults/URxvt$${x#code} ;\
+#	done
+	# extra icons are wasted space in -lite
+	# rm debian/rxvt-unicode-lite/usr/share/pixmaps/*_*
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs -A Changes
+	dh_installdocs -A `cat debian/docs`
+	dh_installexamples -A doc/menu doc/etc/*terminfo* doc/etc/*termcap*
+	# fix the perms
+	chmod -x debian/*/usr/share/doc/*/examples/menu/*
+	rm -rf debian/*/etc/terminfo
+#	dh_install
+	dh_installmenu
+#	dh_installdebconf	
+#	dh_installinfo
+#	dh_link
+	dh_strip
+	dh_compress
+	dh_fixperms
+#	dh_perl
+#	dh_python
+#	dh_makeshlibs
+	dh_installdeb
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install 

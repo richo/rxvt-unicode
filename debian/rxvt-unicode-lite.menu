@@ -1,0 +1,6 @@
+?package(rxvt-unicode-lite):needs="x11" section="XShells" \
+   longtitle="Rxvt-Unicode: terminal emulator for X" \
+   title="Rxvt-Unicode" \
+   command="rxvt-unicode" \
+   icon="/usr/share/pixmaps/urxvt.xpm"
+

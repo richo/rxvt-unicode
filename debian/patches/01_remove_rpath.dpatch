@@ -1,0 +1,37 @@
+#! /bin/sh -e
+## 01_remove_rpath.dpatch by Eduard Bloch <blade@debian.org>
+##
+## All lines beginning with `## DP:' are a description of the patch.
+## DP: Remove the rpath arguments from the linker calls
+
+if [ $# -lt 1 ]; then
+    echo "`basename $0`: script expects -patch|-unpatch as argument" >&2
+    exit 1
+fi
+
+[ -f debian/patches/00patch-opts ] && . debian/patches/00patch-opts
+patch_opts="${patch_opts:--f --no-backup-if-mismatch} ${2:+-d $2}"
+
+case "$1" in
+    -patch) patch -p1 ${patch_opts} < $0;;
+    -unpatch) patch -R -p1 ${patch_opts} < $0;;
+    *)
+        echo "`basename $0`: script expects -patch|-unpatch as argument" >&2
+        exit 1;;
+esac
+
+exit 0
+
+@DPATCH@
+diff -urNad /home/inet/debian/dev/build-area/rxvt-unicode-1.8.obsolete.0.39377582453108/src/Makefile.in rxvt-unicode-1.8.obsolete.0.39377582453108/src/Makefile.in
+--- /home/inet/debian/dev/build-area/rxvt-unicode-1.8.obsolete.0.39377582453108/src/Makefile.in	2004-01-31 05:13:49.000000000 +0100
++++ rxvt-unicode-1.8.obsolete.0.39377582453108/src/Makefile.in	2004-02-24 10:37:20.000000000 +0100
+@@ -124,7 +124,7 @@
+ 	date >.protos
+ 
+ librxvt.la: $(LIBOBJS)
+-	$(LIBTOOL) --mode=link $(LINK) -rpath $(libdir) -version-info $(LIBVERSION) $(LIBOBJS) $(LIBS) $(SUPLIB) -o $@
++	$(LIBTOOL) --mode=link $(LINK) -version-info $(LIBVERSION) $(LIBOBJS) $(LIBS) $(SUPLIB) -o $@
+ #-------------------------------------------------------------------------
+ tags: $(SRCS) $(HDRS) $(EXTRAHDRS)
+ 	ctags $(SRCS) $(HDRS) $(EXTRAHDRS)
