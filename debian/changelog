@@ -1,3 +1,11 @@
+rxvt-unicode (5.3-1) unstable; urgency=high
+
+  * New upstream release
+    + fixes a probably exploitable bug that allowed to overflow a buffer
+      via a long escape sequence
+
+ -- Eduard Bloch <blade@debian.org>  Sun, 13 Mar 2005 10:47:57 +0100
+
 rxvt-unicode (5.2-3) unstable; urgency=medium
 
   * README.Debian: corrected typos and overlong lines (closes: #297140, patch
