@@ -109,14 +109,20 @@
 /* Define if you have the updwtmp function.  */
 #undef HAVE_UPDWTMP
 
+/* Define if you have the updwtmpx function.  */
+#undef HAVE_UPDWTMPX
+
 /* Define if you have the <X11/Xft/Xft.h> header file.  */
 #undef HAVE_X11_XFT_XFT_H
 
 /* Define if you have the <assert.h> header file.  */
 #undef HAVE_ASSERT_H
 
-/* Define if you have the <dlfcn.h> header file.  */
-#undef HAVE_DLFCN_H
+/* Define if you have the <clocale> header file.  */
+#undef HAVE_CLOCALE
+
+/* Define if you have the <cwchar> header file.  */
+#undef HAVE_CWCHAR
 
 /* Define if you have the <fcntl.h> header file.  */
 #undef HAVE_FCNTL_H
@@ -177,6 +183,9 @@
 
 /* Define if you have the <utmpx.h> header file.  */
 #undef HAVE_UTMPX_H
+
+/* Define if you have the <wchar.h> header file.  */
+#undef HAVE_WCHAR_H
 
 /* Define if you have the Xft library (-lXft).  */
 #undef HAVE_LIBXFT
@@ -261,6 +270,9 @@
 
 /* Define if struct utmpx contains ut_host */
 #undef HAVE_UTMPX_HOST
+
+/* Define if struct utmpx contains ut_session */
+#undef HAVE_UTMPX_SESSION
 
 /* Define if utmp.h or lastlog.h has struct lastlog */
 #undef HAVE_STRUCT_LASTLOG

@@ -1,5 +1,5 @@
 .cvsignore
-.prebuild
+COPYING
 Changes
 INSTALL
 MANIFEST
@@ -8,19 +8,22 @@ README.configure
 README.FAQ
 configure
 reconf
+genac
 
-doc/etc/XTerm.ad
-doc/etc/rclock
-doc/etc/rxvt.termcap
+doc/embed
+doc/embed-tk
+doc/rxvt-tabbed
+doc/pty-fd
 doc/etc/rxvt-unicode.terminfo
+doc/etc/rxvt-unicode.termcap
 doc/menu/example.menu
 doc/menu/jedmenu.sl
 doc/menu/menu
 doc/menu/rxvt.menu
 doc/menu/rxvt.zh-menu
 doc/menu/terminal.menu
+
 doc/.cvsignore
-doc/LSM.in
 doc/Makefile.in
 doc/README.menu
 doc/README.xvt
@@ -68,8 +71,6 @@ src/keyboard.h
 src/logging.C
 src/logging.h
 src/main.C
-src/makeintprotos-awk
-src/makeintprotos-sed
 src/menubar.C
 src/menubar.h
 src/misc.C

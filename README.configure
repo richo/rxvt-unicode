@@ -62,14 +62,16 @@ CONFIGURE OPTIONS
         pseudo-characters when no precomposed form exists.
 
         Without --enable-unicode3, the number of additional precomposed
-        characters is rather limited (2048, if this is full, rxvt will use
-        the private use area, extending the number of combinations to 8448).
-        With --enable-unicode3, no practical limit exists. This will also
-        enable storage of characters >65535.
+        characters is rather limited (2048, if this is full, rxvt-unicode
+        will use the private use area, extending the number of combinations
+        to 8448). With --enable-unicode3, no practical limit exists.
+
+        This option will also enable storage (but not display) of characters
+        beyond plane 0 (>65535) when --enable-unicode3 was not specified.
 
         The combining table also contains entries for arabic presentation
         forms, but these are not currently used. Bug me if you want these to
-        be used.
+        be used (and tell me how these are to be used...).
 
     --enable-fallback(=CLASS)
         When reading resource settings, also read settings for class CLASS
@@ -154,6 +156,10 @@ CONFIGURE OPTIONS
         version which only checks ~/.Xdefaults, or if that doesn't exist
         then ~/.Xresources.
 
+        Please note that nowadays, things like XIM will automatically pull
+        in and use the full X resource manager, so the overhead of using it
+        might be very small, if nonexistant.
+
     --enable-strings
         Add support for our possibly faster memset() function and other
         various routines, overriding your system's versions which may have
@@ -182,6 +188,8 @@ CONFIGURE OPTIONS
           window op and locale change escape sequences
           tripleclickwords
           settable insecure mode
+          keysym remapping support
+          -embed and -pty-fd options
 
     --enable-iso14755
         Enable extended ISO 14755 support (see rxvt(1), or doc/rxvt.1.txt).

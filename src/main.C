@@ -32,7 +32,6 @@
 
 #include "../config.h"          /* NECESSARY */
 #include "rxvt.h"               /* NECESSARY */
-#include "main.intpro"          /* PROTOS for internal routines */
 
 #include <csignal>
 #include <cstring>
@@ -183,10 +182,10 @@ rxvt_term::rxvt_term ()
 #endif
 }
 
-rxvt_term::~rxvt_term ()
+// clean up the most important stuff, do *not* call x or free mem etc.
+// for use before an emergency exit
+void rxvt_term::emergency_cleanup ()
 {
-  termlist.erase (find (termlist.begin (), termlist.end(), this));
-
   if (cmd_pid)
     kill (-cmd_pid, SIGHUP);
 
@@ -195,6 +194,13 @@ rxvt_term::~rxvt_term ()
 #endif
 
   pty.put ();
+}
+
+rxvt_term::~rxvt_term ()
+{
+  termlist.erase (find (termlist.begin (), termlist.end(), this));
+
+  emergency_cleanup ();
 
 #if ENABLE_STYLES
   for (int i = RS_styleCount; --i; )
@@ -205,49 +211,51 @@ rxvt_term::~rxvt_term ()
 
   if (display)
     {
+      dDisp;
+
       selection_clear ();
 
 #ifdef USE_XIM
       im_destroy ();
 #endif
 #ifdef MENUBAR
-      if (menubarGC)    XFreeGC (display->display, menubarGC);
+      if (menubarGC)    XFreeGC (disp, menubarGC);
 #endif
 #ifdef XTERM_SCROLLBAR
-      if (xscrollbarGC) XFreeGC (display->display, xscrollbarGC);
-      if (ShadowGC)     XFreeGC (display->display, ShadowGC);
+      if (xscrollbarGC) XFreeGC (disp, xscrollbarGC);
+      if (ShadowGC)     XFreeGC (disp, ShadowGC);
 #endif
 #ifdef PLAIN_SCROLLBAR
-      if (pscrollbarGC) XFreeGC (display->display, pscrollbarGC);
+      if (pscrollbarGC) XFreeGC (disp, pscrollbarGC);
 #endif
 #ifdef NEXT_SCROLLBAR
-      if (blackGC)      XFreeGC (display->display, blackGC);
-      if (whiteGC)      XFreeGC (display->display, whiteGC);
-      if (grayGC)       XFreeGC (display->display, grayGC);
-      if (darkGC)       XFreeGC (display->display, darkGC);
-      if (stippleGC)    XFreeGC (display->display, stippleGC);
-      if (dimple)       XFreePixmap (display->display, dimple);
-      if (upArrow)      XFreePixmap (display->display, upArrow);
-      if (downArrow)    XFreePixmap (display->display, downArrow);
-      if (upArrowHi)    XFreePixmap (display->display, upArrowHi);
-      if (downArrowHi)  XFreePixmap (display->display, downArrowHi);
+      if (blackGC)      XFreeGC (disp, blackGC);
+      if (whiteGC)      XFreeGC (disp, whiteGC);
+      if (grayGC)       XFreeGC (disp, grayGC);
+      if (darkGC)       XFreeGC (disp, darkGC);
+      if (stippleGC)    XFreeGC (disp, stippleGC);
+      if (dimple)       XFreePixmap (disp, dimple);
+      if (upArrow)      XFreePixmap (disp, upArrow);
+      if (downArrow)    XFreePixmap (disp, downArrow);
+      if (upArrowHi)    XFreePixmap (disp, upArrowHi);
+      if (downArrowHi)  XFreePixmap (disp, downArrowHi);
 #endif
 #if defined(MENUBAR) || defined(RXVT_SCROLLBAR)
-      if (topShadowGC)  XFreeGC (display->display, topShadowGC);
-      if (botShadowGC)  XFreeGC (display->display, botShadowGC);
-      if (scrollbarGC)  XFreeGC (display->display, scrollbarGC);
+      if (topShadowGC)  XFreeGC (disp, topShadowGC);
+      if (botShadowGC)  XFreeGC (disp, botShadowGC);
+      if (scrollbarGC)  XFreeGC (disp, scrollbarGC);
 #endif
-      if (TermWin.gc)   XFreeGC (display->display, TermWin.gc);
+      if (TermWin.gc)   XFreeGC (disp, TermWin.gc);
 
 #if defined(MENUBAR) && (MENUBAR_MAX > 1)
       delete menuBar.drawable;
       //if (menuBar.win)
-      //  XDestroyWindow (display->display, menuBar.win);
+      //  XDestroyWindow (disp, menuBar.win);
 #endif
       delete TermWin.drawable;
       // destroy all windows
       if (TermWin.parent[0])
-        XDestroyWindow (display->display, TermWin.parent[0]);
+        XDestroyWindow (disp, TermWin.parent[0]);
     }
 
   // TODO: free pixcolours, colours should become part of rxvt_display
@@ -263,7 +271,7 @@ rxvt_term::~rxvt_term ()
 
   /* clear all resources */
   for (int i = 0; i < allocated.size (); i++)
-    free (allocated[i]);
+    free (allocated [i]);
 
   free (selection.text);
   // TODO: manage env vars in child only(!)
@@ -279,7 +287,7 @@ rxvt_term::~rxvt_term ()
   delete argv;
 
 #ifdef KEYSYM_RESOURCE
-   delete keyboard;
+  delete keyboard;
 #endif
 }
 
@@ -342,6 +350,111 @@ rxvt_term::destroy_cb (time_watcher &w)
 }
 
 /*----------------------------------------------------------------------*/
+/*
+ * Exit gracefully, clearing the utmp entry and restoring tty attributes
+ * TODO: if debugging, this should free up any known resources if we can
+ */
+static XErrorHandler old_xerror_handler;
+
+static void
+rxvt_emergency_cleanup ()
+{
+  for (rxvt_term **t = rxvt_term::termlist.begin (); t < rxvt_term::termlist.end (); t++)
+    (*t)->emergency_cleanup ();
+}
+
+#if ENABLE_FRILLS
+static void
+print_x_error (Display *dpy, XErrorEvent *event)
+{
+    char buffer[BUFSIZ];
+    char mesg[BUFSIZ];
+    char number[32];
+    char *mtype = "XlibMessage";
+    XGetErrorText(dpy, event->error_code, buffer, BUFSIZ);
+    XGetErrorDatabaseText(dpy, mtype, "XError", "X Error", mesg, BUFSIZ);
+    rxvt_warn ("An X Error occured, trying to continue after report.\n");
+    rxvt_warn ("%s:  %s\n", mesg, buffer);
+    XGetErrorDatabaseText(dpy, mtype, "MajorCode", "Request Major code %d", mesg, BUFSIZ);
+    rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->request_code);
+    sprintf(number, "%d", event->request_code);
+    XGetErrorDatabaseText(dpy, "XRequest", number, "", buffer, BUFSIZ);
+    rxvt_warn ("(which is %s)\n", buffer);
+    if (event->request_code >= 128) {
+	XGetErrorDatabaseText(dpy, mtype, "MinorCode", "Request Minor code %d",
+			      mesg, BUFSIZ);
+        rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->minor_code);
+    }
+    if ((event->error_code == BadWindow) ||
+	       (event->error_code == BadPixmap) ||
+	       (event->error_code == BadCursor) ||
+	       (event->error_code == BadFont) ||
+	       (event->error_code == BadDrawable) ||
+	       (event->error_code == BadColor) ||
+	       (event->error_code == BadGC) ||
+	       (event->error_code == BadIDChoice) ||
+	       (event->error_code == BadValue) ||
+	       (event->error_code == BadAtom)) {
+	if (event->error_code == BadValue)
+	    XGetErrorDatabaseText(dpy, mtype, "Value", "Value 0x%x",
+				  mesg, BUFSIZ);
+	else if (event->error_code == BadAtom)
+	    XGetErrorDatabaseText(dpy, mtype, "AtomID", "AtomID 0x%x",
+				  mesg, BUFSIZ);
+	else
+	    XGetErrorDatabaseText(dpy, mtype, "ResourceID", "ResourceID 0x%x",
+				  mesg, BUFSIZ);
+	rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->resourceid);
+    }
+    XGetErrorDatabaseText(dpy, mtype, "ErrorSerial", "Error Serial #%d", 
+			  mesg, BUFSIZ);
+    rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->serial);
+}
+#endif
+
+int
+rxvt_xerror_handler (Display *display, XErrorEvent *event)
+{
+  if (GET_R->allowedxerror == -1)
+    GET_R->allowedxerror = event->error_code;
+  else
+    {
+      //TODO: GET_R is most likely not the terminal which caused the error
+      //TODO: maybe just output the error and continue?
+#if ENABLE_FRILLS
+      print_x_error (display, event);
+#else
+      old_xerror_handler (display, event);
+#endif
+    }
+
+  return 0;
+}
+
+int
+rxvt_xioerror_handler (Display *display)
+{
+  rxvt_warn ("X connection to '%s' broken, unable to recover, exiting.\n",
+             DisplayString (display));
+  rxvt_emergency_cleanup ();
+  _exit (EXIT_FAILURE);
+}
+
+/*
+ * Catch a fatal signal and tidy up before quitting
+ */
+void
+rxvt_term::sig_term (sig_watcher &w)
+{
+#ifdef DEBUG_CMD
+  rxvt_warn ("caught signal %d, exiting.\n", w.signum);
+#endif
+  rxvt_emergency_cleanup ();
+  signal (w.signum, SIG_DFL);
+  kill (getpid (), w.signum);
+}
+
+/*----------------------------------------------------------------------*/
 /* rxvt_init () */
 bool
 rxvt_term::init (int argc, const char *const *argv)
@@ -371,12 +484,14 @@ rxvt_term::init (int argc, const char *const *argv)
 
   create_windows (argc, argv);
 
+  dDisp;
+
   init_xlocale ();
 
   scr_reset ();         /* initialize screen */
 
 #if 0
-  XSynchronize (display->display, True);
+  XSynchronize (disp, True);
 #endif
 
 #ifdef HAVE_SCROLLBARS
@@ -385,19 +500,19 @@ rxvt_term::init (int argc, const char *const *argv)
 #endif
 #if (MENUBAR_MAX)
   if (menubar_visible ())
-    XMapWindow (display->display, menuBar.win);
+    XMapWindow (disp, menuBar.win);
 #endif
 #ifdef TRANSPARENT
   if (options & Opt_transparent)
     {
-      XSelectInput (display->display, display->root, PropertyChangeMask);
+      XSelectInput (disp, display->root, PropertyChangeMask);
       check_our_parents ();
       rootwin_ev.start (display, display->root);
     }
 #endif
 
-  XMapWindow (display->display, TermWin.vt);
-  XMapWindow (display->display, TermWin.parent[0]);
+  XMapWindow (disp, TermWin.vt);
+  XMapWindow (disp, TermWin.parent[0]);
 
   set_colorfgbg ();
 
@@ -411,8 +526,6 @@ rxvt_term::init (int argc, const char *const *argv)
 
   return true;
 }
-
-static int (*old_xerror_handler) (Display *dpy, XErrorEvent *event);
 
 void
 rxvt_init ()
@@ -435,7 +548,7 @@ rxvt_init ()
 
   old_xerror_handler = XSetErrorHandler ((XErrorHandler) rxvt_xerror_handler);
   // TODO: handle this with exceptions and tolerate the memory loss
-  //XSetIOErrorHandler ((XErrorHandler) rxvt_xioerror_handler);
+  XSetIOErrorHandler (rxvt_xioerror_handler);
 }
 
 /* ------------------------------------------------------------------------- *
@@ -460,48 +573,6 @@ rxvt_term::sig_chld (sig_watcher &w)
         }
 }
 
-/*----------------------------------------------------------------------*/
-/*
- * Exit gracefully, clearing the utmp entry and restoring tty attributes
- * TODO: if debugging, this should free up any known resources if we can
- */
-void
-rxvt_destroy_all ()
-{
-  // TODO: rxvtd should clean up all ressources
-  for (rxvt_term **t = rxvt_term::termlist.begin (); t < rxvt_term::termlist.end (); t++)
-    (*t)->destroy ();
-}
-
-/*
- * Catch a fatal signal and tidy up before quitting
- */
-void
-rxvt_term::sig_term (sig_watcher &w)
-{
-#ifdef DEBUG_CMD
-  rxvt_warn ("caught signal %d, exiting.\n", w.signum);
-#endif
-  rxvt_destroy_all ();
-  signal (w.signum, SIG_DFL);
-  kill (getpid (), w.signum);
-}
-
-/* INTPROTO */
-int
-rxvt_xerror_handler (Display *display, XErrorEvent *event)
-{
-  if (GET_R->allowedxerror == -1)
-    GET_R->allowedxerror = event->error_code;
-  else
-    {
-      old_xerror_handler (display, event);
-      GET_R->destroy ();
-    }
-
-  return 0;
-}
-
 /* ------------------------------------------------------------------------- *
  *                         MEMORY ALLOCATION WRAPPERS                        *
  * ------------------------------------------------------------------------- */
@@ -516,7 +587,6 @@ rxvt_malloc (size_t size)
   return p;
 }
 
-/* INTPROTO */
 void           *
 rxvt_calloc (size_t number, size_t size)
 {
@@ -528,7 +598,6 @@ rxvt_calloc (size_t number, size_t size)
   return p;
 }
 
-/* INTPROTO */
 void           *
 rxvt_realloc (void *ptr, size_t size)
 {
@@ -622,10 +691,11 @@ rxvt_term::privileged_utmp (rxvt_privaction action)
 void
 rxvt_term::window_calc (unsigned int width, unsigned int height)
 {
-  short           recalc_x, recalc_y;
-  int             x, y, sb_w, mb_h, flags;
-  unsigned int    w, h;
-  unsigned int    max_width, max_height;
+  short recalc_x, recalc_y;
+  int x, y, sb_w, mb_h, flags;
+  unsigned int w, h;
+  unsigned int max_width, max_height;
+  dDisp;
 
   D_SIZE ((stderr, "< Cols/Rows: %3d x %3d ; Width/Height: %4d x %4d",
           TermWin.ncol, TermWin.nrow, szHint.width,
@@ -641,16 +711,19 @@ rxvt_term::window_calc (unsigned int width, unsigned int height)
       parsed_geometry = 1;
       if (rs[Rs_geometry])
         flags = XParseGeometry (rs[Rs_geometry], &x, &y, &w, &h);
+
       if (flags & WidthValue)
         {
           TermWin.ncol = BOUND_POSITIVE_INT16 (w);
           szHint.flags |= USSize;
         }
+
       if (flags & HeightValue)
         {
           TermWin.nrow = BOUND_POSITIVE_INT16 (h);
           szHint.flags |= USSize;
         }
+
       if (flags & XValue)
         {
           szHint.x = x;
@@ -661,6 +734,7 @@ rxvt_term::window_calc (unsigned int width, unsigned int height)
               szHint.win_gravity = NorthEastGravity;
             }
         }
+
       if (flags & YValue)
         {
           szHint.y = y;
@@ -733,10 +807,10 @@ rxvt_term::window_calc (unsigned int width, unsigned int height)
     window_sb_x = szHint.width - sb_w;
 
   if (recalc_x)
-    szHint.x += (DisplayWidth (display->display, DefaultScreen (display->display))
+    szHint.x += (DisplayWidth (disp, display->screen)
                  - szHint.width - 2 * TermWin.ext_bwidth);
   if (recalc_y)
-    szHint.y += (DisplayHeight (display->display, DefaultScreen (display->display))
+    szHint.y += (DisplayHeight (disp, display->screen)
                  - szHint.height - 2 * TermWin.ext_bwidth);
 
   TermWin.ncol = TermWin.width / TermWin.fwidth;
@@ -769,7 +843,7 @@ rxvt_term::tt_winch ()
 #if 0
   // TIOCSWINSZ⎈ is supposed to do this automatically and correctly
   if (cmd_pid)               /* force through to the command */
-    kill (cmd_pid, SIGWINCH);
+    kill (-cmd_pid, SIGWINCH);
 #endif
 }
 
@@ -911,6 +985,7 @@ rxvt_term::set_window_color (int idx, const char *color)
   if (isdigit (*color))
     {
       i = atoi (color);
+
       if (i >= 8 && i <= 15)
         {        /* bright colors */
           i -= 8;
@@ -919,8 +994,8 @@ rxvt_term::set_window_color (int idx, const char *color)
           SET_PIXCOLOR (idx);
           goto Done;
 # endif
-
         }
+
       if (i >= 0 && i <= 7)
         { /* normal colors */
           pix_colors_focused[idx] = pix_colors_focused[minCOLOR + i];
@@ -929,7 +1004,7 @@ rxvt_term::set_window_color (int idx, const char *color)
         }
     }
 
-  if (!rXParseAllocColor (& xcol, color))
+  if (!rXParseAllocColor (&xcol, color))
     return;
 
   /* XStoreColor (display->display, display->cmap, XColor*); */
@@ -1042,13 +1117,13 @@ void
 rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int ignoreparent)
 {
   int fix_screen;
-
 #ifdef SMART_RESIZE
   int old_width = szHint.width, old_height = szHint.height;
 #endif
+  dDisp;
 
   window_calc (width, height);
-  XSetWMNormalHints (display->display, TermWin.parent[0], &szHint);
+  XSetWMNormalHints (disp, TermWin.parent[0], &szHint);
 
   if (!ignoreparent)
     {
@@ -1062,9 +1137,9 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
       unsigned int unused_w1, unused_h1, unused_b1, unused_d1;
       Window unused_cr;
 
-      XTranslateCoordinates (display->display, TermWin.parent[0], display->root,
+      XTranslateCoordinates (disp, TermWin.parent[0], display->root,
                              0, 0, &x, &y, &unused_cr);
-      XGetGeometry (display->display, TermWin.parent[0], &unused_cr, &x1, &y1,
+      XGetGeometry (disp, TermWin.parent[0], &unused_cr, &x1, &y1,
                     &unused_w1, &unused_h1, &unused_b1, &unused_d1);
       /*
        * if display->root isn't the parent window, a WM will probably have offset
@@ -1076,8 +1151,8 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
           y -= y1;
         }
 
-      x1 = (DisplayWidth (display->display, display->screen) - old_width) / 2;
-      y1 = (DisplayHeight (display->display, display->screen) - old_height) / 2;
+      x1 = (DisplayWidth (disp, display->screen) - old_width) / 2;
+      y1 = (DisplayHeight (disp, display->screen) - old_height) / 2;
       dx = old_width - szHint.width;
       dy = old_height - szHint.height;
 
@@ -1091,10 +1166,10 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
       else if (y == y1)       /* exact center */
         dy /= 2;
 
-      XMoveResizeWindow (display->display, TermWin.parent[0], x + dx, y + dy,
+      XMoveResizeWindow (disp, TermWin.parent[0], x + dx, y + dy,
                          szHint.width, szHint.height);
 #else
-      XResizeWindow (display->display, TermWin.parent[0], szHint.width, szHint.height);
+      XResizeWindow (disp, TermWin.parent[0], szHint.width, szHint.height);
 #endif
     }
 
@@ -1104,18 +1179,18 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
     {
       if (scrollbar_visible ())
         {
-          XMoveResizeWindow (display->display, scrollBar.win,
+          XMoveResizeWindow (disp, scrollBar.win,
                              window_sb_x, 0,
                              scrollbar_TotalWidth (), szHint.height);
           resize_scrollbar ();
         }
 
       if (menubar_visible ())
-        XMoveResizeWindow (display->display, menuBar.win,
+        XMoveResizeWindow (disp, menuBar.win,
                            window_vt_x, 0,
                            TermWin_TotalWidth (), menuBar_TotalHeight ());
 
-      XMoveResizeWindow (display->display, TermWin.vt,
+      XMoveResizeWindow (disp, TermWin.vt,
                          window_vt_x, window_vt_y,
                          TermWin_TotalWidth (), TermWin_TotalHeight ());
 
@@ -1173,6 +1248,7 @@ rxvt_term::set_widthheight (unsigned int width, unsigned int height)
   if (width == 0 || height == 0)
     {
       XGetWindowAttributes (display->display, display->root, &wattr);
+
       if (width == 0)
         width = wattr.width - szHint.base_width;
       if (height == 0)
@@ -1480,6 +1556,8 @@ rxvt_term::im_cb ()
   const char *p;
   char **s;
   char buf[IMBUFSIZ];
+
+  SET_R (this);
 
   im_destroy ();
 

@@ -56,7 +56,7 @@ build-stamp:  config.status
 		perl -pe s,..tag.CXX,, -i src/Makefile ;\
 		$(MAKE) ;\
 		mkdir -p tmp/$$x ;\
-		$(MAKE) -C doc alldoc ;\
+		$(MAKE) -C doc rxvt.1.man.in rxvt.7.man.in rxvt.1.html rxvt.7.html rxvt.1.txt rxvt.7.txt ../README.configure ../README.FAQ ;\
 		TERMINFO=$$y/etc/terminfo $(MAKE) DESTDIR=$$y install ;\
 		ln -sf urxvt $$y/usr/bin/rxvt-unicode ;\
 		ln -sf urxvt.1.gz $$y/usr/share/man/man1/rxvt-unicode.1.gz ;\

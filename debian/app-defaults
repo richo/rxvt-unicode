@@ -7,7 +7,7 @@
 URxvt.saveLines: 512
 
 ! a sane non-Xft font
-URxvt.font: -misc-fixed-medium-r-semicondensed-*-*-120-*-*-c-*-iso10646-1
+URxvt.font: -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
 
 ! uncomment to get rxvt-unicode terminfo compatibility. Also read 
 ! README.Debian.gz and generate the terminfo file in this case.
@@ -35,19 +35,19 @@ URxvt.font: -misc-fixed-medium-r-semicondensed-*-*-120-*-*-c-*-iso10646-1
 !URxvt.colorBD: yellow
 !URxvt.reverseVideo: true
 
-! Debian workaround, fix dead/xterm-incompatible codes from Keypad w/o NumLock
+! examples for custom keysyms overrides
 
-URxvt.keysym.KP_Up: ^[[A
-URxvt.keysym.KP_Right: ^[[C
-URxvt.keysym.KP_Left: ^[[D
-URxvt.keysym.KP_Down: ^[[B
-URxvt.keysym.KP_Insert: ^[[2~
-URxvt.keysym.KP_Delete: ^[[3~
-URxvt.keysym.KP_Add: +
-URxvt.keysym.KP_Subtract: -
-URxvt.keysym.KP_Multiply: *
-URxvt.keysym.KP_Divide: /
-URxvt.keysym.KP_Enter: ^M
+!URxvt.keysym.KP_Up: ^[[A
+!URxvt.keysym.KP_Right: ^[[C
+!URxvt.keysym.KP_Left: ^[[D
+!URxvt.keysym.KP_Down: ^[[B
+!URxvt.keysym.KP_Insert: ^[[2~
+!URxvt.keysym.KP_Delete: ^[[3~
+!URxvt.keysym.KP_Add: +
+!URxvt.keysym.KP_Subtract: -
+!URxvt.keysym.KP_Multiply: *
+!URxvt.keysym.KP_Divide: /
+!URxvt.keysym.KP_Enter: ^M
 
 ! some settings by the local admin which should override the above ones
 #include "URxvt-local"

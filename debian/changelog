@@ -1,3 +1,30 @@
+rxvt-unicode (5.2-3) unstable; urgency=medium
+
+  * README.Debian: corrected typos and overlong lines (closes: #297140, patch
+    by Thomas Kappler <thomas.kappler@stud.uni-karlsruhe.de>)
+  * added a chapter about differences from upstream installations
+
+ -- Eduard Bloch <blade@debian.org>  Sun,  6 Mar 2005 10:36:05 +0100
+
+rxvt-unicode (5.2-2) unstable; urgency=medium
+
+  * changed the doc build to not regenerate the termcap file expecting an
+    existing installation of rxvt-unicode terminfo file (closes: #298178)
+  * disabled keysym overrides, seems to work with current bash and recent
+    rxvt-unicode versions again
+
+ -- Eduard Bloch <blade@debian.org>  Sun, 06 Mar 2005 10:29:13 +0100
+
+rxvt-unicode (5.2-1) unstable; urgency=low
+
+  * New upstream release
+  * disabled all Debian specific patches (except of docs changes), 
+    new version seems to work smooth again
+  * set the default font to more concrete default, not allowing X to provide
+    bad bitmap fonts
+
+ -- Eduard Bloch <blade@debian.org>  Wed,  2 Mar 2005 08:34:48 +0100
+
 rxvt-unicode (4.9-1) unstable; urgency=low
 
   * New upstream release

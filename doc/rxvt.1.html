@@ -49,7 +49,7 @@
 </p>
 <hr />
 <h1><a name="description">DESCRIPTION</a></h1>
-<p><strong>rxvt-unicode</strong>, version <strong>4.9</strong>, is a colour vt102 terminal
+<p><strong>rxvt-unicode</strong>, version <strong>5.2</strong>, is a colour vt102 terminal
 emulator intended as an <em>xterm</em>(1) replacement for users who do not
 require features such as Tektronix 4014 emulation and toolkit-style
 configurability. As a result, <strong>rxvt-unicode</strong> uses much less swap space --
@@ -58,8 +58,10 @@ a significant advantage on a machine serving many X sessions.</p>
 </p>
 <hr />
 <h1><a name="frequently_asked_questions">FREQUENTLY ASKED QUESTIONS</a></h1>
-<p>See <code>rxvt(7)</code> (try <code>man 7 rxvt</code>) for a list of frequently
-asked questions and answer to them and some common problems.</p>
+<p>See <code>rxvt(7)</code> (try <code>man 7 rxvt</code>) for a list of
+frequently asked questions and answer to them and some common
+problems. That document is also accessible on the World-Wide-Web at
+<a href="http://cvs.schmorp.de/browse/*checkout*/rxvt-unicode/doc/rxvt.7.html">http://cvs.schmorp.de/browse/*checkout*/rxvt-unicode/doc/rxvt.7.html</a>.</p>
 <p>
 </p>
 <hr />
@@ -511,12 +513,81 @@ Turn on/off secondary screen scroll (default enabled); resource
 <strong>secondaryScroll</strong>.
 </dd>
 <p></p>
-<dt><strong><a name="item__2dxrm_resourcestring"><strong>-xrm</strong> <em>resourcestring</em></a></strong><br />
+<dt><strong><a name="item__2dkeysym_2esym_string"><strong>-keysym.</strong><em>sym</em> <em>string</em></a></strong><br />
 </dt>
 <dd>
-No effect on rxvt-unicode. Simply passes through an argument to be made
-available in the instance's argument list. Appears in <em>WM_COMMAND</em> in
-some window managers.
+Remap a key symbol. See resource <strong>keysym</strong>.
+</dd>
+<p></p>
+<dt><strong><a name="item__2dembed_windowid"><strong>-embed</strong> <em>windowid</em></a></strong><br />
+</dt>
+<dd>
+Tells rxvt to embed it's windows into an already-existing window,
+which enables applications to easily embed a terminal.
+</dd>
+<dd>
+<p>Right now, rxvt will first unmap/map the specified window, so it
+shouldn't be a top-level window. rxvt will also reconfigure it
+quite a bit, so don't expect it to keep some specific state. It's best to
+create an extra subwindow for rxvt and leave it alone.</p>
+</dd>
+<dd>
+<p>The window will not be destroyed when rxvt exits.</p>
+</dd>
+<dd>
+<p>It might be useful to know that rxvt will not close file
+descriptors passed to it (except for stdin/out/err, of course), so you
+can use file descriptors to communicate with the programs within the
+terminal. This works regardless of wether the <code>-embed</code> option was used or
+not.</p>
+</dd>
+<dd>
+<p>Here is a short Gtk2-perl snippet that illustrates how this option can be
+used (a longer example is in <em>doc/embed</em>):</p>
+</dd>
+<dd>
+<pre>
+   my $rxvt = new Gtk2::Socket;
+   $rxvt-&gt;signal_connect_after (realize =&gt; sub {
+      my $xid = $_[0]-&gt;window-&gt;get_xid;
+      system &quot;rxvt -embed $xid &amp;&quot;;
+   });</pre>
+</dd>
+<p></p>
+<dt><strong><a name="item__2dpty_2dfd_fileno"><strong>-pty-fd</strong> <em>fileno</em></a></strong><br />
+</dt>
+<dd>
+Tells rxvt NOT to execute any commands or create a new pty/tty
+pair but instead use the given filehandle as the tty master. This is
+useful if you want to drive rxvt as a generic terminal emulator
+without having to run a program within it.
+</dd>
+<dd>
+<p>If this switch is given, rxvt will not create any utmp/wtmp
+entries and will not tinker with pty/tty permissions - you have to do that
+yourself if you want that.</p>
+</dd>
+<dd>
+<p>Here is a example in perl that illustrates how this option can be used (a
+longer example is in <em>doc/pty-fd</em>):</p>
+</dd>
+<dd>
+<pre>
+   use IO::Pty;
+   use Fcntl;</pre>
+</dd>
+<dd>
+<pre>
+   my $pty = new IO::Pty;
+   fcntl $pty, F_SETFD, 0; # clear close-on-exec
+   system &quot;rxvt -pty-fd &quot; . (fileno $pty) . &quot;&amp;&quot;;
+   close $pty;</pre>
+</dd>
+<dd>
+<pre>
+   # now communicate with rxvt
+   my $slave = $pty-&gt;slave;
+   while (&lt;$slave&gt;) { print $slave &quot;got &lt;$_&gt;\n&quot; }</pre>
 </dd>
 <p></p></dl>
 <p>
@@ -529,8 +600,16 @@ options) compiled into your version.</p>
 Xresource data: using the X libraries (Xrm*-functions) or internal
 Xresources reader (<strong>~/.Xdefaults</strong>). For the first method (ie.
 <strong>rxvt -h</strong> lists <strong>XGetDefaults</strong>), you can set and change the
-resources using X11 tools like <strong>xset</strong>. Many distribution do also load
-settings from the <strong>~/.Xresources</strong> file when X starts.</p>
+resources using X11 tools like <strong>xrdb</strong>. Many distribution do also load
+settings from the <strong>~/.Xresources</strong> file when X starts. rxvt
+will consult the following files/resources in order, with later settings
+overwriting earlier ones:</p>
+<pre>
+  1. system-wide app-defaults file, either locale-dependent OR global
+  2. app-defaults file in $XAPPLRESDIR
+  3. RESOURCE_MANAGER property on root-window OR $HOME/.Xdefaults
+  4. SCREEN_RESOURCES for the current screen
+  5. $XENVIRONMENT file OR $HOME/.Xdefaults-&lt;nodename&gt;</pre>
 <p>If compiled with internal Xresources support (i.e. <strong>rxvt -h</strong>
 lists <strong>.Xdefaults</strong>) then <strong>rxvt</strong> accepts application defaults
 set in XAPPLOADDIR/URxvt (compile-time defined: usually
@@ -912,8 +991,8 @@ thumb with the pointer on middle button press/drag.
 </dt>
 <dd>
 <strong>True</strong>: scroll with scrollback buffer when tty receives new lines (and
-<strong>scrollTtyOutput</strong> is False); option <strong>+sw</strong>. <strong>False</strong>: do not scroll
-with scrollback buffer when tty recieves new lines; option <strong>-sw</strong>.
+<strong>scrollTtyOutput</strong> is False); option <strong>-sw</strong>. <strong>False</strong>: do not scroll
+with scrollback buffer when tty recieves new lines; option <strong>+sw</strong>.
 </dd>
 <p></p>
 <dt><strong><a name="item_scrollttykeypress_3a_boolean"><strong>scrollTtyKeypress:</strong> <em>boolean</em></a></strong><br />
@@ -1245,9 +1324,9 @@ the normal text selection/insertion, hold either the Shift or the Meta
 (Alt) key while performing the desired mouse action.</p>
 <p>If mouse reporting mode is active, the normal scrollbar actions are
 disabled -- on the assumption that we are using a fullscreen
-application. Instead, pressing Button1 and Button3 sends <strong>ESC[6~</strong>
-(Next) and <strong>ESC[5~</strong> (Prior), respectively. Similarly, clicking on the
-up and down arrows sends <strong>ESC[A</strong> (Up) and <strong>ESC[B</strong> (Down),
+application. Instead, pressing Button1 and Button3 sends <strong>ESC [ 6 ~</strong>
+(Next) and <strong>ESC [ 5 ~</strong> (Prior), respectively. Similarly, clicking on the
+up and down arrows sends <strong>ESC [ A</strong> (Up) and <strong>ESC [ B</strong> (Down),
 respectively.</p>
 <p>
 </p>
@@ -1402,12 +1481,107 @@ on White.
 </p>
 <hr />
 <h1><a name="environment">ENVIRONMENT</a></h1>
-<p><strong>rxvt</strong> sets the environment variables <strong>TERM</strong>, <strong>COLORTERM</strong>
-and <strong>COLORFGBG</strong>. The environment variable <strong>WINDOWID</strong> is set to the X
-window id number of the <strong>rxvt</strong> window and it also uses and
-sets the environment variable <strong>DISPLAY</strong> to specify which display
-terminal to use. <strong>rxvt</strong> uses the environment variables
-<strong>RXVTPATH</strong> and <strong>PATH</strong> to find XPM files.</p>
+<p><strong>rxvt</strong> sets and/or uses the following environment variables:</p>
+<dl>
+<dt><strong><a name="item_term"><strong>TERM</strong></a></strong><br />
+</dt>
+<dd>
+Normally set to <code>rxvt-unicode</code>, unless overwritten at configure time, via
+resources or on the commandline.
+</dd>
+<p></p>
+<dt><strong><a name="item_colorterm"><strong>COLORTERM</strong></a></strong><br />
+</dt>
+<dd>
+Either <code>rxvt</code>, <code>rxvt-xpm</code>, depending on wether rxvt was
+compiled with XPM support, and optionally with the added extension
+<code>-mono</code> to indicate that rxvt-unicode runs on a monochrome screen.
+</dd>
+<p></p>
+<dt><strong><a name="item_colorfgbg"><strong>COLORFGBG</strong></a></strong><br />
+</dt>
+<dd>
+Set to a string of the form <code>fg;bg</code> or <code>fg;xpm;bg</code>, where <code>fg</code> is
+the colour code used as default foreground/text colour (or the string
+<code>default</code> to indicate that the default-colour escape sequence is to be
+used), <code>bg</code> is the colour code used as default background colour (or the
+string <code>default</code>), and <code>xpm</code> is the string <code>default</code> if rxvt
+was compiled with XPM support. Libraries like <code>ncurses</code> and <code>slang</code> can
+(and do) use this information to optimize screen output.
+</dd>
+<p></p>
+<dt><strong><a name="item_windowid"><strong>WINDOWID</strong></a></strong><br />
+</dt>
+<dd>
+Set to the (decimal) X Window ID of the rxvt window (the toplevel
+window, which usually has subwindows for the scrollbar, the terminal
+window and so on).
+</dd>
+<p></p>
+<dt><strong><a name="item_terminfo"><strong>TERMINFO</strong></a></strong><br />
+</dt>
+<dd>
+Set to the terminfo directory iff rxvt was configured with
+<code>--with-terminfo=PATH</code>.
+</dd>
+<p></p>
+<dt><strong><a name="item_display"><strong>DISPLAY</strong></a></strong><br />
+</dt>
+<dd>
+Used by rxvt to connect to the display and set to the correct
+display in it's child processes.
+</dd>
+<p></p>
+<dt><strong><a name="item_shell"><strong>SHELL</strong></a></strong><br />
+</dt>
+<dd>
+The shell to be used for command execution, defaults to <code>/bin/sh</code>.
+</dd>
+<p></p>
+<dt><strong><a name="item_rxvtpath"><strong>RXVTPATH</strong></a></strong><br />
+</dt>
+<dd>
+The path where rxvt looks for support files such as menu and xpm
+files.
+</dd>
+<p></p>
+<dt><strong><a name="item_path"><strong>PATH</strong></a></strong><br />
+</dt>
+<dd>
+Used in the same way as <a href="#item_rxvtpath"><code>RXVTPATH</code></a>.
+</dd>
+<p></p>
+<dt><strong><a name="item_rxvt_socket"><strong>RXVT_SOCKET</strong></a></strong><br />
+</dt>
+<dd>
+The unix domain socket path used by <code>rxvtc(1)</code> and
+rxvtd(1).
+</dd>
+<dd>
+<p>Default <code>$HOME/.rxvt-unicode-&lt;nodename</code>.</p>
+</dd>
+<p></p>
+<dt><strong><a name="item_home"><strong>HOME</strong></a></strong><br />
+</dt>
+<dd>
+Used to locate the default directory for the unix domain socket for
+daemon communications and to locate various resource files (such as
+<code>.Xdefaults</code>)
+</dd>
+<p></p>
+<dt><strong><a name="item_xapplresdir"><strong>XAPPLRESDIR</strong></a></strong><br />
+</dt>
+<dd>
+Directory where various X resource files are being located.
+</dd>
+<p></p>
+<dt><strong><a name="item_xenvironment"><strong>XENVIRONMENT</strong></a></strong><br />
+</dt>
+<dd>
+If set and accessible, gives the name of a X resource file to be loaded by
+rxvt.
+</dd>
+<p></p></dl>
 <p>
 </p>
 <hr />
@@ -1439,16 +1613,10 @@ Color names.
 <dt><strong><a name="item_project_coordinator">Project Coordinator</a></strong><br />
 </dt>
 <dd>
-Marc A. Lehmann <em><a href="mailto:rxvt@schmorp.de">rxvt@schmorp.de</a></em>
-</dd>
-<p></p>
-<dt><strong><a name="item_web_page_maintainter">Web page maintainter</a></strong><br />
-</dt>
-<dd>
-Marc A. Lehmann <em><a href="mailto:rxvt@schmorp.de">rxvt@schmorp.de</a></em>
+Marc A. Lehmann <em><a href="mailto:<rxvt-unicode@schmorp.de"><rxvt-unicode@schmorp.de</a></em>&gt;
 </dd>
 <dd>
-<p><a href="http://software.schmorp.de/">http://software.schmorp.de/</a></p>
+<p><a href="http://software.schmorp.de/#rxvt-unicode">http://software.schmorp.de/#rxvt-unicode</a></p>
 </dd>
 <p></p></dl>
 <p>
@@ -1496,7 +1664,7 @@ Rewrote screen display and text selection routines. Project Coordinator
 (changes.txt 2.4.6 - rxvt-unicode)
 </dd>
 <p></p>
-<dt><strong><a name="item_marc_alexander_lehmann__3crxvt_40schmorp_2ede_3e">Marc Alexander Lehmann <em><a href="mailto:<rxvt@schmorp.de"><rxvt@schmorp.de</a></em>&gt;</a></strong><br />
+<dt><strong><a name="item_marc_alexander_lehmann__3crxvt_2dunicode_40schmorp">Marc Alexander Lehmann <em><a href="mailto:<rxvt-unicode@schmorp.de"><rxvt-unicode@schmorp.de</a></em>&gt;</a></strong><br />
 </dt>
 <dd>
 Forked rxvt-unicode, rewrote most of the display code and internal

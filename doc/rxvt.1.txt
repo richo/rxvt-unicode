@@ -6,7 +6,7 @@ SYNOPSIS
     rxvt [options] [-e command [ args ]]
 
 DESCRIPTION
-    rxvt-unicode, version 4.9, is a colour vt102 terminal emulator intended
+    rxvt-unicode, version 5.2, is a colour vt102 terminal emulator intended
     as an *xterm*(1) replacement for users who do not require features such
     as Tektronix 4014 emulation and toolkit-style configurability. As a
     result, rxvt-unicode uses much less swap space -- a significant
@@ -14,7 +14,9 @@ DESCRIPTION
 
 FREQUENTLY ASKED QUESTIONS
     See rxvt(7) (try "man 7 rxvt") for a list of frequently asked questions
-    and answer to them and some common problems.
+    and answer to them and some common problems. That document is also
+    accessible on the World-Wide-Web at
+    <http://cvs.schmorp.de/browse/*checkout*/rxvt-unicode/doc/rxvt.7.html>.
 
 RXVT-UNICODE VS. RXVT
     Unlike the original rxvt, rxvt-unicode stores all text in Unicode
@@ -311,10 +313,59 @@ OPTIONS
         Turn on/off secondary screen scroll (default enabled); resource
         secondaryScroll.
 
-    -xrm *resourcestring*
-        No effect on rxvt-unicode. Simply passes through an argument to be
-        made available in the instance's argument list. Appears in
-        *WM_COMMAND* in some window managers.
+    -keysym.*sym* *string*
+        Remap a key symbol. See resource keysym.
+
+    -embed *windowid*
+        Tells rxvt to embed it's windows into an already-existing window,
+        which enables applications to easily embed a terminal.
+
+        Right now, rxvt will first unmap/map the specified window, so it
+        shouldn't be a top-level window. rxvt will also reconfigure it quite
+        a bit, so don't expect it to keep some specific state. It's best to
+        create an extra subwindow for rxvt and leave it alone.
+
+        The window will not be destroyed when rxvt exits.
+
+        It might be useful to know that rxvt will not close file descriptors
+        passed to it (except for stdin/out/err, of course), so you can use
+        file descriptors to communicate with the programs within the
+        terminal. This works regardless of wether the "-embed" option was
+        used or not.
+
+        Here is a short Gtk2-perl snippet that illustrates how this option
+        can be used (a longer example is in doc/embed):
+
+           my $rxvt = new Gtk2::Socket;
+           $rxvt->signal_connect_after (realize => sub {
+              my $xid = $_[0]->window->get_xid;
+              system "rxvt -embed $xid &";
+           });
+
+    -pty-fd *fileno*
+        Tells rxvt NOT to execute any commands or create a new pty/tty pair
+        but instead use the given filehandle as the tty master. This is
+        useful if you want to drive rxvt as a generic terminal emulator
+        without having to run a program within it.
+
+        If this switch is given, rxvt will not create any utmp/wtmp entries
+        and will not tinker with pty/tty permissions - you have to do that
+        yourself if you want that.
+
+        Here is a example in perl that illustrates how this option can be
+        used (a longer example is in doc/pty-fd):
+
+           use IO::Pty;
+           use Fcntl;
+
+           my $pty = new IO::Pty;
+           fcntl $pty, F_SETFD, 0; # clear close-on-exec
+           system "rxvt -pty-fd " . (fileno $pty) . "&";
+           close $pty;
+
+           # now communicate with rxvt
+           my $slave = $pty->slave;
+           while (<$slave>) { print $slave "got <$_>\n" }
 
 RESOURCES (available also as long-options)
     Note: `rxvt --help' gives a list of all resources (long options)
@@ -324,8 +375,15 @@ RESOURCES (available also as long-options)
     data: using the X libraries (Xrm*-functions) or internal Xresources
     reader (~/.Xdefaults). For the first method (ie. rxvt -h lists
     XGetDefaults), you can set and change the resources using X11 tools like
-    xset. Many distribution do also load settings from the ~/.Xresources
-    file when X starts.
+    xrdb. Many distribution do also load settings from the ~/.Xresources
+    file when X starts. rxvt will consult the following files/resources in
+    order, with later settings overwriting earlier ones:
+
+      1. system-wide app-defaults file, either locale-dependent OR global
+      2. app-defaults file in $XAPPLRESDIR
+      3. RESOURCE_MANAGER property on root-window OR $HOME/.Xdefaults
+      4. SCREEN_RESOURCES for the current screen
+      5. $XENVIRONMENT file OR $HOME/.Xdefaults-<nodename>
 
     If compiled with internal Xresources support (i.e. rxvt -h lists
     .Xdefaults) then rxvt accepts application defaults set in
@@ -578,8 +636,8 @@ RESOURCES (available also as long-options)
 
     scrollWithBuffer: *boolean*
         True: scroll with scrollback buffer when tty receives new lines (and
-        scrollTtyOutput is False); option +sw. False: do not scroll with
-        scrollback buffer when tty recieves new lines; option -sw.
+        scrollTtyOutput is False); option -sw. False: do not scroll with
+        scrollback buffer when tty recieves new lines; option +sw.
 
     scrollTtyKeypress: *boolean*
         True: scroll to bottom when a non-special key is pressed. Special
@@ -798,9 +856,9 @@ MOUSE REPORTING
 
     If mouse reporting mode is active, the normal scrollbar actions are
     disabled -- on the assumption that we are using a fullscreen
-    application. Instead, pressing Button1 and Button3 sends ESC[6~ (Next)
-    and ESC[5~ (Prior), respectively. Similarly, clicking on the up and down
-    arrows sends ESC[A (Up) and ESC[B (Down), respectively.
+    application. Instead, pressing Button1 and Button3 sends ESC [ 6 ~
+    (Next) and ESC [ 5 ~ (Prior), respectively. Similarly, clicking on the
+    up and down arrows sends ESC [ A (Up) and ESC [ B (Down), respectively.
 
 TEXT SELECTION AND INSERTION
     The behaviour of text selection and insertion mechanism is similar to
@@ -939,11 +997,65 @@ COLORS AND GRAPHICS
         on White.
 
 ENVIRONMENT
-    rxvt sets the environment variables TERM, COLORTERM and COLORFGBG. The
-    environment variable WINDOWID is set to the X window id number of the
-    rxvt window and it also uses and sets the environment variable DISPLAY
-    to specify which display terminal to use. rxvt uses the environment
-    variables RXVTPATH and PATH to find XPM files.
+    rxvt sets and/or uses the following environment variables:
+
+    TERM
+        Normally set to "rxvt-unicode", unless overwritten at configure
+        time, via resources or on the commandline.
+
+    COLORTERM
+        Either "rxvt", "rxvt-xpm", depending on wether rxvt was compiled
+        with XPM support, and optionally with the added extension "-mono" to
+        indicate that rxvt-unicode runs on a monochrome screen.
+
+    COLORFGBG
+        Set to a string of the form "fg;bg" or "fg;xpm;bg", where "fg" is
+        the colour code used as default foreground/text colour (or the
+        string "default" to indicate that the default-colour escape sequence
+        is to be used), "bg" is the colour code used as default background
+        colour (or the string "default"), and "xpm" is the string "default"
+        if rxvt was compiled with XPM support. Libraries like "ncurses" and
+        "slang" can (and do) use this information to optimize screen output.
+
+    WINDOWID
+        Set to the (decimal) X Window ID of the rxvt window (the toplevel
+        window, which usually has subwindows for the scrollbar, the terminal
+        window and so on).
+
+    TERMINFO
+        Set to the terminfo directory iff rxvt was configured with
+        "--with-terminfo=PATH".
+
+    DISPLAY
+        Used by rxvt to connect to the display and set to the correct
+        display in it's child processes.
+
+    SHELL
+        The shell to be used for command execution, defaults to "/bin/sh".
+
+    RXVTPATH
+        The path where rxvt looks for support files such as menu and xpm
+        files.
+
+    PATH
+        Used in the same way as "RXVTPATH".
+
+    RXVT_SOCKET
+        The unix domain socket path used by rxvtc(1) and rxvtd(1).
+
+        Default "$HOME/.rxvt-unicode-<nodename".
+
+    HOME
+        Used to locate the default directory for the unix domain socket for
+        daemon communications and to locate various resource files (such as
+        ".Xdefaults")
+
+    XAPPLRESDIR
+        Directory where various X resource files are being located.
+
+    XENVIRONMENT
+        If set and accessible, gives the name of a X resource file to be
+        loaded by rxvt.
 
 FILES
     /usr/lib/X11/rgb.txt
@@ -961,12 +1073,9 @@ BUGS
 
 CURRENT PROJECT COORDINATOR
     Project Coordinator
-        Marc A. Lehmann rxvt@schmorp.de
+        Marc A. Lehmann <rxvt-unicode@schmorp.de>
 
-    Web page maintainter
-        Marc A. Lehmann rxvt@schmorp.de
-
-        <http://software.schmorp.de/>
+        <http://software.schmorp.de/#rxvt-unicode>
 
 AUTHORS
     John Bovey
@@ -990,7 +1099,7 @@ AUTHORS
         Rewrote screen display and text selection routines. Project
         Coordinator (changes.txt 2.4.6 - rxvt-unicode)
 
-    Marc Alexander Lehmann <rxvt@schmorp.de>
+    Marc Alexander Lehmann <rxvt-unicode@schmorp.de>
         Forked rxvt-unicode, rewrote most of the display code and internal
         character handling to store text in unicode, improve xterm
         compatibility and apply numerous other bugfixes and extensions.

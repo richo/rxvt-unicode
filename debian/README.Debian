@@ -1,34 +1,53 @@
 rxvt-unicode for Debian
 =======================
 
+IMPORTANT NOTE:
+
+Read the following paragraph before reporting any bugs to the upstream (main
+rxvt-unicode developer).
+
+Because of compatibility issues, the Debian packages are generally different
+from default installations in two ways:
+
+ - a default non-Xft font is set in the systemwide configuration. You can
+   change it using URxvt.font Xresource setting, see below
+ - the TERM setting is set to "rxvt" rather than "rxvt-unicode". If you
+   experience any problems with applications inside of the terminal window,
+   make sure that you it is not reproducible with the other setting before
+   reporting a problem. To do that, you need to install the rxvt-unicode
+   terminfo data (see below) and run urxvt with " -tn rxvt-unicode" (or set
+   the TERM environment variable inside of the terminal)
+
 GENERAL PACKAGING NOTES:
 
 The package is provided in three different flavors:
 
- - a mini version (-lite) with basic Unicode and basic input support,
-   targeted to low-memory systems
- - a "default" version with default features enabled plus some extra.
-   This is targeted to the average system
- - a big version (-ml), including all extra features
+ - A mini version (-lite) with basic Unicode and basic input support,
+   targeted to low-memory systems.
+ - A "default" version with default features enabled plus some extra.
+   This is targeted to the average system.
+ - A big version (-ml), including all extra features.
 
 rxvt-unicode is a real drop-in replacement for rxvt - if no other rxvt
 package is installed, you can start rxvt-unicode with the rxvt command
-and the same arguments. The real executables of the package are called
-differently to prevent colisitions with other rxvt packages that may be
-installed at the same time (urxvt, urxvtc, urxvtd).
+and the same arguments. The update-alternatives utility can be used to 
+choose which rxvt variant is to be executed as "rxvt".
 
-By default, rxvt-unicode uses its own terminfo entry instead of rxvt's since it
-provides more features.  However, as with every non-xterm terminal program, you
-may get trouble with various programs and remote shell environment (eg. via ssh
-to non-Debian systems) since they mostly do not know about the rxvt-unicode
-terminfo entry.
-If you do not care about such things and want to use the new fancy features,
-you can install the rxvt-unicode terminfo data doing this (as root):
+By default, rxvt-unicode uses its own terminfo entry instead of rxvt's 
+since it provides more features and may fix minor problems with the default
+rxvt terminfo data.
+However, as with every non-xterm terminal program, users get trouble with
+various programs and remote shell environments (e.g. via ssh to non-Debian
+systems) since they usually do not have the rxvt-unicode terminfo data.
 
-tic /usr/share/doc/rxvt-unicode-ml/examples/rxvt-unicode.terminfo
-echo URxvt.termName: rxvt-unicode >> /etc/X11/app-defaults/URxvt
-(or /etc/X11/app-defaults/URxvt-ml or /etc/X11/app-defaults/URxvt-lite
-depending on your package flavor)
+If you do not care about such things and want to use the new fancy 
+features, you can install the rxvt-unicode terminfo data doing this (as 
+root):
+
+# tic /usr/share/doc/rxvt-unicode*/examples/rxvt-unicode.terminfo
+# echo URxvt.termName: rxvt-unicode >> /etc/X11/app-defaults/URxvt
+(or your personal ~/.Xresources file, or /etc/X11/app-defaults/URxvt-ml
+or /etc/X11/app-defaults/URxvt-lite depending on your package flavor)
 
 KNOWN PROBLEMS:
 ==============
@@ -36,36 +55,39 @@ KNOWN PROBLEMS:
  - transparency mode may have problems with icewmbg while other
    applications mostly work
  - rxvt*foobar resources do not work with the -ml/-lite flavor
-   (workaround: use URxvt.foobar resources. better sharing of resource
-   entries with rxvt/xterm/... will be implemented later)
- - automatic font chooser is limited to the list of the configured fonts
-   and a small internal fallback list. This is done for performance
+   (Workaround: use URxvt.foobar resources. Better sharing of resource
+   entries with rxvt/xterm/... will be implemented later.)
+ - The automatic font chooser is limited to the list of the configured 
+   fonts and a small internal fallback list. This is done for performance
    reasons (see manpage). You may need some experimenting with the
-   fonts, eg. "xft:Lucida Console" has good consistent Cyrillic support
+   fonts, e.g. "xft:Lucida Console" has good consistent Cyrillic support
    but no bold chars. "xft:Courier New" has both, Cyrillic and bold
    chars but its look is a matter of taste. For Latin environment,
-   Bistream Vera Sans Mono looks good (Package: ttf-bitstream-vera).
-   Mixtures are possible, eg.
+   Bitstream Vera Sans Mono looks good (Package: ttf-bitstream-vera).
+   Mixtures are possible, e.g.
    "xft:Bitstream Vera Sans Mono:pixelsize=12,xft:Lucida Console:pixelsize=12"
-   but they do not allways look good together
+   but they do not always look good together.
 
 FAQ:
 ===
 
 Q) "w" and "last" do not show urxvt sessions, how to enable it?
-A) A terminal needs to register itself in the utmp/wtmp files to be displayed
-by the mentioned programs. However, the program needs to have sgid permissions
-on the utmp group to do this. urxvt is compiled with utmp/wtmp features
-enabled, however it is installed not with sgid permissions and in utmp group.
-This is done for security reasons (the code is not mature enough, compared to
-some other terminals so there is a little risk).
-To enable utmp, first, make sure that you are in an entrustred environment.
+A) A terminal needs to register itself in the utmp/wtmp files to be i
+displayed by the mentioned programs. However, the program needs to have 
+sgid permissions on the utmp group to do this. urxvt is compiled with 
+utmp/wtmp features enabled, however it is installed not with sgid 
+permissions and in utmp group. This is done for security reasons
+(unknown code quality, so there is a little risk).
+
+To enable utmp, first, make sure that you are in an entrusted environment.
 Run following to set utmp/sgid permissions permanently:
 
 dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvt
 dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvtd
 
-(and with dpkg-statoverride --update --remove on the same files to undo this)
+(and with dpkg-statoverride --update --remove on the same files to undo 
+this)
+
 
 Q) How to change the settings? Why are *rxvt*foobar: resources ignored?
 A) The most defaults are identical with that in Debian's rxvt package.
@@ -91,9 +113,10 @@ been disabled in rxvt-unicode in favor of the more flexible XGetDefault
 method (which also preloads our app-defaults file). You can operate with
 xrdb (-merge, -query) to set the defaults.  Store them in the file
 ~/.Xresources in order to make xinitrc load them when X starts.
-Xsession also loads them when it finds this file (or even more, eg. load
+Xsession also loads them when it finds this file (or even more, e.g. load
 config snippets it it a directory, see
 /etc/X11/Xsession.d/30xfree86-common_xresources for details).
+
 
 Q) How to choose my arbitrary colors?
 A) Upstream author speaks:
@@ -123,9 +146,10 @@ The other way is extending the X color palette:
 | > names there, set your colors in ~/.Xressources (see commented examples
 | > in /etc/X11/app-defaults/URxvt-ml), and restart the Xserver.
 
+
 Q) Why does rxvt-unicode appear black-on-white while uxterm is white-on-black?
-A) White on black is more userfriendly color combination since it makes
-your eyes less tired than when looking on a white (light emiting)
+A) White on black is a more user friendly color combination since it makes
+your eyes less tired than when looking on a white (light emitting)
 background all the time. For this reason, the xterm maintainer decided to
 change the default color palette to reverseVideo and "improved" some
 color settings. You can find an adapted version of this settings as
@@ -149,10 +173,10 @@ Q) I used aterm some time ago with transparency, tinted and "shaded"
 background but the brightness control (-sh) does not work with urxvt as
 expected. How to use shading?
 A) "shading" in urxvt works similarly, but it is applied to the color
-that specified with tint, so you need tint as well (eg. 
+that is specified with tint, so you need tint as well (e.g. 
 "-rv -tr -tint green -sh 30" to get a "Matrix" look).
 If you simply wish to make the background image darker, you may just use
-"tinting" with dark values (gray tinting), eg. -tint gray30 (gray40,
+"tinting" with dark values (gray tinting), e.g. -tint gray30 (gray40,
 gray70, etc.).
 
 OBSOLETE FAQ PART, KEPT AS HISTORY
@@ -172,10 +196,10 @@ URxvt.realBold: true
 (then restart X or run "xrdb -merge < ~/.Xresources")
 
 Alternatively, if you do not like the bold fonts, you can make strings
-in colorUL and colorBD more visible (that are "colors" normaly used for
+in colorUL and colorBD more visible (those are "colors" normally used for
 bold and underlined strings in groff/man, for example), map them to a
 different color. (The maintainer prefers bright-yellow in combination
-with reverseVideo, see commented examples in app-defaults files)
+with reverseVideo, see commented examples in app-defaults files.)
 
 
  Eduard Bloch -- Sun, 23 Jan 2005 01:30:59 +0100
