@@ -7,7 +7,7 @@ Standards-Version: 3.6.1
 
 Package: rxvt-unicode
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4)
+Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
 Provides: x-terminal-emulator
 Suggests: ttf-bitstream-vera
 Description: RXVT-like terminal emulator with Unicode support
@@ -25,7 +25,7 @@ Description: RXVT-like terminal emulator with Unicode support
 
 Package: rxvt-unicode-ml
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4)
+Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
 Provides: x-terminal-emulator
 Suggests: ttf-bitstream-vera, ttf-kochi-gothic
 Conflicts: rxvt-unicode
@@ -45,7 +45,7 @@ Description: multi-lingual terminal emulator with Unicode support for X11
 
 Package: rxvt-unicode-lite
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4)
+Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
 Provides: x-terminal-emulator
 Conflicts: rxvt-unicode
 Provides: rxvt-unicode

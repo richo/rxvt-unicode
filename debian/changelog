@@ -1,3 +1,11 @@
+rxvt-unicode (5.6-1) unstable; urgency=low
+
+  * New upstream release
+  * using TERM=rxvt-unicode as default. Depends on current ncurses-base for
+    now untill it has reached testing
+
+ -- Eduard Bloch <blade@debian.org>  Sun,  3 Jul 2005 11:06:30 +0200
+
 rxvt-unicode (5.5-1) unstable; urgency=low
 
   * New upstream release

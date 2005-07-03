@@ -25,7 +25,7 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	INSTALL_PROGRAM += -s
 endif
 
-cfgcommon = --enable-mousewheel --enable-xgetdefault  --enable-iso14755  --enable-font-styles --enable-utmp --enable-wtmp --with-term=rxvt
+cfgcommon = --enable-mousewheel --enable-xgetdefault  --enable-iso14755  --enable-font-styles --enable-utmp --enable-wtmp --with-term=rxvt-unicode
 
 config.status: configure
 	dh_testdir
