@@ -2,8 +2,8 @@ Source: rxvt-unicode
 Section: x11
 Priority: optional
 Maintainer: Eduard Bloch <blade@debian.org>
-Build-Depends: debhelper (>= 4.0.0), xlibs-dev, groff-base, autotools-dev, xutils, libxft-dev, x-dev, dpatch, chrpath, yodl
-Standards-Version: 3.6.1
+Build-Depends: debhelper (>= 4.0.0), libxt-dev, libxrender-dev, libx11-dev, libxpm-dev, groff-base, autotools-dev, xutils, libxft-dev, dpatch, chrpath, yodl
+Standards-Version: 3.6.2.1
 
 Package: rxvt-unicode
 Architecture: any
@@ -26,10 +26,9 @@ Description: RXVT-like terminal emulator with Unicode support
 Package: rxvt-unicode-ml
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
-Provides: x-terminal-emulator
+Provides: x-terminal-emulator, rxvt-unicode
 Suggests: ttf-bitstream-vera, ttf-kochi-gothic
 Conflicts: rxvt-unicode
-Provides: rxvt-unicode
 Description: multi-lingual terminal emulator with Unicode support for X11
  Rxvt-Unicode is a modern, Unicode-aware color xterm
  replacement that uses significantly less memory than a conventional
@@ -46,9 +45,8 @@ Description: multi-lingual terminal emulator with Unicode support for X11
 Package: rxvt-unicode-lite
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
-Provides: x-terminal-emulator
+Provides: x-terminal-emulator, rxvt-unicode
 Conflicts: rxvt-unicode
-Provides: rxvt-unicode
 Description: RXVT-like terminal emulator with basic Unicode support
  Rxvt-Unicode is a modern, Unicode-aware color xterm
  replacement that uses significantly less memory than a conventional

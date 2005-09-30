@@ -1,3 +1,12 @@
+rxvt-unicode (5.7-1) unstable; urgency=low
+
+  * The forgotten "New upstream release"
+  * replaced xlibs-dev and x-dev with more granular package set
+  * -lite and -ml flavors now provide x-terminal-emulator (closes: #314977)
+  * enabled "next" scrollstyle in rxvt-unicode
+
+ -- Eduard Bloch <blade@debian.org>  Sat, 01 Oct 2005 01:08:13 +0200
+
 rxvt-unicode (5.6-1) unstable; urgency=low
 
   * New upstream release
