@@ -171,6 +171,9 @@ const char *const def_colorName[] =
 #if TINTING
     NULL,
 #endif
+#if OFF_FOCUS_FADING
+    "black",
+#endif
   };
 
 const char *const xa_names[] =
@@ -739,12 +742,14 @@ rxvt_term::Get_Colours ()
         }
 
       pix_colors[i] = xcol;
-#ifdef OFF_FOCUS_FADING
-      if (rs[Rs_fade])
-        pix_colors_unfocused[i] = xcol.fade (display, atoi (rs[Rs_fade]));
-#endif
       SET_PIXCOLOR (i);
     }
+
+#ifdef OFF_FOCUS_FADING
+  if (rs[Rs_fade])
+    for (i = 0; i < (display->depth <= 2 ? 2 : NRS_COLORS); i++)
+      pix_colors_unfocused[i] = pix_colors_focused[i].fade (display, atoi (rs[Rs_fade]), pix_colors[Color_fade]);
+#endif
 
   if (display->depth <= 2)
     {
@@ -762,7 +767,8 @@ rxvt_term::Get_Colours ()
 #ifdef KEEP_SCROLLCOLOR
 
   if (display->depth <= 2)
-    {  /* Monochrome */
+    {
+      /* Monochrome */
       pix_colors[Color_scroll]       = pix_colors[Color_fg];
       pix_colors[Color_topShadow]    = pix_colors[Color_bg];
       pix_colors[Color_bottomShadow] = pix_colors[Color_bg];

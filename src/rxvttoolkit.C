@@ -173,7 +173,7 @@ bool rxvt_display::init ()
   int fd = XConnectionNumber (display);
 
 #ifndef NO_SLOW_LINK_SUPPORT
-  // try to detetc wether we have a local connection.
+  // try to detect wether we have a local connection.
   // assume unix domains socket == local, everything else not
   // TODO: might want to check for inet/127.0.0.1
   is_local = 0;
@@ -476,14 +476,43 @@ rxvt_color::free (rxvt_display *display)
 rxvt_color
 rxvt_color::fade (rxvt_display *display, int percent)
 {
+  percent = 100 - percent;
+
   unsigned short cr, cg, cb;
   rxvt_color faded;
 
   get (display, cr, cg, cb);
-  faded.set (display,
-             cr * percent / 100,
-             cg * percent / 100,
-             cb * percent / 100);
+
+  faded.set (
+    display,
+    cr * percent / 100,
+    cg * percent / 100,
+    cb * percent / 100
+  );
+
+  return faded;
+}
+
+#define LERP(a,b,p) (a * p / 100 + b * (100 - p) / 100)
+
+rxvt_color
+rxvt_color::fade (rxvt_display *display, int percent, rxvt_color &fadeto)
+{
+  percent = 100 - percent;
+
+  unsigned short cr, cg, cb;
+  unsigned short fcr, fcg, fcb;
+  rxvt_color faded;
+  
+  get (display, cr, cg, cb);
+  fadeto.get(display, fcr, fcg, fcb);
+
+  faded.set (
+    display,
+    LERP (cr, fcr, percent),
+    LERP (cg, fcg, percent),
+    LERP (cb, fcb, percent)
+  );
 
   return faded;
 }
