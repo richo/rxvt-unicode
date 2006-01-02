@@ -2,7 +2,7 @@ Source: rxvt-unicode
 Section: x11
 Priority: optional
 Maintainer: Eduard Bloch <blade@debian.org>
-Build-Depends: debhelper (>= 4.0.0), libxt-dev, libxrender-dev, libx11-dev, libxpm-dev, groff-base, autotools-dev, xutils, libxft-dev, dpatch, chrpath, yodl
+Build-Depends: debhelper (>= 4.0.0), libxt-dev, libxrender-dev, libx11-dev, libxpm-dev, groff-base, autotools-dev, xutils, libxft-dev, dpatch, chrpath
 Standards-Version: 3.6.2.1
 
 Package: rxvt-unicode

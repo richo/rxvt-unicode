@@ -33,6 +33,8 @@
 #include "../config.h"          /* NECESSARY */
 #include "rxvt.h"               /* NECESSARY */
 
+#include <limits>
+
 #include <csignal>
 #include <cstring>
 
@@ -159,9 +161,6 @@ rxvt_term::rxvt_term ()
 #ifdef USE_XIM
     im_ev (this, &rxvt_term::im_cb),
 #endif
-    sw_term (this, &rxvt_term::sig_term),
-    sw_int (this, &rxvt_term::sig_term),
-    sw_chld (this, &rxvt_term::sig_chld),
     termwin_ev (this, &rxvt_term::x_cb),
     vt_ev (this, &rxvt_term::x_cb),
     check_ev (this, &rxvt_term::check_cb),
@@ -204,10 +203,10 @@ rxvt_term::~rxvt_term ()
 
 #if ENABLE_STYLES
   for (int i = RS_styleCount; --i; )
-    if (TermWin.fontset[i] != TermWin.fontset[0])
-      delete TermWin.fontset[i];
+    if (fontset[i] != fontset[0])
+      delete fontset[i];
 #endif
-  delete TermWin.fontset[0];
+  delete fontset[0];
 
   if (display)
     {
@@ -245,17 +244,17 @@ rxvt_term::~rxvt_term ()
       if (botShadowGC)  XFreeGC (disp, botShadowGC);
       if (scrollbarGC)  XFreeGC (disp, scrollbarGC);
 #endif
-      if (TermWin.gc)   XFreeGC (disp, TermWin.gc);
+      if (gc)   XFreeGC (disp, gc);
 
 #if defined(MENUBAR) && (MENUBAR_MAX > 1)
       delete menuBar.drawable;
       //if (menuBar.win)
       //  XDestroyWindow (disp, menuBar.win);
 #endif
-      delete TermWin.drawable;
+      delete drawable;
       // destroy all windows
-      if (TermWin.parent[0])
-        XDestroyWindow (disp, TermWin.parent[0]);
+      if (parent[0])
+        XDestroyWindow (disp, parent[0]);
     }
 
   // TODO: free pixcolours, colours should become part of rxvt_display
@@ -289,6 +288,15 @@ rxvt_term::~rxvt_term ()
 #ifdef KEYSYM_RESOURCE
   delete keyboard;
 #endif
+}
+
+void
+rxvt_term::child_exit ()
+{
+  cmd_pid = 0;
+
+  if (!OPTION (Opt_hold))
+    destroy ();
 }
 
 void
@@ -419,8 +427,8 @@ rxvt_xerror_handler (Display *display, XErrorEvent *event)
     GET_R->allowedxerror = event->error_code;
   else
     {
-      //TODO: GET_R is most likely not the terminal which caused the error
-      //TODO: maybe just output the error and continue?
+      // GET_R is most likely not the terminal which caused the error,
+      // so just output the error and continue
 #if ENABLE_FRILLS
       print_x_error (display, event);
 #else
@@ -440,22 +448,7 @@ rxvt_xioerror_handler (Display *display)
   _exit (EXIT_FAILURE);
 }
 
-/*
- * Catch a fatal signal and tidy up before quitting
- */
-void
-rxvt_term::sig_term (sig_watcher &w)
-{
-#ifdef DEBUG_CMD
-  rxvt_warn ("caught signal %d, exiting.\n", w.signum);
-#endif
-  rxvt_emergency_cleanup ();
-  signal (w.signum, SIG_DFL);
-  kill (getpid (), w.signum);
-}
-
 /*----------------------------------------------------------------------*/
-/* rxvt_init () */
 bool
 rxvt_term::init (int argc, const char *const *argv)
 {
@@ -478,7 +471,7 @@ rxvt_term::init (int argc, const char *const *argv)
   menubar_read (rs[Rs_menu]);
 #endif
 #ifdef HAVE_SCROLLBARS
-  if (options & Opt_scrollBar)
+  if (OPTION (Opt_scrollBar))
     scrollBar.setIdle ();    /* set existence for size calculations */
 #endif
 
@@ -495,7 +488,7 @@ rxvt_term::init (int argc, const char *const *argv)
 #endif
 
 #ifdef HAVE_SCROLLBARS
-  if (options & Opt_scrollBar)
+  if (OPTION (Opt_scrollBar))
     resize_scrollbar ();      /* create and map scrollbar */
 #endif
 #if (MENUBAR_MAX)
@@ -503,7 +496,7 @@ rxvt_term::init (int argc, const char *const *argv)
     XMapWindow (disp, menuBar.win);
 #endif
 #ifdef TRANSPARENT
-  if (options & Opt_transparent)
+  if (OPTION (Opt_transparent))
     {
       XSelectInput (disp, display->root, PropertyChangeMask);
       check_our_parents ();
@@ -511,8 +504,8 @@ rxvt_term::init (int argc, const char *const *argv)
     }
 #endif
 
-  XMapWindow (disp, TermWin.vt);
-  XMapWindow (disp, TermWin.parent[0]);
+  XMapWindow (disp, vt);
+  XMapWindow (disp, parent[0]);
 
   set_colorfgbg ();
 
@@ -526,6 +519,46 @@ rxvt_term::init (int argc, const char *const *argv)
 
   return true;
 }
+
+static struct sig_handlers
+{
+  sig_watcher sw_chld, sw_term, sw_int;
+  
+  void sig_chld (sig_watcher &w)
+  {
+    // we are being called for every SIGCHLD, find the corresponding term
+    int pid;
+
+    while ((pid = waitpid (-1, NULL, WNOHANG)) > 0)
+      for (rxvt_term **t = rxvt_term::termlist.begin (); t < rxvt_term::termlist.end (); t++)
+        if (pid == (*t)->cmd_pid)
+          {
+            (*t)->child_exit ();
+            break;
+          }
+  }
+
+  /*
+   * Catch a fatal signal and tidy up before quitting
+   */
+  void
+  sig_term (sig_watcher &w)
+  {
+#ifdef DEBUG_CMD
+    rxvt_warn ("caught signal %d, exiting.\n", w.signum);
+#endif
+    rxvt_emergency_cleanup ();
+    signal (w.signum, SIG_DFL);
+    kill (getpid (), w.signum);
+  }
+
+  sig_handlers ()
+  : sw_chld (this, &sig_handlers::sig_chld),
+    sw_term (this, &sig_handlers::sig_term),
+    sw_int  (this, &sig_handlers::sig_term)
+  {
+  }
+} sig_handlers;
 
 void
 rxvt_init ()
@@ -543,34 +576,16 @@ rxvt_init ()
   signal (SIGHUP,  SIG_IGN);
   signal (SIGPIPE, SIG_IGN);
 
+  sig_handlers.sw_chld.start (SIGCHLD);
+  sig_handlers.sw_term.start (SIGTERM);
+  sig_handlers.sw_int.start  (SIGINT);
+
   /* need to trap SIGURG for SVR4 (Unixware) rlogin */
   /* signal (SIGURG, SIG_DFL); */
 
   old_xerror_handler = XSetErrorHandler ((XErrorHandler) rxvt_xerror_handler);
   // TODO: handle this with exceptions and tolerate the memory loss
   XSetIOErrorHandler (rxvt_xioerror_handler);
-}
-
-/* ------------------------------------------------------------------------- *
- *                       SIGNAL HANDLING & EXIT HANDLER                      *
- * ------------------------------------------------------------------------- */
-/*
- * Catch a SIGCHLD signal and exit if the direct child has died
- */
-
-void
-rxvt_term::sig_chld (sig_watcher &w)
-{
-  // we are being called for every SIGCHLD, not just ours
-  int pid;
-
-  while ((pid = waitpid (-1, NULL, WNOHANG)) > 0)
-    for (rxvt_term **t = termlist.begin (); t < termlist.end (); t++)
-      if (pid == (*t)->cmd_pid)
-        {
-          (*t)->destroy ();
-          break;
-        }
 }
 
 /* ------------------------------------------------------------------------- *
@@ -587,7 +602,7 @@ rxvt_malloc (size_t size)
   return p;
 }
 
-void           *
+void *
 rxvt_calloc (size_t number, size_t size)
 {
   void *p = calloc (number, size);
@@ -668,7 +683,7 @@ rxvt_privileges (rxvt_privaction action)
 void
 rxvt_term::privileged_utmp (rxvt_privaction action)
 {
-  if ((options & Opt_utmpInhibit)
+  if (OPTION (Opt_utmpInhibit)
       || !pty.name || !*pty.name)
     return;
 
@@ -689,7 +704,7 @@ rxvt_term::privileged_utmp (rxvt_privaction action)
  * if width/height are non-zero then override calculated width/height
  */
 void
-rxvt_term::window_calc (unsigned int width, unsigned int height)
+rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
 {
   short recalc_x, recalc_y;
   int x, y, sb_w, mb_h, flags;
@@ -698,29 +713,31 @@ rxvt_term::window_calc (unsigned int width, unsigned int height)
   dDisp;
 
   D_SIZE ((stderr, "< Cols/Rows: %3d x %3d ; Width/Height: %4d x %4d",
-          TermWin.ncol, TermWin.nrow, szHint.width,
-          szHint.height));
+          ncol, nrow, szHint.width, szHint.height));
+
   szHint.flags = PMinSize | PResizeInc | PBaseSize | PWinGravity;
   szHint.win_gravity = NorthWestGravity;
   /* szHint.min_aspect.x = szHint.min_aspect.y = 1; */
 
   recalc_x = recalc_y = 0;
   flags = 0;
+
   if (!parsed_geometry)
     {
       parsed_geometry = 1;
+
       if (rs[Rs_geometry])
         flags = XParseGeometry (rs[Rs_geometry], &x, &y, &w, &h);
 
       if (flags & WidthValue)
         {
-          TermWin.ncol = BOUND_POSITIVE_INT16 (w);
+          ncol = clamp (w, 0, std::numeric_limits<int16_t>::max ());
           szHint.flags |= USSize;
         }
 
       if (flags & HeightValue)
         {
-          TermWin.nrow = BOUND_POSITIVE_INT16 (h);
+          nrow = clamp (h, 0, std::numeric_limits<int16_t>::max ());
           szHint.flags |= USSize;
         }
 
@@ -728,6 +745,7 @@ rxvt_term::window_calc (unsigned int width, unsigned int height)
         {
           szHint.x = x;
           szHint.flags |= USPosition;
+
           if (flags & XNegative)
             {
               recalc_x = 1;
@@ -739,9 +757,11 @@ rxvt_term::window_calc (unsigned int width, unsigned int height)
         {
           szHint.y = y;
           szHint.flags |= USPosition;
+
           if (flags & YNegative)
             {
               recalc_y = 1;
+
               if (szHint.win_gravity == NorthEastGravity)
                 szHint.win_gravity = SouthEastGravity;
               else
@@ -751,21 +771,21 @@ rxvt_term::window_calc (unsigned int width, unsigned int height)
     }
 
   /* TODO: BOUNDS */
-  TermWin.width = TermWin.ncol * TermWin.fwidth;
-  TermWin.height = TermWin.nrow * TermWin.fheight;
-  max_width = MAX_COLS * TermWin.fwidth;
-  max_height = MAX_ROWS * TermWin.fheight;
+  width = ncol * fwidth;
+  height = nrow * fheight;
+  max_width = MAX_COLS * fwidth;
+  max_height = MAX_ROWS * fheight;
 
-  szHint.base_width = szHint.base_height = 2 * TermWin.int_bwidth;
+  szHint.base_width = szHint.base_height = 2 * int_bwidth;
 
   sb_w = mb_h = 0;
-  window_vt_x = window_vt_y = TermWin.int_bwidth;
+  window_vt_x = window_vt_y = int_bwidth;
 
   if (scrollbar_visible ())
     {
       sb_w = scrollbar_TotalWidth ();
       szHint.base_width += sb_w;
-      if (!(options & Opt_scrollBar_right))
+      if (!OPTION (Opt_scrollBar_right))
         window_vt_x += sb_w;
     }
 
@@ -776,47 +796,45 @@ rxvt_term::window_calc (unsigned int width, unsigned int height)
       window_vt_y += mb_h;
     }
 
-  szHint.width_inc = TermWin.fwidth;
-  szHint.height_inc = TermWin.fheight;
+  szHint.width_inc = fwidth;
+  szHint.height_inc = fheight;
   szHint.min_width = szHint.base_width + szHint.width_inc;
   szHint.min_height = szHint.base_height + szHint.height_inc;
 
-  if (width && width - szHint.base_width < max_width)
+  if (newwidth && newwidth - szHint.base_width < max_width)
     {
-      szHint.width = width;
-      TermWin.width = width - szHint.base_width;
+      szHint.width = newwidth;
+      width = newwidth - szHint.base_width;
     }
   else
     {
-      MIN_IT (TermWin.width, max_width);
-      szHint.width = szHint.base_width + TermWin.width;
+      min_it (width, max_width);
+      szHint.width = szHint.base_width + width;
     }
 
-  if (height && height - szHint.base_height < max_height)
+  if (newheight && newheight - szHint.base_height < max_height)
     {
-      szHint.height = height;
-      TermWin.height = height - szHint.base_height;
+      szHint.height = newheight;
+      height = newheight - szHint.base_height;
     }
   else
     {
-      MIN_IT (TermWin.height, max_height);
-      szHint.height = szHint.base_height + TermWin.height;
+      min_it (height, max_height);
+      szHint.height = szHint.base_height + height;
     }
 
-  if (scrollbar_visible () && (options & Opt_scrollBar_right))
+  if (scrollbar_visible () && OPTION (Opt_scrollBar_right))
     window_sb_x = szHint.width - sb_w;
 
   if (recalc_x)
-    szHint.x += (DisplayWidth (disp, display->screen)
-                 - szHint.width - 2 * TermWin.ext_bwidth);
+    szHint.x += DisplayWidth  (disp, display->screen) - szHint.width  - 2 * ext_bwidth;
   if (recalc_y)
-    szHint.y += (DisplayHeight (disp, display->screen)
-                 - szHint.height - 2 * TermWin.ext_bwidth);
+    szHint.y += DisplayHeight (disp, display->screen) - szHint.height - 2 * ext_bwidth;
 
-  TermWin.ncol = TermWin.width / TermWin.fwidth;
-  TermWin.nrow = TermWin.height / TermWin.fheight;
+  ncol = width / fwidth;
+  nrow = height / fheight;
   D_SIZE ((stderr, "> Cols/Rows: %3d x %3d ; Width/Height: %4d x %4d",
-          TermWin.ncol, TermWin.nrow, szHint.width,
+          ncol, nrow, szHint.width,
           szHint.height));
   return;
 }
@@ -834,10 +852,10 @@ rxvt_term::tt_winch ()
 
   struct winsize ws;
 
-  ws.ws_col = TermWin.ncol;
-  ws.ws_row = TermWin.nrow;
-  ws.ws_xpixel = TermWin.width;
-  ws.ws_ypixel = TermWin.height;
+  ws.ws_col = ncol;
+  ws.ws_row = nrow;
+  ws.ws_xpixel = width;
+  ws.ws_ypixel = height;
   (void)ioctl (pty.pty, TIOCSWINSZ, &ws);
 
 #if 0
@@ -849,7 +867,7 @@ rxvt_term::tt_winch ()
 
 /*----------------------------------------------------------------------*/
 /* set_fonts () - load and set the various fonts
-/*
+ *
  * init = 1   - initialize
  *
  * fontname == FONT_UP  - switch to bigger font
@@ -871,22 +889,20 @@ rxvt_term::set_fonts ()
 
 #if ENABLE_STYLES
   for (int i = RS_styleCount; --i; )
-    if (TermWin.fontset[i] != TermWin.fontset[0])
-      delete TermWin.fontset[i];
+    if (fontset[i] != fontset[0])
+      delete fontset[i];
 #endif
 
-  delete TermWin.fontset[0];
-  TermWin.fontset[0] = fs;
+  delete fontset[0];
+  fontset[0] = fs;
 
   prop = (*fs)[1]->properties ();
-  prop.height += TermWin.lineSpace;
+  prop.height += lineSpace;
   fs->set_prop (prop);
 
-  TermWin.fwidth  = prop.width;
-  TermWin.fheight = prop.height;
-  TermWin.fweight = prop.weight;
-  TermWin.fslant  = prop.slant;
-  TermWin.fbase   = (*fs)[1]->ascent;
+  fwidth  = prop.width;
+  fheight = prop.height;
+  fbase   = (*fs)[1]->ascent;
 
   for (int style = 1; style < 4; style++)
     {
@@ -894,17 +910,17 @@ rxvt_term::set_fonts ()
       const char *res = rs[Rs_font + style];
 
       if (res && !*res)
-        TermWin.fontset[style] = TermWin.fontset[0];
+        fontset[style] = fontset[0];
       else
         {
-          TermWin.fontset[style] = fs = new rxvt_fontset (this);
+          fontset[style] = fs = new rxvt_fontset (this);
           rxvt_fontprop prop2 = prop;
 
           if (res)
             prop2.weight = prop2.slant = rxvt_fontprop::unset;
           else
             {
-              res = TermWin.fontset[0]->fontdesc;
+              res = fontset[0]->fontdesc;
 
               if (SET_STYLE (0, style) & RS_Bold)   prop2.weight = rxvt_fontprop::bold;
               if (SET_STYLE (0, style) & RS_Italic) prop2.slant  = rxvt_fontprop::italic;
@@ -914,11 +930,11 @@ rxvt_term::set_fonts ()
           fs->set_prop (prop2);
         }
 #else
-      TermWin.fontset[style] = TermWin.fontset[0];
+      fontset[style] = fontset[0];
 #endif
     }
 
-  if (TermWin.parent[0])
+  if (parent[0])
     {
       resize_all_windows (0, 0, 0);
       scr_remap_chars ();
@@ -930,19 +946,17 @@ rxvt_term::set_fonts ()
 
 void rxvt_term::set_string_property (Atom prop, const char *str, int len)
 {
-  // TODO: SMART_WINDOW_TITLE
-  XChangeProperty (display->display, TermWin.parent[0],
+  XChangeProperty (display->display, parent[0],
                    prop, XA_STRING, 8, PropModeReplace,
                    (const unsigned char *)str, len >= 0 ? len : strlen (str));
 }
 
 void rxvt_term::set_utf8_property (Atom prop, const char *str, int len)
 {
-  // TODO: SMART_WINDOW_TITLE
   wchar_t *ws = rxvt_mbstowcs (str, len);
   char *s = rxvt_wcstoutf8 (ws);
 
-  XChangeProperty (display->display, TermWin.parent[0],
+  XChangeProperty (display->display, parent[0],
                    prop, xa[XA_UTF8_STRING], 8, PropModeReplace,
                    (const unsigned char *)s, strlen (s));
 
@@ -1115,16 +1129,14 @@ rxvt_term::rXParseAllocColor (rxvt_color *screen_in_out, const char *colour)
  * -                         WINDOW RESIZING                          - *
  * -------------------------------------------------------------------- */
 void
-rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int ignoreparent)
+rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, int ignoreparent)
 {
   int fix_screen;
-#ifdef SMART_RESIZE
   int old_width = szHint.width, old_height = szHint.height;
-#endif
   dDisp;
 
-  window_calc (width, height);
-  XSetWMNormalHints (disp, TermWin.parent[0], &szHint);
+  window_calc (newwidth, newheight);
+  XSetWMNormalHints (disp, parent[0], &szHint);
 
   if (!ignoreparent)
     {
@@ -1138,9 +1150,9 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
       unsigned int unused_w1, unused_h1, unused_b1, unused_d1;
       Window unused_cr;
 
-      XTranslateCoordinates (disp, TermWin.parent[0], display->root,
+      XTranslateCoordinates (disp, parent[0], display->root,
                              0, 0, &x, &y, &unused_cr);
-      XGetGeometry (disp, TermWin.parent[0], &unused_cr, &x1, &y1,
+      XGetGeometry (disp, parent[0], &unused_cr, &x1, &y1,
                     &unused_w1, &unused_h1, &unused_b1, &unused_d1);
       /*
        * if display->root isn't the parent window, a WM will probably have offset
@@ -1167,16 +1179,16 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
       else if (y == y1)       /* exact center */
         dy /= 2;
 
-      XMoveResizeWindow (disp, TermWin.parent[0], x + dx, y + dy,
+      XMoveResizeWindow (disp, parent[0], x + dx, y + dy,
                          szHint.width, szHint.height);
 #else
-      XResizeWindow (disp, TermWin.parent[0], szHint.width, szHint.height);
+      XResizeWindow (disp, parent[0], szHint.width, szHint.height);
 #endif
     }
 
-  fix_screen = TermWin.ncol != prev_ncol || TermWin.nrow != prev_nrow;
+  fix_screen = ncol != prev_ncol || nrow != prev_nrow;
 
-  if (fix_screen || width != old_width || height != old_height)
+  if (fix_screen || newwidth != old_width || newheight != old_height)
     {
       if (scrollbar_visible ())
         {
@@ -1191,7 +1203,7 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
                            window_vt_x, 0,
                            TermWin_TotalWidth (), menuBar_TotalHeight ());
 
-      XMoveResizeWindow (disp, TermWin.vt,
+      XMoveResizeWindow (disp, vt,
                          window_vt_x, window_vt_y,
                          TermWin_TotalWidth (), TermWin_TotalHeight ());
 
@@ -1209,10 +1221,10 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
       /* scr_reset only works on the primary screen */
       if (old_height)      /* this is not the first time through */
         {
-          unsigned int ncol = TermWin.ncol;
-          TermWin.ncol = prev_ncol; // save b/c scr_blank_screen_mem uses this
+          unsigned int ocol = ncol;
+          ncol = prev_ncol; // save b/c scr_blank_screen_mem uses this
           curr_screen = scr_change_screen (PRIMARY);
-          TermWin.ncol = ncol;
+          ncol = ocol;
         }
 
       scr_reset ();
@@ -1220,7 +1232,7 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
       if (curr_screen >= 0) /* this is not the first time through */
         {
           scr_change_screen (curr_screen);
-          selection_check (old_ncol != TermWin.ncol ? 4 : 0);
+          selection_check (old_ncol != ncol ? 4 : 0);
         }
     }
 
@@ -1228,7 +1240,7 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
   old_height = szHint.height;
 
 #ifdef XPM_BACKGROUND
-  if (TermWin.pixmap)
+  if (pixmap)
     scr_touch (false);
 #endif
 
@@ -1242,25 +1254,25 @@ rxvt_term::resize_all_windows (unsigned int width, unsigned int height, int igno
  * good for toggling 80/132 columns
  */
 void
-rxvt_term::set_widthheight (unsigned int width, unsigned int height)
+rxvt_term::set_widthheight (unsigned int newwidth, unsigned int newheight)
 {
   XWindowAttributes wattr;
 
-  if (width == 0 || height == 0)
+  if (newwidth == 0 || newheight == 0)
     {
       XGetWindowAttributes (display->display, display->root, &wattr);
 
-      if (width == 0)
-        width = wattr.width - szHint.base_width;
-      if (height == 0)
-        height = wattr.height - szHint.base_height;
+      if (newwidth == 0)
+        newwidth = wattr.width - szHint.base_width;
+      if (newheight == 0)
+        newheight = wattr.height - szHint.base_height;
     }
 
-  if (width != TermWin.width || height != TermWin.height)
+  if (newwidth != width || newheight != height)
     {
-      width += szHint.base_width;
-      height += szHint.base_height;
-      resize_all_windows (width, height, 0);
+      newwidth += szHint.base_width;
+      newheight += szHint.base_height;
+      resize_all_windows (newwidth, newheight, 0);
     }
 }
 
@@ -1280,10 +1292,10 @@ void
 rxvt_term::im_set_size (XRectangle &size)
 {
   // the int_bwidth terms make no sense to me
-  size.x      = TermWin.int_bwidth;
-  size.y      = TermWin.int_bwidth;
-  size.width  = Width2Pixel (TermWin.ncol) + TermWin.int_bwidth;
-  size.height = Height2Pixel (TermWin.nrow) + TermWin.int_bwidth;
+  size.x      = int_bwidth;
+  size.y      = int_bwidth;
+  size.width  = Width2Pixel (ncol) + int_bwidth;
+  size.height = Height2Pixel (nrow) + int_bwidth;
 }
 
 void
@@ -1293,13 +1305,13 @@ rxvt_term::im_set_preedit_area (XRectangle &preedit_rect,
 {
   preedit_rect.x      = needed_rect.width;
   preedit_rect.y      = 0;
-  preedit_rect.width  = Width2Pixel (TermWin.ncol) - needed_rect.width + 1;
-  preedit_rect.height = TermWin.fheight;
+  preedit_rect.width  = Width2Pixel (ncol) - needed_rect.width + 1;
+  preedit_rect.height = fheight;
 
   status_rect.x       = 0;
   status_rect.y       = 0;
-  status_rect.width   = needed_rect.width ? needed_rect.width : Width2Pixel (TermWin.ncol) + 1;
-  status_rect.height  = TermWin.fheight;
+  status_rect.width   = needed_rect.width ? needed_rect.width : Width2Pixel (ncol) + 1;
+  status_rect.height  = fheight;
 }
 
 /* Checking whether input method is running. */
@@ -1337,7 +1349,7 @@ rxvt_term::IMSendSpot ()
   XVaNestedList preedit_attr;
 
   if (!Input_Context
-      || !TermWin.focus
+      || !focus
       || !(input_style & XIMPreeditPosition))
     return;
 
@@ -1467,9 +1479,9 @@ foundpet:
                "-*-*-*-R-*-*-%d-*-*-*-*-*-*,"
                "-*-*-*-R-*-*-%d-*-*-*-*-*-*,"
                "*",
-               TermWin.fheight,
-               TermWin.fheight + 1, TermWin.fheight - 1,
-               TermWin.fheight - 2, TermWin.fheight + 2);
+               fheight,
+               fheight + 1, fheight - 1,
+               fheight - 2, fheight + 2);
 
       fs = XCreateFontSet (display->display, rs[Rs_imFont] ? rs[Rs_imFont] : pat,
                            &missing_charset_list, &missing_charset_count, &def_string);
@@ -1525,8 +1537,8 @@ foundpet:
 
   Input_Context = XCreateIC (xim,
                              XNInputStyle, input_style,
-                             XNClientWindow, TermWin.vt,
-                             XNFocusWindow, TermWin.parent[0],
+                             XNClientWindow, vt,
+                             XNFocusWindow, parent[0],
                              preedit_attr ? XNPreeditAttributes : NULL,
                              preedit_attr,
                              status_attr ? XNStatusAttributes : NULL,
@@ -1553,7 +1565,7 @@ foundpet:
 void
 rxvt_term::im_cb ()
 {
-  int i, found, had_im;
+  int i;
   const char *p;
   char **s;
   char buf[IMBUFSIZ];
@@ -1620,7 +1632,7 @@ rxvt_term::IMSetStatusPosition ()
   XVaNestedList preedit_attr, status_attr;
 
   if (!Input_Context
-      || !TermWin.focus
+      || !focus
       || !(input_style & XIMPreeditArea)
       || !IMisRunning ())
     return;

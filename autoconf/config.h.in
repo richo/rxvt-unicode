@@ -202,6 +202,9 @@
 /* Needed to get declarations for msg_control and msg_controllen on Solaris */
 #undef __EXTENSIONS__
 
+/* Define if you have sched-h and sched_yield */
+#undef HAVE_SCHED_YIELD
+
 /* Build shared library version - specify via configure only */
 #undef LIBRXVT
 
@@ -315,6 +318,9 @@
 
 /* Define if nl_langinfo(CODESET) works */
 #undef HAVE_NL_LANGINFO
+
+/* Define if sys/socket.h defines the necessary macros/functions for file handle passing */
+#undef HAVE_UNIX_FDPASS
 
 /* Define if your XIMCallback specifies XIC as first type. */
 #undef XIMCB_PROTO_BROKEN

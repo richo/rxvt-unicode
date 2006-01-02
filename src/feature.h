@@ -40,7 +40,7 @@
  * NOTE:
  *
  * Most of these configuration options have not been tested within the new
- * rxvt-unicode framework. Changing them might work, might have no effect,
+ * rxvt-unicode framework. Changing them should work, might have no effect,
  * destroy your disks or have any other effects. You may freely try (and
  * report bugs, too!), but don't _expect_ them to work.
  */
@@ -78,8 +78,13 @@
 /*
  * Define maximum possible columns and rows
  */
-#define MAX_COLS	4000
-#define MAX_ROWS	1000
+#define MAX_COLS	10000
+#define MAX_ROWS	10000
+
+/*
+ * Define maximum possible savelines
+ */
+#define MAX_SAVELINES   10000000
 
 /*
  * Define default colours for certain items.  If you have a low colour
@@ -120,7 +125,7 @@
  * Define to remove support for XCopyArea () support.  XCopyArea () is useful
  * for scrolling on non-local X displays
  */
-#define NO_SLOW_LINK_SUPPORT
+#undef NO_SLOW_LINK_SUPPORT
 
 /*
  * Printer pipe which will be used for emulation of attached vt100 printer
@@ -361,14 +366,8 @@
 /* #define ESCZ_ANSWER	"\033[?1;2C" */
 
 /*
- * Check the current value of the window-time/icon-name and avoid
- * re-setting it to the same value -- avoids unnecessary window refreshes
- */
-//#define SMART_WINDOW_TITLE // currently disabled, needs to be reimplemented
-
-/*
  * Allow foreground/background colour to be changed with an
- * xterm escape sequence "\E]39;colour^G" -- still experimental
+ * xterm escape sequence "\E]39;colour^G"
  */
 #define XTERM_COLOR_CHANGE
 
@@ -395,7 +394,7 @@
 /*
  * Default number of lines in the scrollback buffer
  */
-#define SAVELINES	64
+#define SAVELINES	1000
 
 /*
  * Provide termcap/terminfo bw support (wrap backwards on cub1)

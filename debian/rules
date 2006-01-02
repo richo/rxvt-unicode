@@ -33,13 +33,13 @@ config.status: configure
 	cp -f /usr/share/misc/config.guess config.guess
 
 conf-code:
-	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info $(cfgcommon) --enable-rxvt-scroll --enable-next-scroll --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-transparency --enable-fading --enable-linespace --enable-xft --enable-tinting --with-res-name=urxvt --with-res-class=URxvt
+	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info $(cfgcommon) --enable-rxvt-scroll --enable-next-scroll --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-transparency --enable-xpm-background --enable-fading --enable-linespace --enable-xft --enable-tinting --with-res-name=urxvt --with-res-class=URxvt
 
 conf-code-lite:
 	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info $(cfgcommon) --with-res-name=urxvt-lite --with-res-class=URxvt-lite --enable-fallback=URxvt 
 
 conf-code-ml:
-	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info $(cfgcommon) --enable-everything --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-unicode3 --enable-transparency --enable-fading --enable-linespace --enable-combining --with-res-name=urxvt-ml --with-res-class=URxvt-ml --enable-fallback=URxvt --enable-tinting --enable-frills
+	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info $(cfgcommon) --enable-everything --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-unicode3 --enable-transparency --enable-xpm-background --enable-fading --enable-linespace --enable-combining --with-res-name=urxvt-ml --with-res-class=URxvt-ml --enable-fallback=URxvt --enable-tinting --enable-frills
 
 build: patch build-stamp
 

@@ -178,7 +178,7 @@ rxvt_term::makeutent (const char *pty, const char *hostname)
 
     if ((fd0 = fopen (TTYTAB_FILENAME, "r")) != NULL)
       {
-        char            buf[256], name[256];
+        char buf[256], name[256];
 
         buf[sizeof (buf) - 1] = '\0';
         for (i = 1; (fgets (buf, sizeof (buf) - 1, fd0) != NULL);)
@@ -204,7 +204,7 @@ rxvt_term::makeutent (const char *pty, const char *hostname)
 
 #ifdef WTMP_SUPPORT
 # ifdef WTMP_ONLY_ON_LOGIN
-  if (options & Opt_loginShell)
+  if (OPTION (Opt_loginShell))
 # endif
     {
 # ifdef HAVE_STRUCT_UTMP
@@ -224,7 +224,7 @@ rxvt_term::makeutent (const char *pty, const char *hostname)
     }
 #endif
 #if defined(LASTLOG_SUPPORT) && defined(RXVT_LASTLOG_FILE)
-  if (options & Opt_loginShell)
+  if (OPTION (Opt_loginShell))
     rxvt_update_lastlog (RXVT_LASTLOG_FILE, pty, hostname);
 #endif
 }
@@ -285,7 +285,7 @@ rxvt_term::cleanutent ()
    */
 #ifdef WTMP_SUPPORT
 # ifdef WTMP_ONLY_ON_LOGIN
-  if (options & Opt_loginShell)
+  if (OPTION (Opt_loginShell))
 # endif
     {
 # ifdef HAVE_STRUCT_UTMP

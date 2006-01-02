@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "rxvt 1"
-.TH rxvt 1 "2005-10-25" "5.8" "RXVT-UNICODE"
+.TH rxvt 1 "2006-01-02" "6.2" "RXVT-UNICODE"
 .SH "NAME"
 rxvt\-unicode (ouR XVT, unicode) \- (a VT102 emulator for the X window system)
 .SH "SYNOPSIS"
@@ -310,6 +310,11 @@ be printed. See resource \fBitalicFont\fR for details.
 .IX Item "-fbi fontlist"
 Compile font\-styles: The bold italic font list to use when bold characters are to
 be printed. See resource \fBboldItalicFont\fR for details.
+.IP "\fB\-is\fR|\fB+is\fR" 4
+.IX Item "-is|+is"
+Compile font\-styles: Bold/Italic font styles imply high intensity
+foreground/background (default). See resource \fBintensityStyles\fR for
+details.
 .IP "\fB\-name\fR \fIname\fR" 4
 .IX Item "-name name"
 Specify the application name under which resources are to be obtained,
@@ -401,6 +406,13 @@ given on the command line. If this option is used, it must be the last
 on the command\-line. If there is no \fB\-e\fR option then the default is to
 run the program specified by the \fB\s-1SHELL\s0\fR environment variable or,
 failing that, \fI\fIsh\fI\|(1)\fR.
+.Sp
+Please note that you must specify a program with arguments. If you want to
+run shell commands, you have to specify the shell, like this:
+.Sp
+.Vb 1
+\&  @@RXVT_NAME@@ -e sh -c "shell commands"
+.Ve
 .IP "\fB\-title\fR \fItext\fR" 4
 .IX Item "-title text"
 Window title (\fB\-T\fR still respected); the default title is the basename
@@ -454,6 +466,12 @@ Turn on/off secondary screen (default enabled); resource
 .IX Item "-ssr|+ssr"
 Turn on/off secondary screen scroll (default enabled); resource
 \&\fBsecondaryScroll\fR.
+.IP "\fB\-hold\fR|\fB+hold\fR" 4
+.IX Item "-hold|+hold"
+Turn on/off hold window after exit support. If enabled, @@RXVT_NAME@@
+will not immediately destroy its window when the program executed within
+it exits. Instead, it will wait till it is being killed or closed by the
+user; resource \fBhold\fR.
 .IP "\fB\-keysym.\fR\fIsym\fR \fIstring\fR" 4
 .IX Item "-keysym.sym string"
 Remap a key symbol. See resource \fBkeysym\fR.
@@ -734,6 +752,13 @@ not possible, replacement fonts of the desired shape will be tried.
 .Sp
 If set, but empty, then this specific style is disabled and the normal
 text font will being used for the given style.
+.IP "\fBintensityStyles:\fR \fIboolean\fR" 4
+.IX Item "intensityStyles: boolean"
+When font styles are not enabled, or this option is enabled (\fBTrue\fR,
+option \fB\-is\fR, the default), bold and italic font styles imply high
+intensity foreground/backround colours. Disabling this option (\fBFalse\fR,
+option \fB+is\fR) disables this behaviour, the high intensity colours are not
+reachable.
 .IP "\fBselectstyle:\fR \fImode\fR" 4
 .IX Item "selectstyle: mode"
 Set mouse selection style to \fBold\fR which is 2.20, \fBoldword\fR which is
@@ -921,13 +946,15 @@ the end of the logical line only. option \fB\-tcw\fR.
 Enables \*(L"insecure\*(R" mode. Rxvt-unicode offers some escape sequences that
 echo arbitrary strings like the icon name or the locale. This could be
 abused if somebody gets 8\-bit\-clean access to your display, whether
-throuh a mail client displaying mail bodies unfiltered or though
-\&\fIwrite\fR\|(1). Therefore, these sequences are disabled by default. (Note
-that other terminals, including xterm, have these sequences
-enabled by default). You can enable them by setting this boolean
-resource or specifying \fB\-insecure\fR as an option. At the moment, this
-enabled display\-answer, locale, findfont, icon label and window title
-requests as well as dynamic menubar dispatch.
+through a mail client displaying mail bodies unfiltered or through
+\&\fIwrite\fR\|(1) or any other means. Therefore, these sequences are disabled by
+default. (Note that many other terminals, including xterm, have these
+sequences enabled by default, which doesn't make it safer, though).
+.Sp
+You can enable them by setting this boolean resource or specifying
+\&\fB\-insecure\fR as an option. At the moment, this enables display\-answer,
+locale, findfont, icon label and window title requests as well as dynamic
+menubar dispatch.
 .IP "\fBmodifier:\fR \fImodifier\fR" 4
 .IX Item "modifier: modifier"
 Set the key to be interpreted as the Meta key to: \fBalt\fR, \fBmeta\fR,
@@ -947,6 +974,12 @@ Turn on/off secondary screen scroll (default enabled). If the this
 option is enabled, scrolls on the secondary screen will change the
 scrollback buffer and switching to/from the secondary screen will
 instead scroll the screen up.
+.IP "\fBhold\fR: \fIbool\fR" 4
+.IX Item "hold: bool"
+Turn on/off hold window after exit support. If enabled, @@RXVT_NAME@@
+will not immediately destroy its window when the program executed within
+it exits. Instead, it will wait till it is being killed or closed by the
+user.
 .IP "\fBkeysym.\fR\fIsym\fR: \fIstring\fR" 4
 .IX Item "keysym.sym: string"
 Compile \fIfrills\fR: Associate \fIstring\fR with keysym \fIsym\fR. The
@@ -1080,8 +1113,10 @@ to select a word; Left triple-click to select the entire logical line
 \&\fBtripleclickwords\fR.
 .Sp
 Starting a selection while pressing the \fBMeta\fR key (or \fBMeta+Ctrl\fR keys)
-(Compile: \fIfrills\fR) will create a rectangular selection instead of a normal
-one.
+(Compile: \fIfrills\fR) will create a rectangular selection instead of a
+normal one. In this mode, every selected row becomes its own line in the
+selection, and trailing whitespace is visually underlined and removed from
+the selection.
 .IP "\fBInsertion\fR:" 4
 .IX Item "Insertion:"
 Pressing and releasing the Middle mouse button (or \fBShift-Insert\fR) in
@@ -1096,7 +1131,7 @@ You can, however, switch fonts at runtime using escape sequences (and
 therefore using the menubar), e.g.:
 .PP
 .Vb 1
-\&   printf '\ee]701;%s\e007' "9x15bold,xft:Kochi Gothic"
+\&   printf '\ee]710;%s\e007' "9x15bold,xft:Kochi Gothic"
 .Ve
 .PP
 rxvt-unicode will automatically re-apply these fonts to the output so far.

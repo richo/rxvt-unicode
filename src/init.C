@@ -36,6 +36,8 @@
 #include "rxvtutil.h"
 #include "init.h"
 
+#include <limits>
+
 #include <csignal>
 
 const char *const def_colorName[] =
@@ -218,9 +220,6 @@ const char *const xa_names[] =
 bool
 rxvt_term::init_vars ()
 {
-  sw_term.start (SIGTERM);
-  sw_int.start  (SIGINT);
-
   pix_colors_focused = new rxvt_color [TOTAL_COLORS];
 #ifdef OFF_FOCUS_FADING
   pix_colors_unfocused = new rxvt_color [TOTAL_COLORS];
@@ -231,7 +230,7 @@ rxvt_term::init_vars ()
     return false;
 
 #if defined(XPM_BACKGROUND) || defined(TRANSPARENT)
-  TermWin.pixmap = None;
+  pixmap = None;
 #endif
 
   MEvent.time = CurrentTime;
@@ -239,13 +238,13 @@ rxvt_term::init_vars ()
   options = DEFAULT_OPTIONS;
   want_refresh = 1;
   priv_modes = SavedModes = PrivMode_Default;
-  TermWin.focus = 0;
-  TermWin.ncol = 80;
-  TermWin.nrow = 24;
-  TermWin.int_bwidth = INTERNALBORDERWIDTH;
-  TermWin.ext_bwidth = EXTERNALBORDERWIDTH;
-  TermWin.lineSpace = LINESPACE;
-  TermWin.saveLines = SAVELINES;
+  focus = 0;
+  ncol = 80;
+  nrow = 24;
+  int_bwidth = INTERNALBORDERWIDTH;
+  ext_bwidth = EXTERNALBORDERWIDTH;
+  lineSpace = LINESPACE;
+  saveLines = SAVELINES;
   numpix_colors = TOTAL_COLORS;
 
   refresh_limit = 1;
@@ -374,15 +373,17 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     }
 
   if (rs[Rs_saveLines] && (i = atoi (rs[Rs_saveLines])) >= 0)
-    TermWin.saveLines = BOUND_POSITIVE_INT16 (i);
+    saveLines = min (i, MAX_SAVELINES);
 
 #if ENABLE_FRILLS
   if (rs[Rs_int_bwidth] && (i = atoi (rs[Rs_int_bwidth])) >= 0)
-    TermWin.int_bwidth = min (i, 100);    /* arbitrary limit */
+    int_bwidth = min (i, std::numeric_limits<int16_t>::max ());
+
   if (rs[Rs_ext_bwidth] && (i = atoi (rs[Rs_ext_bwidth])) >= 0)
-    TermWin.ext_bwidth = min (i, 100);    /* arbitrary limit */
+    ext_bwidth = min (i, std::numeric_limits<int16_t>::max ());
+
   if (rs[Rs_lineSpace] && (i = atoi (rs[Rs_lineSpace])) >= 0)
-    TermWin.lineSpace = min (i, 100);     /* arbitrary limit */
+    lineSpace = min (i, std::numeric_limits<int16_t>::max ());
 #endif
 
 #ifdef POINTER_BLANK
@@ -393,8 +394,8 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 #endif
 
   /* no point having a scrollbar without having any scrollback! */
-  if (!TermWin.saveLines)
-    options &= ~Opt_scrollBar;
+  if (!saveLines)
+    CLR_OPTION (Opt_scrollBar);
 
 #ifdef PRINTPIPE
   if (!rs[Rs_print_pipe])
@@ -447,7 +448,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 
 #ifdef XTERM_REVERSE_VIDEO
   /* this is how xterm implements reverseVideo */
-  if (options & Opt_reverseVideo)
+  if (OPTION (Opt_reverseVideo))
     {
       if (!rs[Rs_color + Color_fg])
         rs[Rs_color + Color_fg] = def_colorName[Color_bg];
@@ -462,8 +463,8 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 
 #ifndef XTERM_REVERSE_VIDEO
   /* this is how we implement reverseVideo */
-  if (options & Opt_reverseVideo)
-    SWAP_IT (rs[Rs_color + Color_fg], rs[Rs_color + Color_bg], const char *);
+  if (OPTION (Opt_reverseVideo))
+    ::swap (rs[Rs_color + Color_fg], rs[Rs_color + Color_bg]);
 #endif
 
   /* convenient aliases for setting fg/bg to colors */
@@ -523,14 +524,14 @@ rxvt_term::init_env ()
   sprintf (env_display, "DISPLAY=%s", val);
 
   /* avoiding the math library:
-   * i = (int) (ceil (log10 ((unsigned int)TermWin.parent[0]))) */
-  for (i = 0, u = (unsigned int)TermWin.parent[0]; u; u /= 10, i++)
+   * i = (int) (ceil (log10 ((unsigned int)parent[0]))) */
+  for (i = 0, u = (unsigned int)parent[0]; u; u /= 10, i++)
     ;
-  MAX_IT (i, 1);
+  max_it (i, 1);
   env_windowid = (char *)rxvt_malloc ((i + 10) * sizeof (char));
 
   sprintf (env_windowid, "WINDOWID=%u",
-           (unsigned int)TermWin.parent[0]);
+           (unsigned int)parent[0]);
 
   /* add entries to the environment:
    * @ DISPLAY:   in case we started with -display
@@ -649,16 +650,16 @@ rxvt_term::init_command (const char *const *argv)
    */
 
 #ifdef META8_OPTION
-  meta_char = (options & Opt_meta8 ? 0x80 : C0_ESC);
+  meta_char = OPTION ((Opt_meta8) ? 0x80 : C0_ESC);
 #endif
 
   get_ourmods ();
 
-  if (!(options & Opt_scrollTtyOutput))
+  if (!OPTION (Opt_scrollTtyOutput))
     priv_modes |= PrivMode_TtyOutputInh;
-  if (options & Opt_scrollTtyKeypress)
+  if (OPTION (Opt_scrollTtyKeypress))
     priv_modes |= PrivMode_Keypress;
-  if (!(options & Opt_jumpScroll))
+  if (!OPTION (Opt_jumpScroll))
     priv_modes |= PrivMode_smoothScroll;
 
 #ifndef NO_BACKSPACE_KEY
@@ -680,7 +681,7 @@ rxvt_term::init_command (const char *const *argv)
     }
 
 #ifdef CURSOR_BLINK
-  if (options & Opt_cursorBlink)
+  if (OPTION (Opt_cursorBlink))
     (void)gettimeofday (&lastcursorchange, NULL);
 #endif
 
@@ -707,7 +708,7 @@ rxvt_term::Get_Colours ()
       if (!rXParseAllocColor (&xcol, rs[Rs_color + i]))
         {
 #ifndef XTERM_REVERSE_VIDEO
-          if (i < 2 && (options & Opt_reverseVideo))
+          if (i < 2 && OPTION (Opt_reverseVideo))
             rs[Rs_color + i] = def_colorName[!i];
           else
 #endif
@@ -940,14 +941,14 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   assert (sizeof (xa_names) / sizeof (char *) == NUM_XA);
   XInternAtoms (disp, (char **)xa_names, NUM_XA, False, xa);
 
-  if (options & Opt_transparent)
+  if (OPTION (Opt_transparent))
     {
       XGetWindowAttributes (disp, RootWindow (disp, display->screen), &gattr);
       display->depth = gattr.depth; // doh //TODO, per-term not per-display?
     }
 
 #if ENABLE_FRILLS
-  if (options & Opt_borderLess)
+  if (OPTION (Opt_borderLess))
     {
       prop = XInternAtom(disp, "_MOTIF_WM_INFO", True);
 
@@ -989,8 +990,8 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
       window_calc (wattr.width, wattr.height);
     }
-
 #endif
+
   window_calc (0, 0);
 
   /* sub-window placement & size in rxvt_resize_subwindows () */
@@ -1001,7 +1002,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   top = XCreateWindow (disp, parent,
                        szHint.x, szHint.y,
                        szHint.width, szHint.height,
-                       TermWin.ext_bwidth,
+                       ext_bwidth,
                        display->depth, InputOutput,
                        display->visual,
                        CWColormap | CWBackPixel | CWBorderPixel, &attributes);
@@ -1009,12 +1010,12 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   top = XCreateSimpleWindow (disp, parent,
                              szHint.x, szHint.y,
                              szHint.width, szHint.height,
-                             TermWin.ext_bwidth,
+                             ext_bwidth,
                              pix_colors_focused[Color_border],
                              pix_colors_focused[Color_border]);
 #endif
 
-  TermWin.parent[0] = top;
+  this->parent[0] = top;
 
   old_width = szHint.width;
   old_height = szHint.height;
@@ -1027,7 +1028,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   wmHint.flags = InputHint | StateHint | WindowGroupHint;
   wmHint.input = True;
-  wmHint.initial_state = options & Opt_iconic ? IconicState : NormalState;
+  wmHint.initial_state = OPTION (Opt_iconic) ? IconicState : NormalState;
   wmHint.window_group = top;
 
   XmbSetWMProperties (disp, top, NULL, NULL, (char **)argv, argc,
@@ -1077,7 +1078,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 #endif
 
   /* the vt window */
-  TermWin.vt = XCreateSimpleWindow (disp, top,
+  vt = XCreateSimpleWindow (disp, top,
                                     window_vt_x,
                                     window_vt_y,
                                     TermWin_TotalWidth (),
@@ -1086,23 +1087,23 @@ rxvt_term::create_windows (int argc, const char *const *argv)
                                     pix_colors_focused[Color_fg],
                                     pix_colors_focused[Color_bg]);
 #ifdef DEBUG_X
-  XStoreName (disp, TermWin.vt, "vt window");
+  XStoreName (disp, vt, "vt window");
 #endif
 
   attributes.bit_gravity = NorthWestGravity;
-  XChangeWindowAttributes (disp, TermWin.vt, CWBitGravity, &attributes);
+  XChangeWindowAttributes (disp, vt, CWBitGravity, &attributes);
 
   vt_emask = ExposureMask | ButtonPressMask | ButtonReleaseMask | PropertyChangeMask;
 
 #ifdef POINTER_BLANK
-  if (options & Opt_pointerBlank)
+  if (OPTION (Opt_pointerBlank))
     vt_emask |= PointerMotionMask;
   else
 #endif
     vt_emask |= Button1MotionMask | Button3MotionMask;
 
-  XSelectInput (disp, TermWin.vt, vt_emask);
-  vt_ev.start (display, TermWin.vt);
+  XSelectInput (disp, vt, vt_emask);
+  vt_ev.start (display, vt);
 
 #if defined(MENUBAR) && (MENUBAR_MAX > 1)
   if (menuBar_height ())
@@ -1132,7 +1133,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
 #ifdef XPM_BACKGROUND
   if (rs[Rs_backgroundPixmap] != NULL
-      && ! (options & Opt_transparent))
+      && ! OPTION (Opt_transparent))
     {
       const char *p = rs[Rs_backgroundPixmap];
 
@@ -1151,19 +1152,19 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   gcvalue.foreground = pix_colors[Color_fg];
   gcvalue.background = pix_colors[Color_bg];
   gcvalue.graphics_exposures = 1;
-  TermWin.gc = XCreateGC (disp, TermWin.vt,
+  gc = XCreateGC (disp, vt,
                           GCForeground | GCBackground | GCGraphicsExposures,
                           &gcvalue);
 
-  TermWin.drawable = new rxvt_drawable (display, TermWin.vt);
+  drawable = new rxvt_drawable (display, vt);
 
 #if defined(MENUBAR) || defined(RXVT_SCROLLBAR)
   gcvalue.foreground = pix_colors[Color_topShadow];
-  topShadowGC = XCreateGC (disp, TermWin.vt, GCForeground, &gcvalue);
+  topShadowGC = XCreateGC (disp, vt, GCForeground, &gcvalue);
   gcvalue.foreground = pix_colors[Color_bottomShadow];
-  botShadowGC = XCreateGC (disp, TermWin.vt, GCForeground, &gcvalue);
+  botShadowGC = XCreateGC (disp, vt, GCForeground, &gcvalue);
   gcvalue.foreground = pix_colors[ (display->depth <= 2 ? Color_fg : Color_scroll)];
-  scrollbarGC = XCreateGC (disp, TermWin.vt, GCForeground, &gcvalue);
+  scrollbarGC = XCreateGC (disp, vt, GCForeground, &gcvalue);
 #endif
 
 #ifdef OFF_FOCUS_FADING
@@ -1198,56 +1199,52 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
    */
   if (GET_TERMIOS (STDIN_FILENO, tio) < 0)
     {
-      /* return error - use system defaults */
+      // return error - use system defaults,
+      // where possible, and zero elsewhere
+      memset (tio, 0, sizeof (ttymode_t));
+
       tio->c_cc[VINTR] = CINTR;
       tio->c_cc[VQUIT] = CQUIT;
       tio->c_cc[VERASE] = CERASE;
+#ifdef VERASE2
+      tio->c_cc[VERASE2] = CERASE2;
+#endif
       tio->c_cc[VKILL] = CKILL;
       tio->c_cc[VSTART] = CSTART;
       tio->c_cc[VSTOP] = CSTOP;
       tio->c_cc[VSUSP] = CSUSP;
 # ifdef VDSUSP
-
       tio->c_cc[VDSUSP] = CDSUSP;
 # endif
 # ifdef VREPRINT
-
       tio->c_cc[VREPRINT] = CRPRNT;
 # endif
 # ifdef VDISCRD
-
       tio->c_cc[VDISCRD] = CFLUSH;
 # endif
 # ifdef VWERSE
-
       tio->c_cc[VWERSE] = CWERASE;
 # endif
 # ifdef VLNEXT
-
       tio->c_cc[VLNEXT] = CLNEXT;
 # endif
-
     }
+
   tio->c_cc[VEOF] = CEOF;
   tio->c_cc[VEOL] = VDISABLE;
 # ifdef VEOL2
-
   tio->c_cc[VEOL2] = VDISABLE;
 # endif
 # ifdef VSWTC
-
   tio->c_cc[VSWTC] = VDISABLE;
 # endif
 # ifdef VSWTCH
-
   tio->c_cc[VSWTCH] = VDISABLE;
 # endif
 # if VMIN != VEOF
-
   tio->c_cc[VMIN] = 1;
 # endif
 # if VTIME != VEOL
-
   tio->c_cc[VTIME] = 0;
 # endif
 
@@ -1285,6 +1282,7 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
       tio->sg.sg_erase = CERASE;      /* ^H */
       tio->sg.sg_kill = CKILL;        /* ^U */
     }
+
   if (erase != -1)
     tio->sg.sg_erase = (char)erase;
 
@@ -1300,6 +1298,7 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
       tio->tc.t_eofc = CEOF;  /* ^D */
       tio->tc.t_brkc = -1;
     }
+
   /* get local special chars */
   if (ioctl (STDIN_FILENO, TIOCGLTC, & (tio->lc)) < 0)
     {
@@ -1313,7 +1312,6 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
   /* get line discipline */
   ioctl (STDIN_FILENO, TIOCGETD, & (tio->line));
 # ifdef NTTYDISC
-
   tio->line = NTTYDISC;
 # endif                         /* NTTYDISC */
 
@@ -1346,15 +1344,12 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
   FOO (IXON, "IXON");
   FOO (IXOFF, "IXOFF");
 # ifdef IUCLC
-
   FOO (IUCLC, "IUCLC");
 # endif
 # ifdef IXANY
-
   FOO (IXANY, "IXANY");
 # endif
 # ifdef IMAXBEL
-
   FOO (IMAXBEL, "IMAXBEL");
 # endif
 
@@ -1371,39 +1366,30 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
   FOO (VEOF, "VEOF");
   FOO (VEOL, "VEOL");
 # ifdef VEOL2
-
   FOO (VEOL2, "VEOL2");
 # endif
 # ifdef VSWTC
-
   FOO (VSWTC, "VSWTC");
 # endif
 # ifdef VSWTCH
-
   FOO (VSWTCH, "VSWTCH");
 # endif
-
   FOO (VSTART, "VSTART");
   FOO (VSTOP, "VSTOP");
   FOO (VSUSP, "VSUSP");
 # ifdef VDSUSP
-
   FOO (VDSUSP, "VDSUSP");
 # endif
 # ifdef VREPRINT
-
   FOO (VREPRINT, "VREPRINT");
 # endif
 # ifdef VDISCRD
-
   FOO (VDISCRD, "VDISCRD");
 # endif
 # ifdef VWERSE
-
   FOO (VWERSE, "VWERSE");
 # endif
 # ifdef VLNEXT
-
   FOO (VLNEXT, "VLNEXT");
 # endif
 
@@ -1426,7 +1412,12 @@ rxvt_term::run_command (const char *const *argv)
   if (rs[Rs_pty_fd])
     {
       pty.pty = atoi (rs[Rs_pty_fd]);
-      fcntl (pty.pty, F_SETFL, O_NONBLOCK);
+
+      if (getfd_hook)
+        pty.pty = (*getfd_hook) (pty.pty);
+
+      if (pty.pty < 0 || fcntl (pty.pty, F_SETFL, O_NONBLOCK))
+        rxvt_fatal ("unusable pty-fd filehandle, aborting.\n");
     }
   else
 #endif
@@ -1455,8 +1446,6 @@ rxvt_term::run_command (const char *const *argv)
   if (rs[Rs_pty_fd])
     return;
 #endif
-
-  sw_chld.start (SIGCHLD);
 
 #ifndef __QNX__
   /* spin off the command interpreter */
@@ -1539,7 +1528,7 @@ rxvt_term::run_child (const char *const *argv)
 
   SET_TTYMODE (STDIN_FILENO, &tio);       /* init terminal attributes */
 
-  if (options & Opt_console)
+  if (OPTION (Opt_console))
     {     /* be virtual console, fail silently */
 #ifdef TIOCCONS
       unsigned int on = 1;
@@ -1599,7 +1588,7 @@ rxvt_term::run_child (const char *const *argv)
 
       argv0 = (const char *)rxvt_r_basename (shell);
 
-      if (options & Opt_loginShell)
+      if (OPTION (Opt_loginShell))
         {
           login = (char *)rxvt_malloc ((strlen (argv0) + 2) * sizeof (char));
 
@@ -1644,7 +1633,7 @@ rxvt_term::run_child (const char *const *argv)
 
       arg_a[0] = my_basename (command);
 
-      if (options & Opt_loginShell)
+      if (OPTION (Opt_loginShell))
         {
           login = rxvt_malloc ((strlen (arg_a[0]) + 2) * sizeof (char));
 
