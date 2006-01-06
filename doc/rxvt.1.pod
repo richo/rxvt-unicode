@@ -191,22 +191,23 @@ section of @@RXVT_NAME@@(7).
 
 =item B<-fb> I<fontlist>
 
-Compile font-styles: The bold font list to use when bold characters are to
-be printed. See resource B<boldFont> for details.
+Compile I<font-styles>: The bold font list to use when B<bold> characters
+are to be printed. See resource B<boldFont> for details.
 
 =item B<-fi> I<fontlist>
 
-Compile font-styles: The italic font list to use when bold characters are to
-be printed. See resource B<italicFont> for details.
+Compile I<font-styles>: The italic font list to use when I<italic>
+characters are to be printed. See resource B<italicFont> for details.
 
 =item B<-fbi> I<fontlist>
 
-Compile font-styles: The bold italic font list to use when bold characters are to
-be printed. See resource B<boldItalicFont> for details.
+Compile I<font-styles>: The bold italic font list to use when B<< I<bold
+italic> >> characters are to be printed. See resource B<boldItalicFont>
+for details.
 
 =item B<-is>|B<+is>
 
-Compile font-styles: Bold/Italic font styles imply high intensity
+Compile I<font-styles>: Bold/Italic font styles imply high intensity
 foreground/background (default). See resource B<intensityStyles> for
 details.
 
@@ -297,6 +298,13 @@ B<externalBorder>.
 Compile I<frills>: Set MWM hints to request a borderless window, i.e.
 if honoured by the WM, the rxvt-unicode window will not have window
 decorations; resource B<borderLess>.
+
+=item B<-sbg>
+
+Compile I<frills>: Disable the usage of the built-in block graphics/line
+drawing characters and just rely on what the specified fonts provide. Use
+this if you have a good font and want to use its block graphic glyphs;
+resource B<skipBuiltinGlyphs>.
 
 =item B<-lsp> I<number>
 
@@ -454,6 +462,11 @@ longer example is in F<doc/pty-fd>):
    # now communicate with rxvt
    my $slave = $pty->slave;
    while (<$slave>) { print $slave "got <$_>\n" }
+
+=item B<-pe> I<string>
+
+Colon-separated list of perl extension scripts to use in this terminal
+instance. See resource B<perl-ext>.
 
 =back
 
@@ -639,7 +652,7 @@ Select the fonts to be used. This is a comma separated list of font
 names that are used in turn when trying to display Unicode characters.
 The first font defines the cell size for characters; other fonts might
 be smaller, but not larger. A reasonable default font list is always
-appended to it. option B<-fn>.
+appended to it; option B<-fn>.
 
 Each font can either be a standard X11 core font (XLFD) name, with
 optional prefix C<x:> or a Xft font (Compile I<xft>), prefixed with C<xft:>.
@@ -822,6 +835,13 @@ option B<-w>, B<-bw>, B<-borderwidth>.
 Set MWM hints to request a borderless window, i.e. if honoured by the
 WM, the rxvt-unicode window will not have window decorations; option B<-bl>.
 
+=item B<skipBuiltinGlyphs:> I<boolean>
+
+Compile I<frills>: Disable the usage of the built-in block graphics/line
+drawing characters and just rely on what the specified fonts provide. Use
+this if you have a good font and want to use its block graphic glyphs;
+option B<-sbg>.
+
 =item B<termName:> I<termname>
 
 Specifies the terminal type name to be set in the B<TERM> environment
@@ -904,7 +924,7 @@ I<name> of inputMethod to use; option B<-im>.
 The locale to use for opening the IM. You can use an C<LC_CTYPE> of e.g.
 C<de_DE.UTF-8> for normal text processing but C<ja_JP.EUC-JP> for the
 input extension to be able to input japanese characters while staying in
-another locale. option B<-imlocale>.
+another locale; option B<-imlocale>.
 
 =item B<imFont:> I<fontset>
 
@@ -919,7 +939,7 @@ option B<-imfont>.
 
 Change the meaning of triple-click selection with the left mouse
 button. Instead of selecting a full line it will extend the selection to
-the end of the logical line only. option B<-tcw>.
+the end of the logical line only; option B<-tcw>.
 
 =item B<insecure:> I<boolean>
 
@@ -1020,6 +1040,13 @@ when Control-Meta-c is being pressed":
 
   URxvt.keysym.M-C-c: command:\033]701;zh_CN.GBK\007
 
+If I<string> takes the form C<perl:STRING>, then the specified B<STRING>
+is passed to the C<on_keyboard_command> perl handler. See the @@RXVT_NAME@@perl(3)
+manpage. For example, the F<selection> extension (activated via
+C<@@RXVT_NAME@@ -pe selection>) listens for C<selection:rot13> events:
+
+  URxvt.keysym.M-C-c: perl:selection:rot13
+
 Due the the large number of modifier combinations, a defined key mapping
 will match if at I<at least> the specified identifiers are being set, and
 no other key mappings with those and more bits are being defined. That
@@ -1051,6 +1078,32 @@ info):
 
   URxvt.keysym.M-C-3: command:\033[8;25;80t
   URxvt.keysym.M-C-4: command:\033[8;48;110t
+
+=item B<perl-ext-common>: I<string>
+
+=item B<perl-ext>: I<string>
+
+Colon-separated list(s) of perl extension scripts to use in this terminal
+instance. Each extension is looked up in the library directories, loaded
+if necessary, and bound to the current terminal instance. If this
+resource is empty or missing, then the perl interpreter will not be
+initialized. The idea behind two options is that B<perl-ext-common> will
+be used for extensions that should be available to all instances, while
+B<perl-ext> is used for specific instances; option B<-pe>.
+
+=item B<perl-eval>: I<string>
+
+Perl code to be evaluated when all extensions have been registered. See the
+@@RXVT_NAME@@perl(3) manpage.
+
+=item B<perl-lib>: I<path>
+
+Colon-separated list of additional directories that hold extension
+scripts. When looking for extensions specified by the C<perl> resource,
+@@RXVT_NAME@@ will first look in these directories and then in
+F<@@RXVT_LIBDIR@@/urxvt/perl/>.
+
+See the @@RXVT_NAME@@perl(3) manpage.
 
 =back
 

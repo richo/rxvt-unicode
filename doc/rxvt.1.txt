@@ -6,7 +6,7 @@ SYNOPSIS
     rxvt [options] [-e command [ args ]]
 
 DESCRIPTION
-    rxvt-unicode, version 6.2, is a colour vt102 terminal emulator intended
+    rxvt-unicode, version 6.3, is a colour vt102 terminal emulator intended
     as an *xterm*(1) replacement for users who do not require features such
     as Tektronix 4014 emulation and toolkit-style configurability. As a
     result, rxvt-unicode uses much less swap space -- a significant
@@ -165,20 +165,20 @@ OPTIONS
         FAQ section of rxvt(7).
 
     -fb *fontlist*
-        Compile font-styles: The bold font list to use when bold characters
-        are to be printed. See resource boldFont for details.
+        Compile *font-styles*: The bold font list to use when bold
+        characters are to be printed. See resource boldFont for details.
 
     -fi *fontlist*
-        Compile font-styles: The italic font list to use when bold
+        Compile *font-styles*: The italic font list to use when *italic*
         characters are to be printed. See resource italicFont for details.
 
     -fbi *fontlist*
-        Compile font-styles: The bold italic font list to use when bold
-        characters are to be printed. See resource boldItalicFont for
-        details.
+        Compile *font-styles*: The bold italic font list to use when *bold
+        italic* characters are to be printed. See resource boldItalicFont
+        for details.
 
     -is|+is
-        Compile font-styles: Bold/Italic font styles imply high intensity
+        Compile *font-styles*: Bold/Italic font styles imply high intensity
         foreground/background (default). See resource intensityStyles for
         details.
 
@@ -253,6 +253,12 @@ OPTIONS
     -bl Compile *frills*: Set MWM hints to request a borderless window, i.e.
         if honoured by the WM, the rxvt-unicode window will not have window
         decorations; resource borderLess.
+
+    -sbg
+        Compile *frills*: Disable the usage of the built-in block
+        graphics/line drawing characters and just rely on what the specified
+        fonts provide. Use this if you have a good font and want to use its
+        block graphic glyphs; resource skipBuiltinGlyphs.
 
     -lsp *number*
         Compile *frills*: Lines (pixel height) to insert between each row of
@@ -391,6 +397,10 @@ OPTIONS
            # now communicate with rxvt
            my $slave = $pty->slave;
            while (<$slave>) { print $slave "got <$_>\n" }
+
+    -pe *string*
+        Colon-separated list of perl extension scripts to use in this
+        terminal instance. See resource perl-ext.
 
 RESOURCES (available also as long-options)
     Note: `rxvt --help' gives a list of all resources (long options)
@@ -547,7 +557,7 @@ RESOURCES (available also as long-options)
         names that are used in turn when trying to display Unicode
         characters. The first font defines the cell size for characters;
         other fonts might be smaller, but not larger. A reasonable default
-        font list is always appended to it. option -fn.
+        font list is always appended to it; option -fn.
 
         Each font can either be a standard X11 core font (XLFD) name, with
         optional prefix "x:" or a Xft font (Compile *xft*), prefixed with
@@ -709,6 +719,12 @@ RESOURCES (available also as long-options)
         the WM, the rxvt-unicode window will not have window decorations;
         option -bl.
 
+    skipBuiltinGlyphs: *boolean*
+        Compile *frills*: Disable the usage of the built-in block
+        graphics/line drawing characters and just rely on what the specified
+        fonts provide. Use this if you have a good font and want to use its
+        block graphic glyphs; option -sbg.
+
     termName: *termname*
         Specifies the terminal type name to be set in the TERM environment
         variable; option -tn.
@@ -776,7 +792,7 @@ RESOURCES (available also as long-options)
         The locale to use for opening the IM. You can use an "LC_CTYPE" of
         e.g. "de_DE.UTF-8" for normal text processing but "ja_JP.EUC-JP" for
         the input extension to be able to input japanese characters while
-        staying in another locale. option -imlocale.
+        staying in another locale; option -imlocale.
 
     imFont: *fontset*
         Specify the font-set used for XIM styles "OverTheSpot" or
@@ -789,7 +805,7 @@ RESOURCES (available also as long-options)
     tripleclickwords: *boolean*
         Change the meaning of triple-click selection with the left mouse
         button. Instead of selecting a full line it will extend the
-        selection to the end of the logical line only. option -tcw.
+        selection to the end of the logical line only; option -tcw.
 
     insecure: *boolean*
         Enables "insecure" mode. Rxvt-unicode offers some escape sequences
@@ -883,6 +899,13 @@ RESOURCES (available also as long-options)
 
           URxvt.keysym.M-C-c: command:\033]701;zh_CN.GBK\007
 
+        If *string* takes the form "perl:STRING", then the specified STRING
+        is passed to the "on_keyboard_command" perl handler. See the
+        rxvtperl(3) manpage. For example, the selection extension (activated
+        via "rxvt -pe selection") listens for "selection:rot13" events:
+
+          URxvt.keysym.M-C-c: perl:selection:rot13
+
         Due the the large number of modifier combinations, a defined key
         mapping will match if at *at least* the specified identifiers are
         being set, and no other key mappings with those and more bits are
@@ -914,6 +937,29 @@ RESOURCES (available also as long-options)
 
           URxvt.keysym.M-C-3: command:\033[8;25;80t
           URxvt.keysym.M-C-4: command:\033[8;48;110t
+
+    perl-ext-common: *string*
+    perl-ext: *string*
+        Colon-separated list(s) of perl extension scripts to use in this
+        terminal instance. Each extension is looked up in the library
+        directories, loaded if necessary, and bound to the current terminal
+        instance. If this resource is empty or missing, then the perl
+        interpreter will not be initialized. The idea behind two options is
+        that perl-ext-common will be used for extensions that should be
+        available to all instances, while perl-ext is used for specific
+        instances; option -pe.
+
+    perl-eval: *string*
+        Perl code to be evaluated when all extensions have been registered.
+        See the rxvtperl(3) manpage.
+
+    perl-lib: *path*
+        Colon-separated list of additional directories that hold extension
+        scripts. When looking for extensions specified by the "perl"
+        resource, rxvt will first look in these directories and then in
+        /opt/rxvt/lib/urxvt/perl/.
+
+        See the rxvtperl(3) manpage.
 
 THE SCROLLBAR
     Lines of text that scroll off the top of the rxvt window (resource:

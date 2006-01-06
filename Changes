@@ -2,15 +2,34 @@ rxvt-unicode changelog <= google-friendly title
 
 TODO: harmonize --disable-options into position-dependent options.
 TODO: after requesting the selection and getting a timeout, no further requests will be sent.
-TODO: safer command: keymap processing.
 TODO: "slow" rendering mode for bidi and scripts
 TODO: read property sequence is broken with respect to utf-8 etc.
 TODO: http://www120.pair.com/mccarthy/nextstep/intro.htmld/Workspace.html is the correct nextstep look.
-WISH: keymap modification via esc-sequences. (obsoleted by embedded perl)
-WISH: searchable backlog (obsoleted by embedded perl)
-WISH: meta-tagging of data by regex/master process (obsoleted by embedded perl)
 WISH: OnTheSpot editing, or maybe switch to miiiiiiif
 WISH: just for fun, do shade and tint with XRender.
+
+6.3  Wed Jan  4 22:37:10 CET 2006
+        - SECURITY FIX: on systems using openpty, permissions were
+          not correctly updated on the tty device and were left as
+          world-readable and world-writable (likely in original rxvt,
+          too), and were not restored properly. Affected are only
+          systems where non-unix ptys were used (such as most BSDs, not
+          GNU/Linux). (found, patched and debugged by Ryan Beasley).
+        - meta8 support was forcefully enabled in most configurations.
+          restored configurability of this (useless) feature (reported
+          by Mikachu).
+        - optionally embed a perl interpreter, which can be used for more
+          intelligent/customized selection support, visual feedback,
+          menus, tabs etc. See the the urxvtperl manpage, the -pe option,
+          perl*-resources and keysym resources. Not everything is there yet.
+        - try to be more clever about differing font sizes and their ascent.
+          Not guarenteed to work, but works better in most cases now.
+        - fix directory permissions on install.
+        - implemented option to disable built-in line drawing characters
+          and fall back to the font ones (patch by Martin Pohlack).
+        - disabled sched_yield support: the linux version is just too useless
+          (it schedules nice'd processes before the own one for extended
+          periods). Too bad, it could reduce system time by a factor of 5 here.
 
 6.2  Mon Jan  2 16:03:01 CET 2006
         - implemented intensityStyles option which enables/disables bold/blink

@@ -48,7 +48,7 @@
 </p>
 <hr />
 <h1><a name="description">DESCRIPTION</a></h1>
-<p><strong>rxvt-unicode</strong>, version <strong>6.2</strong>, is a colour vt102 terminal
+<p><strong>rxvt-unicode</strong>, version <strong>6.3</strong>, is a colour vt102 terminal
 emulator intended as an <em>xterm</em>(1) replacement for users who do not
 require features such as Tektronix 4014 emulation and toolkit-style
 configurability. As a result, <strong>rxvt-unicode</strong> uses much less swap space --
@@ -268,28 +268,29 @@ section of rxvt(7).</p>
 <dt><strong><a name="item__2dfb_fontlist"><strong>-fb</strong> <em>fontlist</em></a></strong><br />
 </dt>
 <dd>
-Compile font-styles: The bold font list to use when bold characters are to
-be printed. See resource <strong>boldFont</strong> for details.
+Compile <em>font-styles</em>: The bold font list to use when <strong>bold</strong> characters
+are to be printed. See resource <strong>boldFont</strong> for details.
 </dd>
 <p></p>
 <dt><strong><a name="item__2dfi_fontlist"><strong>-fi</strong> <em>fontlist</em></a></strong><br />
 </dt>
 <dd>
-Compile font-styles: The italic font list to use when bold characters are to
-be printed. See resource <strong>italicFont</strong> for details.
+Compile <em>font-styles</em>: The italic font list to use when <em>italic</em>
+characters are to be printed. See resource <strong>italicFont</strong> for details.
 </dd>
 <p></p>
 <dt><strong><a name="item__2dfbi_fontlist"><strong>-fbi</strong> <em>fontlist</em></a></strong><br />
 </dt>
 <dd>
-Compile font-styles: The bold italic font list to use when bold characters are to
-be printed. See resource <strong>boldItalicFont</strong> for details.
+Compile <em>font-styles</em>: The bold italic font list to use when <strong><em>bold
+italic</em> </strong>&gt; characters are to be printed. See resource <strong>boldItalicFont</strong>
+for details.
 </dd>
 <p></p>
 <dt><strong><a name="item__2dis_7c_2bis"><strong>-is</strong>|<strong>+is</strong></a></strong><br />
 </dt>
 <dd>
-Compile font-styles: Bold/Italic font styles imply high intensity
+Compile <em>font-styles</em>: Bold/Italic font styles imply high intensity
 foreground/background (default). See resource <strong>intensityStyles</strong> for
 details.
 </dd>
@@ -414,6 +415,15 @@ and <strong>-borderwidth</strong>. See resource entry for limits; resource
 Compile <em>frills</em>: Set MWM hints to request a borderless window, i.e.
 if honoured by the WM, the rxvt-unicode window will not have window
 decorations; resource <strong>borderLess</strong>.
+</dd>
+<p></p>
+<dt><strong><a name="item__2dsbg"><strong>-sbg</strong></a></strong><br />
+</dt>
+<dd>
+Compile <em>frills</em>: Disable the usage of the built-in block graphics/line
+drawing characters and just rely on what the specified fonts provide. Use
+this if you have a good font and want to use its block graphic glyphs;
+resource <strong>skipBuiltinGlyphs</strong>.
 </dd>
 <p></p>
 <dt><strong><a name="item__2dlsp_number"><strong>-lsp</strong> <em>number</em></a></strong><br />
@@ -626,6 +636,13 @@ longer example is in <em>doc/pty-fd</em>):</p>
    # now communicate with rxvt
    my $slave = $pty-&gt;slave;
    while (&lt;$slave&gt;) { print $slave &quot;got &lt;$_&gt;\n&quot; }</pre>
+</dd>
+<p></p>
+<dt><strong><a name="item__2dpe_string"><strong>-pe</strong> <em>string</em></a></strong><br />
+</dt>
+<dd>
+Colon-separated list of perl extension scripts to use in this terminal
+instance. See resource <strong>perl-ext</strong>.
 </dd>
 <p></p></dl>
 <p>
@@ -857,7 +874,7 @@ Select the fonts to be used. This is a comma separated list of font
 names that are used in turn when trying to display Unicode characters.
 The first font defines the cell size for characters; other fonts might
 be smaller, but not larger. A reasonable default font list is always
-appended to it. option <strong>-fn</strong>.
+appended to it; option <strong>-fn</strong>.
 </dd>
 <dd>
 <p>Each font can either be a standard X11 core font (XLFD) name, with
@@ -1102,6 +1119,15 @@ Set MWM hints to request a borderless window, i.e. if honoured by the
 WM, the rxvt-unicode window will not have window decorations; option <strong>-bl</strong>.
 </dd>
 <p></p>
+<dt><strong><a name="item_skipbuiltinglyphs_3a_boolean"><strong>skipBuiltinGlyphs:</strong> <em>boolean</em></a></strong><br />
+</dt>
+<dd>
+Compile <em>frills</em>: Disable the usage of the built-in block graphics/line
+drawing characters and just rely on what the specified fonts provide. Use
+this if you have a good font and want to use its block graphic glyphs;
+option <strong>-sbg</strong>.
+</dd>
+<p></p>
 <dt><strong><a name="item_termname_3a_termname"><strong>termName:</strong> <em>termname</em></a></strong><br />
 </dt>
 <dd>
@@ -1216,7 +1242,7 @@ built-in default:
 The locale to use for opening the IM. You can use an <code>LC_CTYPE</code> of e.g.
 <code>de_DE.UTF-8</code> for normal text processing but <code>ja_JP.EUC-JP</code> for the
 input extension to be able to input japanese characters while staying in
-another locale. option <strong>-imlocale</strong>.
+another locale; option <strong>-imlocale</strong>.
 </dd>
 <p></p>
 <dt><strong><a name="item_imfont_3a_fontset"><strong>imFont:</strong> <em>fontset</em></a></strong><br />
@@ -1235,7 +1261,7 @@ option <strong>-imfont</strong>.
 <dd>
 Change the meaning of triple-click selection with the left mouse
 button. Instead of selecting a full line it will extend the selection to
-the end of the logical line only. option <strong>-tcw</strong>.
+the end of the logical line only; option <strong>-tcw</strong>.
 </dd>
 <p></p>
 <dt><strong><a name="item_insecure_3a_boolean"><strong>insecure:</strong> <em>boolean</em></a></strong><br />
@@ -1367,6 +1393,16 @@ when Control-Meta-c is being pressed'':</p>
   URxvt.keysym.M-C-c: command:\033]701;zh_CN.GBK\007</pre>
 </dd>
 <dd>
+<p>If <em>string</em> takes the form <code>perl:STRING</code>, then the specified <strong>STRING</strong>
+is passed to the <code>on_keyboard_command</code> perl handler. See the <code>rxvtperl(3)</code>
+manpage. For example, the <em>selection</em> extension (activated via
+<code>rxvt -pe selection</code>) listens for <code>selection:rot13</code> events:</p>
+</dd>
+<dd>
+<pre>
+  URxvt.keysym.M-C-c: perl:selection:rot13</pre>
+</dd>
+<dd>
 <p>Due the the large number of modifier combinations, a defined key mapping
 will match if at <em>at least</em> the specified identifiers are being set, and
 no other key mappings with those and more bits are being defined. That
@@ -1408,6 +1444,39 @@ info):</p>
 <pre>
   URxvt.keysym.M-C-3: command:\033[8;25;80t
   URxvt.keysym.M-C-4: command:\033[8;48;110t</pre>
+</dd>
+<p></p>
+<dt><strong><a name="item_perl_2dext_2dcommon_3a_string"><strong>perl-ext-common</strong>: <em>string</em></a></strong><br />
+</dt>
+<dt><strong><a name="item_perl_2dext_3a_string"><strong>perl-ext</strong>: <em>string</em></a></strong><br />
+</dt>
+<dd>
+Colon-separated <code>list(s)</code> of perl extension scripts to use in this terminal
+instance. Each extension is looked up in the library directories, loaded
+if necessary, and bound to the current terminal instance. If this
+resource is empty or missing, then the perl interpreter will not be
+initialized. The idea behind two options is that <strong>perl-ext-common</strong> will
+be used for extensions that should be available to all instances, while
+<strong>perl-ext</strong> is used for specific instances; option <strong>-pe</strong>.
+</dd>
+<p></p>
+<dt><strong><a name="item_perl_2deval_3a_string"><strong>perl-eval</strong>: <em>string</em></a></strong><br />
+</dt>
+<dd>
+Perl code to be evaluated when all extensions have been registered. See the
+<code>rxvtperl(3)</code> manpage.
+</dd>
+<p></p>
+<dt><strong><a name="item_perl_2dlib_3a_path"><strong>perl-lib</strong>: <em>path</em></a></strong><br />
+</dt>
+<dd>
+Colon-separated list of additional directories that hold extension
+scripts. When looking for extensions specified by the <code>perl</code> resource,
+rxvt will first look in these directories and then in
+<em>/opt/rxvt/lib/urxvt/perl/</em>.
+</dd>
+<dd>
+<p>See the <code>rxvtperl(3)</code> manpage.</p>
 </dd>
 <p></p></dl>
 <p>

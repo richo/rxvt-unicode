@@ -32,6 +32,8 @@
 
 #include "../config.h"          /* NECESSARY */
 #include "rxvt.h"               /* NECESSARY */
+#include "keyboard.h"
+#include "rxvtperl.h"
 
 #include <limits>
 
@@ -46,13 +48,9 @@
 # include <termios.h>
 #endif
 
-#ifdef KEYSYM_RESOURCE
-# include "keyboard.h"
-#endif
-
 vector<rxvt_term *> rxvt_term::termlist;
 
-static char curlocale[128];
+static char curlocale[128], savelocale[128];
 
 bool
 rxvt_set_locale (const char *locale)
@@ -63,6 +61,19 @@ rxvt_set_locale (const char *locale)
   strncpy (curlocale, locale, 128);
   setlocale (LC_CTYPE, curlocale);
   return true;
+}
+
+bool
+rxvt_push_locale (const char *locale)
+{
+  strcpy (savelocale, curlocale);
+  rxvt_set_locale (locale);
+}
+
+void
+rxvt_pop_locale ()
+{
+  rxvt_set_locale (savelocale);
 }
 
 #if ENABLE_COMBINING
@@ -197,6 +208,8 @@ void rxvt_term::emergency_cleanup ()
 
 rxvt_term::~rxvt_term ()
 {
+  PERL_INVOKE ((this, HOOK_DESTROY, DT_END));
+
   termlist.erase (find (termlist.begin (), termlist.end(), this));
 
   emergency_cleanup ();
@@ -475,6 +488,16 @@ rxvt_term::init (int argc, const char *const *argv)
     scrollBar.setIdle ();    /* set existence for size calculations */
 #endif
 
+#if ENABLE_PERL
+  if ((rs[Rs_perl_ext_1] && *rs[Rs_perl_ext_1])
+      || (rs[Rs_perl_ext_2] && *rs[Rs_perl_ext_2])
+      || (rs[Rs_perl_eval] && *rs[Rs_perl_eval]))
+    {
+      rxvt_perl.init ();
+      PERL_INVOKE ((this, HOOK_INIT, DT_END));
+    }
+#endif
+
   create_windows (argc, argv);
 
   dDisp;
@@ -516,6 +539,8 @@ rxvt_term::init (int argc, const char *const *argv)
   pty_ev.start (pty.pty, EVENT_READ);
 
   check_ev.start ();
+
+  PERL_INVOKE ((this, HOOK_START, DT_END));
 
   return true;
 }
@@ -902,7 +927,7 @@ rxvt_term::set_fonts ()
 
   fwidth  = prop.width;
   fheight = prop.height;
-  fbase   = (*fs)[1]->ascent;
+  fbase   = prop.ascent;
 
   for (int style = 1; style < 4; style++)
     {
@@ -1003,11 +1028,9 @@ rxvt_term::set_window_color (int idx, const char *color)
       if (i >= 8 && i <= 15)
         {        /* bright colors */
           i -= 8;
-# ifndef NO_BRIGHTCOLOR
           pix_colors_focused[idx] = pix_colors_focused[minBrightCOLOR + i];
           SET_PIXCOLOR (idx);
           goto done;
-# endif
         }
 
       if (i >= 0 && i <= 7)
@@ -1201,11 +1224,11 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
       if (menubar_visible ())
         XMoveResizeWindow (disp, menuBar.win,
                            window_vt_x, 0,
-                           TermWin_TotalWidth (), menuBar_TotalHeight ());
+                           width, menuBar_TotalHeight ());
 
       XMoveResizeWindow (disp, vt,
                          window_vt_x, window_vt_y,
-                         TermWin_TotalWidth (), TermWin_TotalHeight ());
+                         width, height);
 
       scr_clear ();
 #ifdef XPM_BACKGROUND

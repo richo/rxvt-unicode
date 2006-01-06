@@ -21,6 +21,7 @@
 
 #include "../config.h"
 #include "rxvt.h"
+#include "rxvtlib.h"
 #include "rxvtutil.h"
 #include "rxvtfont.h"
 
@@ -278,6 +279,7 @@ struct rxvt_font_default : rxvt_font {
     rxvt_fontprop p;
 
     p.width = p.height = 1;
+    p.ascent = rxvt_fontprop::unset;
     p.weight = rxvt_fontprop::medium;
     p.slant = rxvt_fontprop::roman;
 
@@ -307,7 +309,8 @@ struct rxvt_font_default : rxvt_font {
     if (unicode <= 0x009f)
       return true;
 
-    if (unicode >= 0x2500 && unicode <= 0x259f)
+    if (unicode >= 0x2500 && unicode <= 0x259f &&
+        ! OPTION_R (Opt_skipBuiltinGlyphs))
       return true;
 
     if (IS_COMPOSE (unicode))
@@ -353,7 +356,8 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
       int width = text - tp;
       int fwidth = r->fwidth * width;
 
-      if (0x2500 <= t && t <= 0x259f)
+      if (0x2500 <= t && t <= 0x259f &&
+          ! OPTION_R (Opt_skipBuiltinGlyphs))
         {
           uint16_t offs = linedraw_offs[t - 0x2500];
           uint32_t *a = linedraw_command + (offs >> 4);
@@ -525,6 +529,7 @@ rxvt_font_x11::set_properties (rxvt_fontprop &p, int height, const char *weight,
 {
   p.width  = avgwidth ? (avgwidth + 1) / 10 : (height + 1) / 2;
   p.height = height;
+  p.ascent = rxvt_fontprop::unset;
   p.weight = *weight == 'B' || *weight == 'b' ? rxvt_fontprop::bold : rxvt_fontprop::medium;
   p.slant  = *slant == 'r' || *slant == 'R' ? rxvt_fontprop::roman : rxvt_fontprop::italic;
 
@@ -554,6 +559,8 @@ rxvt_font_x11::set_properties (rxvt_fontprop &p, XFontStruct *f)
 
   free (weight);
   free (slant);
+
+  p.ascent = f->ascent;
 
   return true;
 }
@@ -1075,6 +1082,7 @@ rxvt_font_xft::properties ()
 
   p.width  = width;
   p.height = height;
+  p.ascent = ascent;
   p.weight = face->style_flags & FT_STYLE_FLAG_BOLD
                ? rxvt_fontprop::bold : rxvt_fontprop::medium;
   p.slant  = face->style_flags & FT_STYLE_FLAG_ITALIC
@@ -1338,7 +1346,7 @@ rxvt_fontset::~rxvt_fontset ()
 void
 rxvt_fontset::clear ()
 {
-  prop.width = prop.height = prop.weight = prop.slant
+  prop.width = prop.height = prop.ascent = prop.weight = prop.slant
     = rxvt_fontprop::unset;
 
   for (rxvt_font **i = fonts.begin (); i != fonts.end (); i++)
@@ -1521,6 +1529,9 @@ rxvt_fontset::find_font (unicode_t unicode)
 
           if (!realize_font (i))
             goto next_font;
+
+          if (prop.ascent != rxvt_fontprop::unset)
+            max_it (f->ascent, prop.ascent);
         }
 
       if (f->cs == CS_UNKNOWN)

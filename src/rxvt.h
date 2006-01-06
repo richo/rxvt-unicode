@@ -215,7 +215,7 @@ typedef struct _mwmhints {
 # undef USE_XGETDEFAULT
 #endif
 
-#if ISO_14755
+#if defined (ISO_14755) || defined (ENABLE_PERL)
 # define ENABLE_OVERLAY 1
 #endif
 
@@ -240,9 +240,9 @@ typedef struct _mwmhints {
 
 /* width of scrollBar, menuBar shadow, must be 1 or 2 */
 #ifdef HALFSHADOW
-# define SHADOW 1
+# define MENU_SHADOW 1
 #else
-# define SHADOW 2
+# define MENU_SHADOW 2
 #endif
 
 #define R_SB_ALIGN_CENTRE       0
@@ -471,6 +471,8 @@ enum {
 
   URxvt_view_up          = 720,
   URxvt_view_down        = 721,
+
+  URxvt_perl             = 777,
 };
 
 /* Words starting with `Color_' are colours.  Others are counts */
@@ -557,109 +559,11 @@ enum colour_list {
  * Resource list
  */
 enum {
-  Rs_display_name = 0,
-  Rs_term_name,
-  Rs_iconName,
-  Rs_geometry,
-  Rs_reverseVideo,
-  Rs_color,
-  _Rs_color = Rs_color + NRS_COLORS - 1,
-  Rs_font,
-#if ENABLE_STYLES
-  Rs_boldFont,
-  Rs_italicFont,
-  Rs_boldItalicFont,
-  Rs_intensityStyles,
-#endif
-  Rs_name,
-  Rs_title,
-#if defined (XPM_BACKGROUND) || (MENUBAR_MAX)
-  Rs_path,
-#endif
-#ifdef XPM_BACKGROUND
-  Rs_backgroundPixmap,
-#endif
-#if (MENUBAR_MAX)
-  Rs_menu,
-#endif
-  Rs_loginShell,
-  Rs_jumpScroll,
-#ifdef HAVE_SCROLLBARS
-  Rs_scrollBar,
-  Rs_scrollBar_right,
-  Rs_scrollBar_floating,
-  Rs_scrollBar_align,
-  Rs_scrollstyle,     /* Rs_scrollBar_style */
-  Rs_scrollBar_thickness,
-#endif
-  Rs_scrollTtyOutput,
-  Rs_scrollTtyKeypress,
-  Rs_scrollWithBuffer,
-  Rs_saveLines,
-  Rs_utmpInhibit,
-  Rs_visualBell,
-#if ! defined(NO_MAPALERT) && defined(MAPALERT_OPTION)
-  Rs_mapAlert,
-#endif
-#ifdef META8_OPTION
-  Rs_meta8,
-#endif
-#ifdef MOUSE_WHEEL
-  Rs_mouseWheelScrollPage,
-#endif
-#ifndef NO_BACKSPACE_KEY
-  Rs_backspace_key,
-#endif
-#ifndef NO_DELETE_KEY
-  Rs_delete_key,
-#endif
-  Rs_selectstyle,
-#ifdef PRINTPIPE
-  Rs_print_pipe,
-#endif
-#ifdef USE_XIM
-  Rs_preeditType,
-  Rs_inputMethod,
-#endif
-#ifdef TRANSPARENT
-  Rs_transparent,
-  Rs_transparent_all,
-#endif
-#if ENABLE_FRILLS
-  Rs_pty_fd,
-  Rs_hold,
-  Rs_ext_bwidth,
-  Rs_int_bwidth,
-  Rs_borderLess,
-  Rs_lineSpace,
-  Rs_cursorUnderline,
-#endif
-#if CURSOR_BLINK
-  Rs_cursorBlink,
-#endif
-#if ENABLE_XEMBED
-  Rs_embed,
-#endif
-  Rs_cutchars,
-  Rs_modifier,
-  Rs_answerbackstring,
-  Rs_tripleclickwords,
-  Rs_insecure,
-  Rs_pointerBlank,
-  Rs_pointerBlankDelay,
-  Rs_imLocale,
-  Rs_imFont,
-  Rs_pastableTabs,
-#ifndef NO_SECONDARY_SCREEN
-  Rs_secondaryScreen,
-  Rs_secondaryScroll,
-#endif
-#ifdef OFF_FOCUS_FADING
-  Rs_fade,
-#endif
-#ifdef TINTING
-  Rs_shade,
-#endif
+# define def(name) Rs_ ## name,
+# define reserve(name,count) Rs_ ## name ## _ = Rs_ ## name + (count) - 1,
+# include "rsinc.h"
+# undef def
+# undef reserve
   NUM_RESOURCES
 };
 
@@ -783,22 +687,6 @@ enum {
  * MACRO DEFINES
  *****************************************************************************
  */
-#define memset(x, y, z)         memset((x), (y), (size_t)(z))
-#define memcpy(x, y, z)         memcpy((void *)(x), (const void *)(y), (z))
-#define memmove(x, y, z)        memmove((void *)(x), (const void *)(y), (z))
-#define strcasecmp(x, y)        strcasecmp((x), (y))
-#define strncasecmp(x, y, z)    strncasecmp((x), (y), (z))
-#define strcpy(x, y)            strcpy((char *)(x), (const char *)(y))
-#define strncpy(x, y, z)        strncpy((char *)(x), (const char *)(y), (z))
-#define strcmp(x, y)            strcmp((const char *)(x), (const char *)(y))
-#define strncmp(x, y, z)        strncmp((const char *)(x), (const char *)(y), (z))
-#define strcat(x, y)            strcat((char *)(x), (const char *)(y))
-#define strncat(x, y, z)        strncat((char *)(x), (const char *)(y), (z))
-#define strdup(x)               strdup((const char *)(x))
-#define strlen(x)               strlen((const char *)(x))
-#define strchr(x, y)            strchr((const char *)(x), (int)(y))
-#define strrchr(x, y)           strrchr((const char *)(x), (int)(y))
-
 #define dDisp			Display *disp = display->display
 
 /* convert pixel dimensions to row/column values.  Everything as int32_t */
@@ -810,9 +698,6 @@ enum {
 #define Row2Pixel(row)          ((int32_t)Height2Pixel(row))
 #define Width2Pixel(n)          ((int32_t)(n) * (int32_t)fwidth)
 #define Height2Pixel(n)         ((int32_t)(n) * (int32_t)fheight)
-
-#define TermWin_TotalWidth()    ((int32_t)this->width)
-#define TermWin_TotalHeight()   ((int32_t)this->height)
 
 // for m >= -n, ensure remainder lies between 0..n-1
 #define MOD(m,n) (((m) + (n)) % (n))
@@ -882,8 +767,8 @@ enum {
 
 #if (MENUBAR_MAX > 1)
 /* rendition style flags */
-# define menuBar_height()       (fheight + SHADOW)
-# define menuBar_TotalHeight()  (menuBar_height() + SHADOW + menuBar_margin)
+# define menuBar_height()       (fheight + MENU_SHADOW)
+# define menuBar_TotalHeight()  (menuBar_height() + MENU_SHADOW + menuBar_margin)
 # define isMenuBarWindow(w)     ((w) == menuBar.win)
 #else
 # define menuBar_height()       (0)
@@ -949,6 +834,8 @@ extern void rxvt_exit_failure () __attribute__ ((noreturn));
 
 #define SET_LOCALE(locale) rxvt_set_locale (locale)
 extern bool rxvt_set_locale (const char *locale);
+extern bool rxvt_push_locale (const char *locale);
+extern void rxvt_pop_locale ();
 
 /*
  *****************************************************************************
@@ -1027,6 +914,10 @@ extern class rxvt_composite_vec rxvt_composite;
 struct rxvt_term : zero_initialized, rxvt_vars {
   log_callback *log_hook;               // log error messages through this hook, if != 0
   getfd_callback *getfd_hook;           // convert remote to local fd, if != 0
+
+#if ENABLE_PERL
+  void *self; // perl's $self
+#endif
 
   struct mbstate  mbstate;              // current input multibyte state
 
@@ -1187,12 +1078,6 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   bar_t           BarList;
 # endif                         /* (MENUBAR_MAX > 1) */
 #endif
-#ifdef CURSOR_BLINK
-  struct timeval  lastcursorchange;
-#endif
-#ifdef POINTER_BLANK
-  struct timeval  lastmotion;
-#endif
 
 #if ENABLE_OVERLAY
   int ov_x, ov_y, ov_w, ov_h; // overlay dimensions
@@ -1217,7 +1102,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   char           *env_colorfgbg;
   char           *locale;
   char            charsets[4];
-  unsigned char  *v_buffer;           /* pointer to physical buffer */
+  char           *v_buffer;           /* pointer to physical buffer */
   unsigned int    v_buflen;           /* size of area to write */
   stringvec      *argv, *envv;        /* if != 0, will be freed on destroy time */
 
@@ -1227,8 +1112,8 @@ struct rxvt_term : zero_initialized, rxvt_vars {
 
   const char     *rs[NUM_RESOURCES];
   /* command input buffering */
-  unsigned char  *cmdbuf_ptr, *cmdbuf_endp;
-  unsigned char   cmdbuf_base[CBUFSIZ];
+  char           *cmdbuf_ptr, *cmdbuf_endp;
+  char            cmdbuf_base[CBUFSIZ];
 
   rxvt_salloc    *talloc;             // text line allocator
   rxvt_salloc    *ralloc;             // rend line allocator
@@ -1247,7 +1132,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
 #endif
 
   // modifies first argument(!)
-  void paste (unsigned char *data, unsigned int len);
+  void paste (char *data, unsigned int len);
 
   void flush ();
 
@@ -1298,7 +1183,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   void pointer_unblank ();
 
   void tt_printf (const char *fmt,...);
-  void tt_write (const unsigned char *data, unsigned int len);
+  void tt_write (const char *data, unsigned int len);
   void pty_write ();
 
   void tt_winch ();
@@ -1360,7 +1245,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
 
   // command.C
   void lookup_key (XKeyEvent &ev);
-  unsigned int cmd_write (const unsigned char *str, unsigned int count);
+  unsigned int cmd_write (const char *str, unsigned int count);
 
   unicode_t next_char ();
   unicode_t cmd_getc ();
@@ -1384,11 +1269,11 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   void process_escape_seq ();
   void process_csi_seq ();
   void process_window_ops (const int *args, unsigned int nargs);
-  unsigned char *get_to_st (unicode_t &ends_how);
+  char *get_to_st (unicode_t &ends_how);
   void process_dcs_seq ();
   void process_osc_seq ();
-  void process_color_seq (int report, int color, const char *str, unsigned char resp);
-  void process_xterm_seq (int op, const char *str, unsigned char resp);
+  void process_color_seq (int report, int color, const char *str, char resp);
+  void process_xterm_seq (int op, const char *str, char resp);
   int privcases (int mode, unsigned long bit);
   void process_terminal_mode (int mode, int priv, unsigned int nargs, const int *arg);
   void process_sgr_mode (unsigned int nargs, const int *arg);
@@ -1563,6 +1448,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   int selection_request_other (Atom target, int selnum);
   void selection_clear ();
   void selection_make (Time tm);
+  bool selection_grab (Time tm);
   void selection_start_colrow (int col, int row);
   void selection_delimit_word (enum page_dirn dirn, const row_col_t *mark, row_col_t *ret);
   void selection_extend_colrow (int32_t col, int32_t row, int button3, int buttonpress, int clickchange);
