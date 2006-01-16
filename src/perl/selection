@@ -9,40 +9,93 @@ sub on_keyboard_command {
    ()
 }
 
-my @patterns = (
+sub on_init {
+   my ($self) = @_;
+
+   for (my $idx = 0; defined (my $res = $self->x_resource ("selection.pattern-$idx")); $idx++) {
+      no re 'eval'; # just to be sure
+      push @{ $self->{patterns} }, qr/$res/;
+   }
+
+   ()
+}
+
+# "find interetsing things"-patterns
+my @mark_patterns = (
+   # common types of "parentheses"
+   qr{ (?<![^[:space:]]) ‘ ([^‘’]+) ’ (?![^[:space]]) }x,
+   qr{ (?<![^[:space:]]) ` ([^`']+) ' (?![^[:space]]) }x,
+   qr{ (?<![^[:space:]]) (" [^[:space:]] [^"]* ")                 }x,
+   qr{                   (" [^"]* [^[:space:]] ") (?![^[:space]]) }x,
+   qr{ \< ([^<>[:space:]]+) \> }x,
+   qr{ \{ ([^{}[:space:]]+) \} }x,
+   qr{ \[ ([^{}[:space:]]+) \] }x,
+   qr{ \( ([^()[:space:]]+) \) }x,
+
    # urls, just a heuristic
    qr{(
-      (?:https?|ftp|news|mailto|file)://[ab-zA-Z0-9\-\@;\/?:&=%\$_.+!*\x27(),]+
-      [^.]   # do not include a trailing dot, its wrong too often
+      (?:https?|ftp|news|mailto|file)://[ab-zA-Z0-9\-\@;\/?:&=%\$_.+!*\x27(),~]+
+      [ab-zA-Z0-9\-\@;\/?:&=%\$_+!*\x27()~]   # exclude some trailing characters (heuristic)
    )}x,
 
-   # shell-like argument quoting
+   # shell-like argument quoting, basically always matches
    qr{\G [\ \t|&;<>()] *(
       (?:
          [^\\"'\ \t|&;<>()]+
          | \\.
-         | " ([^\\"]+ | \\. )* "
+         | " (?: [^\\"]+ | \\. )* "
          | ' [^']* '
       )+
-   )}xs,
+   )}x,
+);
+
+# "correct obvious? crap"-patterns
+my @simplify_patterns = (
+   qr{^"([^\\"'\ \t|&;<>()*?]+)"$}, # "simple" => simple
+   qr{^(.*)[,\-]$},                 # strip off trailing , and -
 );
 
 sub on_sel_extend {
-   my ($self) = @_;
+   my ($self, $time) = @_;
 
    my ($row, $col) = $self->selection_mark;
    my $line = $self->line ($row);
-   my $offset = $line->offset_of ($row, $col);
    my $text = $line->t;
+   my $markofs = $line->offset_of ($row, $col);
+   my $curlen  = $line->offset_of ($self->selection_end)
+               - $line->offset_of ($self->selection_beg);
 
-   for my $regex (@patterns) {
+   my @matches;
+
+   for my $regex (@mark_patterns, @{ $self->{patterns} }) {
       while ($text =~ /$regex/g) {
-         if ($-[1] <= $offset and $offset <= $+[1]) {
-            $self->selection_beg ($line->coord_of ($-[1]));
-            $self->selection_end ($line->coord_of ($+[1]));
-            return 1;
+         if ($-[1] <= $markofs and $markofs <= $+[1]) {
+            my $ofs = $-[1];
+            my $match = $1;
+
+            for my $regex (@simplify_patterns) {
+               if ($match =~ $regex) {
+                  $match = $1;
+                  $ofs += $-[1];
+               }
+            }
+
+            push @matches, [$ofs, length $match];
          }
       }
+   }
+
+   # whole line
+   push @matches, [0, ($line->end - $line->beg + 1) * $self->ncol];
+
+   for (sort { $a->[1] <=> $b->[1] or $b->[0] <=> $a->[0] } @matches) {
+      my ($ofs, $len) = @$_;
+
+      next if $len <= $curlen;
+
+      $self->selection_beg ($line->coord_of ($ofs));
+      $self->selection_end ($line->coord_of ($ofs + $len));
+      return 1;
    }
 
    ()

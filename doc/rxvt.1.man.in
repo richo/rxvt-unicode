@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "rxvt 1"
-.TH rxvt 1 "2006-01-04" "6.3" "RXVT-UNICODE"
+.TH rxvt 1 "2006-01-13" "7.0" "RXVT-UNICODE"
 .SH "NAME"
 rxvt\-unicode (ouR XVT, unicode) \- (a VT102 emulator for the X window system)
 .SH "SYNOPSIS"
@@ -282,7 +282,7 @@ resource \fBborderColor\fR.
 .IP "\fB\-fn\fR \fIfontlist\fR" 4
 .IX Item "-fn fontlist"
 Select the fonts to be used. This is a comma separated list of font names
-that are used in turn when trying to display Unicode characters.  The
+that are checked in order when trying to find glyphs for characters. The
 first font defines the cell size for characters; other fonts might be
 smaller, but not (in general) larger. A (hopefully) reasonable default
 font list is always appended to it. See resource \fBfont\fR for more details.
@@ -510,8 +510,8 @@ used (a longer example is in \fIdoc/embed\fR):
 \&      system "@@RXVT_NAME@@ -embed $xid &";
 \&   });
 .Ve
-.IP "\fB\-pty\-fd\fR \fIfileno\fR" 4
-.IX Item "-pty-fd fileno"
+.IP "\fB\-pty\-fd\fR \fIfile descriptor\fR" 4
+.IX Item "-pty-fd file descriptor"
 Tells @@RXVT_NAME@@ \s-1NOT\s0 to execute any commands or create a new pty/tty
 pair but instead use the given filehandle as the tty master. This is
 useful if you want to drive @@RXVT_NAME@@ as a generic terminal emulator
@@ -520,6 +520,9 @@ without having to run a program within it.
 If this switch is given, @@RXVT_NAME@@ will not create any utmp/wtmp
 entries and will not tinker with pty/tty permissions \- you have to do that
 yourself if you want that.
+.Sp
+As an extremely special case, specifying \f(CW\*(C`\-1\*(C'\fR will completely suppress
+pty/tty operations.
 .Sp
 Here is a example in perl that illustrates how this option can be used (a
 longer example is in \fIdoc/pty\-fd\fR):
@@ -543,21 +546,17 @@ longer example is in \fIdoc/pty\-fd\fR):
 .Ve
 .IP "\fB\-pe\fR \fIstring\fR" 4
 .IX Item "-pe string"
-Colon-separated list of perl extension scripts to use in this terminal
-instance. See resource \fBperl-ext\fR.
+Comma-separated list of perl extension scripts to use (or not to use) in
+this terminal instance. See resource \fBperl-ext\fR for details.
 .SH "RESOURCES (available also as long\-options)"
 .IX Header "RESOURCES (available also as long-options)"
 Note: `@@RXVT_NAME@@ \-\-help' gives a list of all resources (long
 options) compiled into your version.
 .PP
-There are two different methods that @@RXVT_NAME@@ can use to get the
-Xresource data: using the X libraries (Xrm*\-functions) or internal
-Xresources reader (\fB~/.Xdefaults\fR). For the first method (ie.
-\&\fB@@RXVT_NAME@@ \-h\fR lists \fBXGetDefaults\fR), you can set and change the
-resources using X11 tools like \fBxrdb\fR. Many distribution do also load
-settings from the \fB~/.Xresources\fR file when X starts. @@RXVT_NAME@@
-will consult the following files/resources in order, with later settings
-overwriting earlier ones:
+You can set and change the resources using X11 tools like \fBxrdb\fR. Many
+distribution do also load settings from the \fB~/.Xresources\fR file when X
+starts. @@RXVT_NAME@@ will consult the following files/resources in order,
+with later settings overwriting earlier ones:
 .PP
 .Vb 5
 \&  1. system-wide app-defaults file, either locale-dependent OR global
@@ -567,20 +566,16 @@ overwriting earlier ones:
 \&  5. $XENVIRONMENT file OR $HOME/.Xdefaults-<nodename>
 .Ve
 .PP
-If compiled with internal Xresources support (i.e. \fB@@RXVT_NAME@@ \-h\fR
-lists \fB.Xdefaults\fR) then \fB@@RXVT_NAME@@\fR accepts application defaults
-set in XAPPLOADDIR/URxvt (compile\-time defined: usually
-\&\fB/usr/lib/X11/app\-defaults/URxvt\fR) and resources set in
-\&\fB~/.Xdefaults\fR, or \fB~/.Xresources\fR if \fB~/.Xdefaults\fR does not exist.
-Note that when reading X resources, \fB@@RXVT_NAME@@\fR recognizes two
-class names: \fBXTerm\fR and \fBURxvt\fR. The class name \fBRxvt\fR allows
-resources common to both \fB@@RXVT_NAME@@\fR and the original \fIrxvt\fR to be
-easily configured, while the class name \fBURxvt\fR allows resources
-unique to \fB@@RXVT_NAME@@\fR, notably colours and key\-handling, to be
-shared between different \fB@@RXVT_NAME@@\fR configurations. If no
-resources are specified, suitable defaults will be used. Command-line
-arguments can be used to override resource settings. The following
-resources are allowed:
+Note that when reading X resources, \fB@@RXVT_NAME@@\fR recognizes two class
+names: \fBRxvt\fR and \fBURxvt\fR. The class name \fBRxvt\fR allows resources
+common to both \fB@@RXVT_NAME@@\fR and the original \fIrxvt\fR to be easily
+configured, while the class name \fBURxvt\fR allows resources unique to
+\&\fB@@RXVT_NAME@@\fR, to be shared between different \fB@@RXVT_NAME@@\fR
+configurations. If no resources are specified, suitable defaults will
+be used. Command-line arguments can be used to override resource
+settings. The following resources are supported (you might want to
+check the @@RXVT_NAME@@\fIperl\fR\|(3) manpage for additional settings by perl
+extensions not documented here):
 .IP "\fBgeometry:\fR \fIgeom\fR" 4
 .IX Item "geometry: geom"
 Create the window with the specified X window geometry [default 80x24];
@@ -701,11 +696,11 @@ menus), in addition to the paths specified by the \fB\s-1RXVTPATH\s0\fR and
 \&\fB\s-1PATH\s0\fR environment variables.
 .IP "\fBfont:\fR \fIfontlist\fR" 4
 .IX Item "font: fontlist"
-Select the fonts to be used. This is a comma separated list of font
-names that are used in turn when trying to display Unicode characters.
-The first font defines the cell size for characters; other fonts might
-be smaller, but not larger. A reasonable default font list is always
-appended to it; option \fB\-fn\fR.
+Select the fonts to be used. This is a comma separated list of font names
+that are checked in order when trying to find glyphs for characters. The
+first font defines the cell size for characters; other fonts might be
+smaller, but not (in general) larger. A (hopefully) reasonable default
+font list is always appended to it; option \fB\-fn\fR.
 .Sp
 Each font can either be a standard X11 core font (\s-1XLFD\s0) name, with
 optional prefix \f(CW\*(C`x:\*(C'\fR or a Xft font (Compile \fIxft\fR), prefixed with \f(CW\*(C`xft:\*(C'\fR.
@@ -1025,10 +1020,10 @@ performed in an exact manner; however, the closest match is assured.
 \&\f(CW\*(C`^@\*(C'\fR: null, \f(CW\*(C`^A\*(C'\fR ...) and may be enclosed with double quotes so that it
 can start or end with whitespace.
 .Sp
-Please note that you need to double the \f(CW\*(C`\e\*(C'\fR when using
-\&\f(CW\*(C`\-\-enable\-xgetdefault\*(C'\fR, as X itself does it's own de-escaping (you can
-use \f(CW\*(C`\e033\*(C'\fR instead of \f(CW\*(C`\ee\*(C'\fR (and so on), which will work with both Xt and
-@@RXVT_NAME@@'s own processing).
+Please note that you need to double the \f(CW\*(C`\e\*(C'\fR in resource files, as
+Xlib itself does it's own de-escaping (you can use \f(CW\*(C`\e033\*(C'\fR instead of
+\&\f(CW\*(C`\ee\*(C'\fR (and so on), which will work with both Xt and @@RXVT_NAME@@'s own
+processing).
 .Sp
 You can define a range of keysyms in one shot by providing a \fIstring\fR
 with pattern \fBlist/PREFIX/MIDDLE/SUFFIX\fR, where the delimeter `/'
@@ -1109,25 +1104,61 @@ info):
 .IP "\fBperl-ext\fR: \fIstring\fR" 4
 .IX Item "perl-ext: string"
 .PD
-Colon-separated list(s) of perl extension scripts to use in this terminal
-instance. Each extension is looked up in the library directories, loaded
-if necessary, and bound to the current terminal instance. If this
-resource is empty or missing, then the perl interpreter will not be
-initialized. The idea behind two options is that \fBperl-ext-common\fR will
-be used for extensions that should be available to all instances, while
-\&\fBperl-ext\fR is used for specific instances; option \fB\-pe\fR.
+Comma-separated list(s) of perl extension scripts (default: \f(CW\*(C`default\*(C'\fR) to
+use in this terminal instance; option \fB\-pe\fR.
+.Sp
+Extension names can be prefixed with a \f(CW\*(C`\-\*(C'\fR sign to prohibit using
+them. This can be useful to selectively disable some extensions loaded
+by default, or specified via the \f(CW\*(C`perl\-ext\-common\*(C'\fR resource. For
+example, \f(CW\*(C`default,\-selection\*(C'\fR will use all the default extension except
+\&\f(CW\*(C`selection\*(C'\fR.
+.Sp
+Extension names can also be followed by an argument in angle brackets
+(e.g.  \f(CW\*(C`searchable\-scrollback<M\-s>\*(C'\fR, which binds the hotkey for
+searchable scorllback to Alt/Meta\-s). Mentioning the same extension
+multiple times with different arguments will pass multiple arguments to
+the extension.
+.Sp
+Each extension is looked up in the library directories, loaded if
+necessary, and bound to the current terminal instance.
+.Sp
+If both of these resources are the empty string, then the perl
+interpreter will not be initialized. The idea behind two options is that
+\&\fBperl-ext-common\fR will be used for extensions that should be available to
+all instances, while \fBperl-ext\fR is used for specific instances.
 .IP "\fBperl-eval\fR: \fIstring\fR" 4
 .IX Item "perl-eval: string"
-Perl code to be evaluated when all extensions have been registered. See the
-@@RXVT_NAME@@\fIperl\fR\|(3) manpage.
+Perl code to be evaluated when all extensions have been registered. See
+the @@RXVT_NAME@@\fIperl\fR\|(3) manpage. Due to security reasons, this resource
+will be ignored when running setuid/setgid.
 .IP "\fBperl-lib\fR: \fIpath\fR" 4
 .IX Item "perl-lib: path"
 Colon-separated list of additional directories that hold extension
 scripts. When looking for extensions specified by the \f(CW\*(C`perl\*(C'\fR resource,
 @@RXVT_NAME@@ will first look in these directories and then in
-\&\fI@@RXVT_LIBDIR@@/urxvt/perl/\fR.
+\&\fI@@RXVT_LIBDIR@@/urxvt/perl/\fR. Due to security reasons, this resource
+will be ignored when running setuid/setgid.
 .Sp
 See the @@RXVT_NAME@@\fIperl\fR\|(3) manpage.
+.IP "\fBselection.pattern\-\f(BIidx\fB\fR: \fIperl-regex\fR" 4
+.IX Item "selection.pattern-idx: perl-regex"
+Additional selection patterns, see the @@RXVT_NAME@@\fIperl\fR\|(3) manpage for
+details.
+.IP "\fBselection\-autotransform.\f(BIidx\fB\fR: \fIperl-transform\fR" 4
+.IX Item "selection-autotransform.idx: perl-transform"
+Selection auto-transform patterns, see the @@RXVT_NAME@@\fIperl\fR\|(3) manpage
+for details.
+.IP "\fBsearchable\-scrollback:\fR \fIkeysym\fR" 4
+.IX Item "searchable-scrollback: keysym"
+Sets the hotkey that starts the incremental scrollback buffer search
+(default: \f(CW\*(C`M\-s\*(C'\fR).
+.IP "\fBurlLauncher\fR: \fIstring\fR" 4
+.IX Item "urlLauncher: string"
+Specifies the program to be started with a \s-1URL\s0 argument. Used by the
+\&\f(CW\*(C`selection\-popup\*(C'\fR and \f(CW\*(C`mark\-urls\*(C'\fR perl extensions.
+.IP "\fBtransient-for\fR: \fIwindowid\fR" 4
+.IX Item "transient-for: windowid"
+Sets the \s-1WM_TRANSIENT_FOR\s0 property to the given window iw.
 .SH "THE SCROLLBAR"
 .IX Header "THE SCROLLBAR"
 Lines of text that scroll off the top of the \fB@@RXVT_NAME@@\fR window

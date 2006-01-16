@@ -12,18 +12,26 @@
 
   def (SEL_CLICK)
 
-  def (FOCUS_IN)
-  def (FOCUS_OUT)
-
   def (VIEW_CHANGE)
   def (SCROLL_BACK)
-  def (TTY_ACTIVITY)
+  def (LINE_UPDATE)
+  def (ADD_LINES)
   def (OSC_SEQ)
+  def (TT_WRITE)
 
   def (REFRESH_BEGIN)
   def (REFRESH_END)
 
   def (KEYBOARD_COMMAND)
 
-  def (MOUSE_CLICK)
-  def (MOUSE_MOVE)
+  def (X_EVENT)
+  def (FOCUS_IN)
+  def (FOCUS_OUT)
+  def (KEY_PRESS)
+  def (KEY_RELEASE)
+  def (BUTTON_PRESS)
+  def (BUTTON_RELEASE)
+  def (MOTION_NOTIFY)
+  def (MAP_NOTIFY)
+  def (UNMAP_NOTIFY)
+  def (CUSTOM_REND) // hovering over custom rendition, generate enter/leave maybe?

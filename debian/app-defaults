@@ -6,8 +6,8 @@
 
 URxvt.saveLines: 512
 
-! a sane non-Xft font
-URxvt.font: -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
+! a sane non-Xft font - if autoselection fails...
+! URxvt.font: -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
 
 ! uncomment to get rxvt-unicode terminfo compatibility. Also read 
 ! README.Debian.gz and generate the terminfo file in this case.

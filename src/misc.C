@@ -38,6 +38,7 @@ rxvt_wcstombs (const wchar_t *str, int len)
   while (len--)
     {
       ssize_t l = wcrtomb (dst, *str++, mbs);
+
       if (l < 0)
         *dst++ = '?';
       else
@@ -526,12 +527,7 @@ rxvt_File_find (const char *file, const char *ext, const char *path)
   if (file == NULL || *file == '\0')
     return NULL;
 
-  /* search environment variables here too */
-  if ((f = rxvt_File_search_path (path, file, ext)) == NULL)
-#ifdef PATH_ENV
-    if ((f = rxvt_File_search_path (getenv (PATH_ENV), file, ext)) == NULL)
-#endif
-      f = rxvt_File_search_path (getenv ("PATH"), file, ext);
+  f = rxvt_File_search_path (path, file, ext);
 
 #ifdef DEBUG_SEARCH_PATH
   if (f)

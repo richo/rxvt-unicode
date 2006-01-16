@@ -6,7 +6,7 @@
  * Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
  *				- original version
  * Copyright (c) 1997,1998 mj olesen <olesen@me.queensu.ca>
- * Copyright (c) 2003-2004 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -22,16 +22,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *----------------------------------------------------------------------*/
-/*----------------------------------------------------------------------*
- * get resources from ~/.Xdefaults or ~/.Xresources with the memory-saving
- * default or with XGetDefault() (#define USE_XGETDEFAULT)
- *----------------------------------------------------------------------*/
 
 #include "../config.h"		/* NECESSARY */
 #include "rxvt.h"		/* NECESSARY */
 #include "version.h"
-
-#include <sys/utsname.h>
 
 #ifdef KEYSYM_RESOURCE
 #include "keyboard.h"
@@ -227,6 +221,7 @@ optList[] = {
               STRG (Rs_embed, NULL, "embed", "windowid", "window id to embed terminal in"),
 #endif
 #if ENABLE_FRILLS
+              RSTRG (Rs_transient_for, "transient-for", "windowid"),
               STRG (Rs_pty_fd, NULL, "pty-fd", "fileno", "file descriptor of pty to use"),
               BOOL (Rs_hold, "hold", "hold", Opt_hold, "retain window after shell exit"),
               STRG (Rs_ext_bwidth, "externalBorder", "w", "number", "external border in pixels"),
@@ -265,10 +260,8 @@ optList[] = {
               RSTRG (Rs_perl_ext_1, "perl-ext-common", "string"), //, "colon-separated list of perl extensions to enable"),TODO
               STRG (Rs_perl_ext_2, "perl-ext", "pe", "string", "colon-separated list of perl extensions to enable for this instance"),
 #endif
-#if 0 && TODO
-#if !defined(NO_RESOURCES) && defined(USE_XGETDEFAULT)
+#ifndef NO_RESOURCES
               INFO ("xrm", "string", "X resource"),
-#endif
 #endif
               INFO ("e", "command arg ...", "command to execute")
             };
@@ -282,6 +275,9 @@ optList[] = {
 
 static const char releasestring[] = "rxvt-unicode (" RXVTNAME ") v" VERSION " - released: " DATE "\n";
 static const char optionsstring[] = "options: "
+#if ENABLE_PERL
+                                    "perl,"
+#endif
 #if XFT
                                     "xft,"
 #endif
@@ -403,12 +399,6 @@ static const char optionsstring[] = "options: "
 #endif
 #if defined(NO_RESOURCES)
                                     "NoResources"
-#else
-# if defined(USE_XGETDEFAULT)
-                                    "XGetDefaults"
-# else
-                                    ".Xdefaults"
-# endif
 #endif
                                     "\nUsage: ";		/* Usage */
 
@@ -574,10 +564,7 @@ rxvt_term::get_options (int argc, const char *const *argv)
               fprintf (stderr, "boolean (%s,%s) = %s\n",
                       optList[entry].opt, optList[entry].kw, flag);
 #endif
-              if (flag == On)
-                SET_OPTION (optList[entry].flag & Optflag_mask);
-              else
-                CLR_OPTION (optList[entry].flag & Optflag_mask);
+              set_option (optList[entry].flag & Optflag_mask, flag == On);
 
               if (optList[entry].doff != -1)
                 rs[optList[entry].doff] = flag;
@@ -696,7 +683,7 @@ rxvt_term::parse_keysym (const char *str, const char *arg)
         return 0;
 
       str += n;		/* skip `keysym.' */
-      if ((pmodend = strchr (str, ':')) < str)
+      if (!(pmodend = strchr (str, ':')))
         return -1;
     }
   else
@@ -784,250 +771,65 @@ rxvt_term::parse_keysym (const char *str, const char *arg)
 }
 
 # endif				/* KEYSYM_RESOURCE */
-
-# ifndef USE_XGETDEFAULT
-/*{{{ rxvt_get_xdefaults () */
-/*
- * the matching algorithm used for memory-save fake resources
- */
-void
-rxvt_term::get_xdefaults (FILE *stream, const char *name)
-{
-  unsigned int len;
-  char *str, buffer[256];
-
-  if (stream == NULL)
-    return;
-
-  len = strlen (name);
-  while ((str = fgets (buffer, sizeof (buffer), stream)) != NULL)
-    {
-      unsigned int entry, n;
-
-      while (*str && isspace (*str))
-        str++;		/* leading whitespace */
-
-      if ((str[len] != '*' && str[len] != '.')
-          || (len && strncmp (str, name, len)))
-        continue;
-      str += (len + 1);	/* skip `name*' or `name.' */
-
-# ifdef KEYSYM_RESOURCE
-      if (!parse_keysym (str, NULL))
-# endif				/* KEYSYM_RESOURCE */
-        for (entry = 0; entry < optList_size; entry++)
-          {
-            const char *kw = optList[entry].kw;
-
-            if (kw == NULL)
-              continue;
-
-            n = strlen (kw);
-            if (str[n] == ':' && rxvt_Str_match (str, kw))
-              {
-                /* skip `keyword:' */
-                str += n + 1;
-                rxvt_Str_trim (str);
-                n = strlen (str);
-
-                if (n && rs[optList[entry].doff] == NULL)
-                  {
-                    /* not already set */
-                    int s;
-                    char *p = 0;
-
-                    for (int o = 0;;)
-                      {
-                        p = (char *)rxvt_realloc (p, o + n + 1);
-                        memcpy (p + o, str, n);
-                        o += n;
-                        p[o] = 0;
-
-                        if (o == 0 || p[o - 1] != '\\') // continuation line
-                          break;
-
-                        o--; // eat "\"
-
-                        if ((str = fgets (buffer, sizeof (buffer), stream)) == NULL)
-                          break;
-
-                        rxvt_Str_trim (str);
-                        n = strlen (str);
-                      }
-
-                    rs[optList[entry].doff] = p;
-                    allocated.push_back (p);
-
-                    if (optList_isBool (entry))
-                      {
-                        s = strcasecmp (str, "true") == 0
-                            || strcasecmp (str, "yes") == 0
-                            || strcasecmp (str, "on") == 0
-                            || strcmp (str, "1") == 0;
-
-                        if (optList_isReverse (entry))
-                          s = !s;
-
-                        if (s)
-                          SET_OPTION (optList[entry].flag & Optflag_mask);
-                        else
-                          CLR_OPTION (optList[entry].flag & Optflag_mask);
-                      }
-                  }
-
-                break;
-              }
-          }
-    }
-
-  rewind (stream);
-}
-
-/*}}} */
-# endif				/* ! USE_XGETDEFAULT */
 #endif				/* NO_RESOURCES */
 
-/*{{{ read the resources files */
-/*
- * using XGetDefault () or the hand-rolled replacement
- */
-/* ARGSUSED */
+static char *
+get_res (XrmDatabase database, const char *program, const char *option)
+{
+  char resource[512];
+  char *type;
+  XrmValue result;
+
+  snprintf (resource, sizeof (resource), "%s.%s", program, option);
+  XrmGetResource (database, resource, resource, &type, &result);
+
+  return result.addr;
+}
+
+const char *
+rxvt_term::x_resource (const char *name)
+{
+  XrmDatabase database = XrmGetDatabase (display->display);
+
+  const char *p = get_res (database, rs[Rs_name], name);
+  const char *p0 = get_res (database, "!INVALIDPROGRAMMENAMEDONTMATCH!", name);
+
+  if (p == NULL || (p0 && strcmp (p, p0) == 0))
+    {
+      p = get_res (database, RESCLASS, name);
+#ifdef RESFALLBACK
+      if (p == NULL || (p0 && strcmp (p, p0) == 0))
+        p = get_res (database, RESFALLBACK, name);
+#endif
+    }
+
+  if (p == NULL && p0)
+    p = p0;
+
+  return p;
+}
+
 void
 rxvt_term::extract_resources ()
 {
-  dDisp;
-
 #ifndef NO_RESOURCES
-
-  char *homedir = (char *)getenv ("HOME");
-  char fname[1024];
-
-# if defined XAPPLOADDIR
-#  if defined(HAVE_XSETLOCALE) || defined(HAVE_SETLOCALE)
-  /* Compute the path of the possibly available localized Rxvt file */
-  char localepath[1024];
-
-  if (locale)
-    snprintf (localepath, sizeof (localepath), XAPPLOADDIRLOCALE "/" RESCLASS, locale);
-  else
-    localepath[0] = 0;
-#  endif
-# endif
-
-# ifdef USE_XGETDEFAULT
-  /*
-   * get resources using the X library function
-   */
-  int entry;
-
-#  ifdef XrmEnumOneLevel
-  char *displayResource, *xe;
-  XrmName name_prefix[3];
-  XrmClass class_prefix[3];
-  XrmDatabase database, rdb1;
-
-  XrmInitialize ();
-  database = NULL;
-
-  // for ordering, see for example http://www.faqs.org/faqs/Xt-FAQ/ Subject: 20
-
-  // 6. System wide per application default file.
-  /* Add in Rxvt file */
-#   if defined(HAVE_XSETLOCALE) || defined(HAVE_SETLOCALE)
-  if (*localepath
-      && ((rdb1 = XrmGetFileDatabase (localepath))
-          || (rdb1 = XrmGetFileDatabase (XAPPLOADDIR "/" RESCLASS))))
-#   endif
-    XrmMergeDatabases (rdb1, &database);
-
-  /* Add in $XAPPLRESDIR/Rxvt only; not bothering with XUSERFILESEARCHPATH */
-  if ((xe = (char *)getenv ("XAPPLRESDIR")))
-    {
-      snprintf (fname, sizeof (fname), "%s/%s", xe, RESCLASS);
-
-      if ((rdb1 = XrmGetFileDatabase (fname)))
-        XrmMergeDatabases (rdb1, &database);
-    }
-
-  // 5. User's per application default file.
-  // none
-
-  // 4. User's defaults file.
-  /* Get any Xserver defaults */
-  displayResource = XResourceManagerString (disp);
-  if (displayResource != NULL)
-    {
-      if ((rdb1 = XrmGetStringDatabase (displayResource)))
-        XrmMergeDatabases (rdb1, &database);
-    }
-  else if (homedir)
-    {
-      snprintf (fname, sizeof (fname), "%s/.Xdefaults", homedir);
-
-      if ((rdb1 = XrmGetFileDatabase (fname)))
-        XrmMergeDatabases (rdb1, &database);
-    }
-
-  /* Get screen specific resources */
-  displayResource = XScreenResourceString (ScreenOfDisplay (disp, display->screen));
-  if (displayResource != NULL)
-    {
-      if ((rdb1 = XrmGetStringDatabase (displayResource)))
-        /* Merge with screen-independent resources */
-        XrmMergeDatabases (rdb1, &database);
-
-      XFree (displayResource);
-    }
-
-  // 3. User's per host defaults file
-  /* Add in XENVIRONMENT file */
-  if ((xe = (char *)getenv ("XENVIRONMENT"))
-      && (rdb1 = XrmGetFileDatabase (xe)))
-    XrmMergeDatabases (rdb1, &database);
-  else if (homedir)
-    {
-      struct utsname un;
-
-      if (!uname (&un))
-        {
-          snprintf (fname, sizeof (fname), "%s/.Xdefaults-%s", homedir, un.nodename);
-
-          if ((rdb1 = XrmGetFileDatabase (fname)))
-            XrmMergeDatabases (rdb1, &database);
-        }
-    }
-
-  XrmSetDatabase (disp, database);
-#  endif
-
   /*
    * Query resources for options that affect us
    */
-  for (entry = 0; entry < optList_size; entry++)
+  for (int entry = 0; entry < optList_size; entry++)
     {
       int s;
-      char *p, *p0;
       const char *kw = optList[entry].kw;
 
       if (kw == NULL || rs[optList[entry].doff] != NULL)
-        continue;		/* previously set */
+        continue; // previously set
 
-      p = XGetDefault (disp, rs[Rs_name], kw);
-      p0 = XGetDefault (disp, "!INVALIDPROGRAMMENAMEDONTMATCH!", kw);
-      if (p == NULL || (p0 && strcmp (p, p0) == 0))
-        {
-          p = XGetDefault (disp, RESCLASS, kw);
-#ifdef RESFALLBACK
-          if (p == NULL || (p0 && strcmp (p, p0) == 0))
-            p = XGetDefault (disp, RESFALLBACK, kw);
-#endif
-        }
-
-      if (p == NULL && p0)
-        p = p0;
+      const char *p = x_resource (kw);
 
       if (p)
         {
+          p = strdup (p);
+          allocated.push_back ((void *)p);
           rs[optList[entry].doff] = p;
 
           if (optList_isBool (entry))
@@ -1040,10 +842,7 @@ rxvt_term::extract_resources ()
               if (optList_isReverse (entry))
                 s = !s;
 
-              if (s)
-                SET_OPTION (optList[entry].flag & Optflag_mask);
-              else
-                CLR_OPTION (optList[entry].flag & Optflag_mask);
+              set_option (optList[entry].flag & Optflag_mask, s);
             }
         }
     }
@@ -1052,6 +851,10 @@ rxvt_term::extract_resources ()
    * [R5 or later]: enumerate the resource database
    */
 #  ifdef KEYSYM_RESOURCE
+  XrmDatabase database = XrmGetDatabase (display->display);
+  XrmName name_prefix[3];
+  XrmClass class_prefix[3];
+
   name_prefix[0] = XrmStringToName (rs[Rs_name]);
   name_prefix[1] = XrmStringToName ("keysym");
   name_prefix[2] = NULLQUARK;
@@ -1059,7 +862,7 @@ rxvt_term::extract_resources ()
   class_prefix[1] = XrmStringToName ("Keysym");
   class_prefix[2] = NULLQUARK;
   /* XXX: Need to check sizeof (rxvt_t) == sizeof (XPointer) */
-  XrmEnumerateDatabase (XrmGetDatabase (disp), name_prefix, class_prefix,
+  XrmEnumerateDatabase (database, name_prefix, class_prefix,
                         XrmEnumOneLevel, rxvt_define_key, NULL);
 #   ifdef RESFALLBACK
   name_prefix[0] = XrmStringToName (RESFALLBACK);
@@ -1067,79 +870,12 @@ rxvt_term::extract_resources ()
   class_prefix[0] = XrmStringToName (RESFALLBACK);
   class_prefix[1] = XrmStringToName ("Keysym");
   /* XXX: Need to check sizeof (rxvt_t) == sizeof (XPointer) */
-  XrmEnumerateDatabase (XrmGetDatabase (disp), name_prefix, class_prefix,
+  XrmEnumerateDatabase (database, name_prefix, class_prefix,
                         XrmEnumOneLevel, rxvt_define_key, NULL);
 #   endif
 #  endif
 
-# else				/* USE_XGETDEFAULT */
-  /* get resources the hard way, but save lots of memory */
-  FILE *fd = NULL;
-
-  if (homedir)
-    {
-      static const char *const xnames[2] = { ".Xdefaults", ".Xresources" };
-
-      for (int i = 0; i < (sizeof (xnames) / sizeof (xnames [0])); i++)
-        {
-          snprintf (fname, sizeof (fname), "%s/%s", homedir, xnames [i]);
-
-          if ((fd = fopen (fname, "r")) != NULL)
-            break;
-        }
-    }
-  /*
-  * The normal order to match resources is the following:
-  * @ global resources (partial match, ~/.Xdefaults)
-  * @ application file resources (XAPPLOADDIR/Rxvt)
-  * @ class resources (~/.Xdefaults)
-  * @ private resources (~/.Xdefaults)
-  *
-  * However, for the hand-rolled resources, the matching algorithm
-  * checks if a resource string value has already been allocated
-  * and won't overwrite it with (in this case) a less specific
-  * resource value.
-  *
-  * This avoids multiple allocation.  Also, when we've called this
-  * routine command-line string options have already been applied so we
-  * needn't to allocate for those resources.
-  *
-  * So, search in resources from most to least specific.
-  *
-  * Also, use a special sub-class so that we can use either or both of
-  * "XTerm" and "Rxvt" as class names.
-  */
-
-  get_xdefaults (fd, rs[Rs_name]);
-  get_xdefaults (fd, RESCLASS);
-#  ifdef RESFALLBACK
-  get_xdefaults (fd, RESFALLBACK);
-#  endif
-
-#  if defined(XAPPLOADDIR) && defined(USE_XAPPLOADDIR)
-  {
-    FILE *ad = NULL;
-
-#   if defined(HAVE_XSETLOCALE) || defined(HAVE_SETLOCALE)
-    if (!*localepath || (ad = fopen (localepath, "r")) == NULL)
-#   endif
-      ad = fopen (XAPPLOADDIR "/" RESCLASS, "r");
-    if (ad != NULL)
-      {
-        get_xdefaults (ad, RESCLASS);
-        get_xdefaults (ad, "");
-        fclose (ad);
-      }
-  }
-#  endif			/* XAPPLOADDIR */
-
-  get_xdefaults (fd, "");	/* partial match */
-  if (fd != NULL)
-    fclose (fd);
-# endif				/* USE_XGETDEFAULT */
-
 #endif				/* NO_RESOURCES */
 }
 
-/*}}} */
 /*----------------------- end-of-file (C source) -----------------------*/

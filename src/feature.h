@@ -46,14 +46,6 @@
  */
 
 /*
- * Define the name of the environment variable to be used in
- * addition to the "PATH" environment and the `path' resource.
- * Usually it should point to where you keep your background pixmaps and/or
- * your menu files
- */
-#define PATH_ENV	"RXVTPATH"
-
-/*
  * Avoid enabling the colour cursor (-cr, cursorColor, cursorColor2)
  */
 /* #define NO_CURSORCOLOR */
@@ -130,13 +122,6 @@
  */
 /* #define ALLOW_132_MODE */
  
-/*------------------------------RESOURCES-------------------------------*/
-/*
- * Define to find installed application defaults for rxvt
- * Only if USE_XGETDEFAULT is not defined.
- */
-#define USE_XAPPLOADDIR
-
 /*
  * Add support for the Offix DND (Drag 'n' Drop) protocol
  */
@@ -162,9 +147,9 @@
 /*
  * Enable the keysym resource which allows you to define strings associated
  * with various KeySyms (0xFF00 - 0xFFFF).
- * Only works with the default hand-rolled resources.
+ * Required by perl.
  */
-#if !NO_RESOURCES && ENABLE_FRILLS
+#if ENABLE_FRILLS || ENABLE_PERL
 # define KEYSYM_RESOURCE
 #endif
 
@@ -237,12 +222,6 @@
  * this long after the last mouse click [default: 50 milliseconds]
  */
 #define MOUSE_THRESHOLD		50
-
-/*
- * If mouse wheel is defined, then scrolling is by 5 lines (or 1 line
- * if the shift key is down).  Scrolling can be smooth or jump scrolling
- */
-#define JUMP_MOUSE_WHEEL
 
 /*
  * Set delay periods for continuous scrolling with scrollbar buttons

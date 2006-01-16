@@ -26,6 +26,46 @@ L<http://cvs.schmorp.de/browse/*checkout*/rxvt-unicode/doc/rxvt.7.html>.
 
 =over 4
 
+=item The new selection selects pieces that are too big, how can I select
+single words?
+
+Yes. For example, if you want to select alphanumeric words, you can use
+the following resource:
+
+   URxvt.selection.pattern-0: ([[:word:]]+)
+
+If you click more than twice, the selection will be extended
+more and more.
+
+To get a selection that is very similar to the old code, try this pattern:
+
+   URxvt.selection.pattern-0: ([^"&'()*,;<=>?@[\\\\]^`{|})]+)
+
+Please also note that the I<LeftClick Shift-LeftClik> combination also
+selects words like the old code.
+
+=item I don't like the new selection/popups/hotkeys/perl, how do I
+change/disable it?
+
+You can disable the perl extension completely by setting the
+B<perl-ext-common> resource to the empty string, which also keeps
+rxvt-unicode from initialising perl, saving memory.
+
+If you only want to disable specific features, you first have to
+identify which perl extension is responsible. For this, read the section
+B<PREPACKAGED EXTENSIONS> in the @@RXVT_NAME@@perl(3) manpage. For
+example, to disable the B<selection-popup> and B<option-popup>, specify
+this B<perl-ext-common> resource:
+
+   URxvt.perl-ext-common: default,-selection-popup,-option-popup
+
+This will keep the default extensions, but disable the two popup
+extensions. Some extensions can also be configured, for example,
+scrollback search mode is triggered by B<M-s>. You can move it to any
+other combination either by setting the B<searchable-scrollback> resource:
+
+   URxvt.searchable-scrollback: CM-s
+
 =item Isn't rxvt supposed to be small? Don't all those features bloat?
 
 I often get asked about this, and I think, no, they didn't cause extra
@@ -64,7 +104,7 @@ memory.
 Compared to e.g. Eterm (5112k), aterm (3132k) and xterm (4680k), this
 still fares rather well. And compared to some monsters like gnome-terminal
 (21152k + extra 4204k in separate processes) or konsole (22200k + extra
-43180k in daemons that stay around after exit, plus half aminute of
+43180k in daemons that stay around after exit, plus half a minute of
 startup time, including the hundreds of warnings it spits out), it fares
 extremely well *g*.
 
@@ -133,6 +173,45 @@ For other problems that also affect the Debian package, you can and
 probably should use the Debian BTS, too, because, after all, it's also a
 bug in the Debian version and it serves as a reminder for other users that
 might encounter the same issue.
+
+=item I am maintaining rxvt-unicode for distribution/OS XXX, any recommendation?
+
+You should build one binary with the default options. F<configure>
+now enables most useful options, and the trend goes to making them
+runtime-switchable, too, so there is usually no drawback to enbaling them,
+except higher disk and possibly memory usage. The perl interpreter should
+be enabled, as important functionality (menus, selection, likely more in
+the future) depends on it.
+
+You should not overwrite the C<perl-ext-common> snd C<perl-ext> resources
+system-wide (except maybe with C<defaults>). This will result in useful
+behaviour. If your distribution aims at low memory, add an empty
+C<perl-ext-common> resource to the app-defaults file. This will keep the
+perl interpreter disabled until the user enables it.
+
+If you can/want build more binaries, I recommend building a minimal
+one with C<--disable-everything> (very useful) and a maximal one with
+C<--enable-everything> (less useful, it will be very big due to a lot of
+encodings built-in that increase download times and are rarely used).
+
+=item I need to make it setuid/setgid to support utmp/ptys on my OS, is this safe?
+
+Likely not. While I honestly try to make it secure, and am probably not
+bad at it, I think it is simply unreasonable to expect all of freetype
++ fontconfig + xft + xlib + perl + ... + rxvt-unicode itself to all be
+secure. Also, rxvt-unicode disables some options when it detects that it
+runs setuid or setgid, which is not nice. Besides, with the embedded perl
+interpreter the possibility for security problems easily multiplies.
+
+Elevated privileges are only required for utmp and pty operations on some
+systems (for example, GNU/Linux doesn't need any extra privileges for
+ptys, but some need it for utmp support). It is planned to mvoe this into
+a forked handler process, but this is not yet done.
+
+So, while setuid/setgid operation is supported and not a problem on your
+typical single-user-no-other-logins unix desktop, always remember that
+its an awful lot of code, most of which isn't checked for security issues
+regularly.
 
 =item When I log-in to another system it tells me about missing terminfo data?
 
@@ -595,7 +674,7 @@ Make sure that mouse reporting is actually turned off since killing
 some editors prematurely may leave the mouse in mouse report mode. I've
 heard that tcsh may use mouse reporting unless it otherwise specified. A
 quick check is to see if cut/paste works when the Alt or Shift keys are
-depressed. See @@RXVT_NAME@@(7)
+depressed.
 
 =item What's with this bold/blink stuff?
 
@@ -694,7 +773,7 @@ For starting a new rxvt-unicode:
    $ stty erase ^?
    $ @@RXVT_NAME@@
 
-Toggle with C<ESC [ 36 h> / C<ESC [ 36 l> as documented in @@RXVT_NAME@@(7).
+Toggle with C<ESC [ 36 h> / C<ESC [ 36 l>.
 
 For an existing rxvt-unicode:
 
@@ -1599,8 +1678,8 @@ B<octet> can be escaped by prefixing it with SYN (0x16, ^V).
 	B<< C<Ps = 12> >>	Change colour of text cursor foreground to B<< C<Pt> >>
 	B<< C<Ps = 13> >>	Change colour of mouse foreground to B<< C<Pt> >>
 	B<< C<Ps = 17> >>	Change colour of highlight characters to B<< C<Pt> >>
-	B<< C<Ps = 18> >>	Change colour of bold characters to B<< C<Pt> >>
-	B<< C<Ps = 19> >>	Change colour of underlined characters to B<< C<Pt> >>
+	B<< C<Ps = 18> >>	Change colour of bold characters to B<< C<Pt> >> [deprecated, see 706]
+	B<< C<Ps = 19> >>	Change colour of underlined characters to B<< C<Pt> >> [deprecated, see 707]
 	B<< C<Ps = 20> >>	Change default background to B<< C<Pt> >>
 	B<< C<Ps = 39> >>	Change default foreground colour to B<< C<Pt> >>.
 	B<< C<Ps = 46> >>	Change Log File to B<< C<Pt> >> I<unimplemented>
@@ -1611,6 +1690,8 @@ B<octet> can be escaped by prefixing it with SYN (0x16, ^V).
 	B<< C<Ps = 703> >>	Menubar command B<< C<Pt> >> (Compile menubar).
 	B<< C<Ps = 704> >>	Change colour of italic characters to B<< C<Pt> >>
 	B<< C<Ps = 705> >>	Change background pixmap tint colour to B<< C<Pt> >> (Compile transparency).
+	B<< C<Ps = 706> >>	Change colour of bold characters to B<< C<Pt> >>
+	B<< C<Ps = 707> >>	Change colour of underlined characters to B<< C<Pt> >>
 	B<< C<Ps = 710> >>	Set normal fontset to B<< C<Pt> >>. Same as C<Ps = 50>.
 	B<< C<Ps = 711> >>	Set bold fontset to B<< C<Pt> >>. Similar to C<Ps = 50> (Compile styles).
 	B<< C<Ps = 712> >>	Set italic fontset to B<< C<Pt> >>. Similar to C<Ps = 50> (Compile styles).
@@ -2408,11 +2489,11 @@ Write user and tty to lastlog file (used by programs like
 F<lastlogin>) at start of rxvt execution.  This option requires
 --enable-utmp to also be specified.
 
-=item --enable-xpm-background (default: off)
+=item --enable-xpm-background (default: on)
 
 Add support for XPM background pixmaps.
 
-=item --enable-transparency (default: off)
+=item --enable-transparency (default: on)
 
 Add support for inheriting parent backgrounds thus giving a fake
 transparency to the term.
@@ -2425,10 +2506,11 @@ Add support for fading the text when focus is lost (requires C<--enable-transpar
 
 Add support for tinting of transparent backgrounds (requires C<--enable-transparency>).
 
-=item --enable-menubar (default: off)
+=item --enable-menubar (default: off) [DEPRECATED]
 
-Add support for our menu bar system (this interacts badly with
-dynamic locale switching currently).
+Add support for our menu bar system (this interacts badly with dynamic
+locale switching currently). This option is DEPRECATED and will be removed
+in the future.
 
 =item --enable-rxvt-scroll (default: on)
 
@@ -2470,16 +2552,6 @@ do it.
 =item --disable-resources
 
 Removes any support for resource checking.
-
-=item --enable-xgetdefault
-
-Make resources checking via XGetDefault() instead of our small
-version which only checks ~/.Xdefaults, or if that doesn't exist then
-~/.Xresources.
-
-Please note that nowadays, things like XIM will automatically pull in and
-use the full X resource manager, so the overhead of using it might be very
-small, if nonexistant.
 
 =item --enable-strings (default: off)
 

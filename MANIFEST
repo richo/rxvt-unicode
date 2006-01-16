@@ -91,6 +91,7 @@ src/menubar.h
 src/misc.C
 src/netdisp.C
 src/netdisp.h
+src/optinc.h
 src/ptytty.h
 src/ptytty.C
 src/rxvtutil.C
@@ -120,15 +121,6 @@ src/strings.C
 src/version.h
 src/xdefaults.C
 src/xpm.C
-
-src/urxvt.pm
-src/typemap
-src/rxvtperl.h
-src/rxvtperl.xs
-
-src/perl/example-refresh-hooks
-src/perl/digital-clock
-src/perl/selection
 
 src/gentables
 src/gencompose
@@ -173,3 +165,20 @@ src/table/jis0208_1990_0.h
 src/table/jis0212_1990_0.h
 src/table/jis0213_1.h
 src/table/jis0213_2.h
+
+src/urxvt.pm
+src/typemap
+src/rxvtperl.h
+src/rxvtperl.xs
+
+src/perl/urxvt-popup
+src/perl/selection
+src/perl/option-popup
+src/perl/selection-popup
+src/perl/selection-autotransform
+src/perl/searchable-scrollback
+src/perl/mark-urls
+src/perl/example-refresh-hooks
+src/perl/block-graphics-to-ascii
+src/perl/digital-clock
+

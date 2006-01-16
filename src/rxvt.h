@@ -5,6 +5,21 @@
 
 #include "feature.h"
 
+#if defined (ISO_14755) || defined (ENABLE_PERL)
+# define ENABLE_OVERLAY 1
+#endif
+
+#if ENABLE_PERL
+# define ENABLE_FRILLS 1
+# define ENABLE_COMBINING 1
+#endif
+
+#if ENABLE_FRILLS
+# define ENABLE_XEMBED 1
+# define ENABLE_EWMH   1
+# define CURSOR_BLINK  1
+#endif
+
 #include <limits.h>
 
 #include <X11/cursorfont.h>
@@ -21,11 +36,7 @@
 #include "iom.h"
 #include "salloc.h"
 
-#if ENABLE_FRILLS
-# define ENABLE_XEMBED 1
-# define ENABLE_EWMH   1
-# define CURSOR_BLINK  1
-#endif
+#include "rxvtperl.h"
 
 /*
  *****************************************************************************
@@ -43,7 +54,7 @@
 #endif
 
 #ifndef HAVE_XPOINTER
-typedef char   *XPointer;
+typedef char *XPointer;
 #endif
 
 #ifdef HAVE_TERMIOS_H
@@ -112,6 +123,24 @@ char           * rxvt_File_find                   (const char *file, const char 
 void             rxvt_Draw_Shadow                 (Display *display, Window win, GC topShadow, GC botShadow, int x, int y, int w, int h);
 void             rxvt_Draw_Triangle               (Display *display, Window win, GC topShadow, GC botShadow, int x, int y, int w, int type);
 void             rxvt_usleep                      (int usecs);
+
+/////////////////////////////////////////////////////////////////////////////
+
+// temporarily replace the process environment
+extern char **environ;
+extern char **rxvt_environ; // the original environ pointer
+
+inline void set_environ (stringvec *envv)
+{
+  if (envv)
+    environ = (char **)envv->begin ();
+}
+
+inline void set_environ (char **envv)
+{
+  if (envv)
+    environ = envv;
+}
 
 /*
  *****************************************************************************
@@ -209,14 +238,6 @@ typedef struct _mwmhints {
 
 #if defined (NO_MOUSE_REPORT) && !defined (NO_MOUSE_REPORT_SCROLLBAR)
 # define NO_MOUSE_REPORT_SCROLLBAR 1
-#endif
-
-#ifdef NO_RESOURCES
-# undef USE_XGETDEFAULT
-#endif
-
-#if defined (ISO_14755) || defined (ENABLE_PERL)
-# define ENABLE_OVERLAY 1
 #endif
 
 /* now look for other badly set stuff */
@@ -438,10 +459,10 @@ enum {
   XTerm_Color00          = 10,      // not implemented, CLASH!
   XTerm_Color01          = 11,      // not implemented
   XTerm_Color_cursor     = 12,      // change actual 'Cursor' color
-  XTerm_Color_pointer_fg = 13,      // change actual 'Pointer' color
-  XTerm_Color_pointer_bg = 14,      // not implemented
-  XTerm_Color05          = 15,      // not implemented
-  XTerm_Color06          = 16,      // not implemented
+  XTerm_Color_pointer_fg = 13,      // change actual 'Pointer' fg color
+  XTerm_Color_pointer_bg = 14,      // change actual 'Pointer' bg color
+  XTerm_Color05          = 15,      // not implemented (tektronix fg)
+  XTerm_Color06          = 16,      // not implemented (tektronix bg)
   XTerm_Color_RV         = 17,      // change actual 'Highlight' color
   XTerm_logfile          = 46,      // not implemented
   XTerm_font             = 50,
@@ -451,18 +472,21 @@ enum {
   XTerm_emacs51          = 51,      // reserved for emacs shell
   /*
    * rxvt extensions of XTerm OSCs: ESC ] Ps;Pt (ST|BEL)
+   * at least Rxvt_Color_BD and Rxvt_Color_UL clash with xterm
    */
-  XTerm_Color_BD         = 18,      // change actual 'Bold' color
-  XTerm_Color_UL         = 19,      // change actual 'Underline' color
-  XTerm_Pixmap           = 20,      // new bg pixmap
-  XTerm_restoreFG        = 39,      // change default fg color
-  XTerm_restoreBG        = 49,      // change default bg color
-  XTerm_dumpscreen       = 55,      // dump scrollback and all of screen
+  Rxvt_Color_BD          = 18,      // change actual 'Bold' color
+  Rxvt_Color_UL          = 19,      // change actual 'Underline' color
+  Rxvt_Pixmap            = 20,      // new bg pixmap
+  Rxvt_restoreFG         = 39,      // change default fg color
+  Rxvt_restoreBG         = 49,      // change default bg color
+  Rxvt_dumpscreen        = 55,      // dump scrollback and all of screen
 
   URxvt_locale           = 701,     // change locale
   URxvt_Menu             = 703,     // set menu item
   URxvt_Color_IT         = 704,     // change actual 'Italic' colour
   URxvt_Color_tint       = 705,     // change actual tint colour
+  URxvt_Color_BD         = 706,
+  URxvt_Color_UL         = 707,
 
   URxvt_font             = 710,
   URxvt_boldFont         = 711,
@@ -699,6 +723,11 @@ enum {
 #define Width2Pixel(n)          ((int32_t)(n) * (int32_t)fwidth)
 #define Height2Pixel(n)         ((int32_t)(n) * (int32_t)fheight)
 
+#define OPTION(opt)		(options & (opt))
+#define DEFAULT_OPTIONS		(Opt_scrollBar | Opt_scrollTtyOutput \
+				 | Opt_jumpScroll | Opt_secondaryScreen \
+				 | Opt_pastableTabs | Opt_intensityStyles)
+
 // for m >= -n, ensure remainder lies between 0..n-1
 #define MOD(m,n) (((m) + (n)) % (n))
 
@@ -834,14 +863,11 @@ extern void rxvt_exit_failure () __attribute__ ((noreturn));
 
 #define SET_LOCALE(locale) rxvt_set_locale (locale)
 extern bool rxvt_set_locale (const char *locale);
-extern bool rxvt_push_locale (const char *locale);
+extern void rxvt_push_locale (const char *locale);
 extern void rxvt_pop_locale ();
 
-/*
- *****************************************************************************
- * VARIABLES
- *****************************************************************************
- */
+/****************************************************************************/
+
 #ifdef MENUBAR
 # include "menubar.h"
 #endif
@@ -858,6 +884,55 @@ extern void rxvt_pop_locale ();
 # define __attribute__(x)
 #endif
 
+/****************************************************************************/
+
+#define LINE_LONGER     0x0001 // line is continued on the next row
+#define LINE_FILTERED   0x0002 // line has been filtered
+#define LINE_COMPRESSED 0x0004 // line has been compressed (NYI)
+
+struct line_t {
+   text_t *t; // terminal the text
+   rend_t *r; // rendition, uses RS_ flags
+   tlen_t_ l; // length of each text line, LINE_CONT == continued on next line
+   uint32_t f; // flags
+
+   bool is_longer ()
+   {
+     return f & LINE_LONGER;
+   }
+
+   void is_longer (int set)
+   {
+     if (set)
+       f |= LINE_LONGER;
+     else
+       f &= ~LINE_LONGER;
+   }
+
+   void clear ()
+   {
+     t = 0;
+     r = 0;
+     l = 0;
+     f = 0;
+   }
+
+   void touch () // call whenever a line is changed/touched/updated
+   {
+#if ENABLE_PERL
+     f &= ~LINE_FILTERED;
+#endif
+   }
+
+   void touch (int col)
+   {
+     max_it (l, col);
+     touch ();
+   }
+};
+
+/****************************************************************************/
+
 // primivite wrapper around mbstate_t to ensure initialisation
 struct mbstate {
   mbstate_t mbs;
@@ -867,6 +942,8 @@ struct mbstate {
   mbstate () { reset (); }
 };
 
+/****************************************************************************/
+
 #define UNICODE_MASK 0x1fffffUL
 
 #if UNICODE3
@@ -874,9 +951,14 @@ struct mbstate {
 # define COMPOSE_HI 0x400fffffUL
 # define IS_COMPOSE(n) ((int32_t)(n) >= COMPOSE_LO)
 #else
-# define COMPOSE_LO 0xd800UL
-# define COMPOSE_HI 0xf8ffUL // dfff should be safer, but...
-# define IS_COMPOSE(n) (COMPOSE_LO <= (n) && (n) <= COMPOSE_HI)
+# if ENABLE_PERL
+#  define COMPOSE_LO 0xe000UL // our _own_ routiens don't like (illegal) surrogates
+#  define COMPOSE_HI 0xf8ffUL // in utf-8, so use private use area only
+# else
+#  define COMPOSE_LO 0xd800UL
+#  define COMPOSE_HI 0xf8ffUL
+# endif
+# define IS_COMPOSE(n) IN_RANGE_INC ((n), COMPOSE_LO, COMPOSE_HI)
 #endif
 
 #if ENABLE_COMBINING
@@ -906,19 +988,18 @@ public:
 extern class rxvt_composite_vec rxvt_composite;
 #endif
 
+/****************************************************************************/
 
 #ifdef KEYSYM_RESOURCE
   class keyboard_manager;
 #endif
 
 struct rxvt_term : zero_initialized, rxvt_vars {
-  log_callback *log_hook;               // log error messages through this hook, if != 0
+  log_callback   *log_hook;               // log error messages through this hook, if != 0
   getfd_callback *getfd_hook;           // convert remote to local fd, if != 0
-
 #if ENABLE_PERL
-  void *self; // perl's $self
+  rxvt_perl_term  perl;
 #endif
-
   struct mbstate  mbstate;              // current input multibyte state
 
   unsigned char   want_refresh:1,
@@ -1134,7 +1215,12 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   // modifies first argument(!)
   void paste (char *data, unsigned int len);
 
-  void flush ();
+  long vt_emask, vt_emask_perl;
+
+  void vt_select_input ()
+  {
+    XSelectInput (display->display, vt, vt_emask | vt_emask_perl);
+  }
 
 #if TRANSPARENT
   void rootwin_cb (XEvent &xev);
@@ -1142,6 +1228,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
 #endif
 
   void x_cb (XEvent &xev);
+  void flush ();
   xevent_watcher termwin_ev;
   xevent_watcher vt_ev;
 #ifdef HAVE_SCROLLBARS
@@ -1201,6 +1288,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
 
   void init_secondary ();
   const char **init_resources (int argc, const char *const *argv);
+  const char *x_resource (const char *name);
   void init_env ();
   void set_locale (const char *locale);
   void init_xlocale ();
@@ -1247,10 +1335,10 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   void lookup_key (XKeyEvent &ev);
   unsigned int cmd_write (const char *str, unsigned int count);
 
-  unicode_t next_char ();
-  unicode_t cmd_getc ();
-  unicode_t next_octet ();
-  unicode_t cmd_get8 ();
+  wchar_t next_char ();
+  wchar_t cmd_getc ();
+  uint32_t next_octet ();
+  uint32_t cmd_get8 ();
 
   bool cmd_parse ();
   void mouse_report (XButtonEvent &ev);
@@ -1387,6 +1475,19 @@ struct rxvt_term : zero_initialized, rxvt_vars {
     return base;
   }
 
+  bool option (uint32_t opt)
+  {
+    return OPTION (opt);
+  }
+
+  void set_option (uint32_t opt, bool set)
+  {
+    if (set)
+      options |= opt;
+    else
+      options &= ~opt;
+  }
+
   void scr_blank_line (line_t &l, unsigned int col, unsigned int width, rend_t efs);
   void scr_blank_screen_mem (line_t &l, rend_t efs);
   int scr_scroll_text (int row1, int row2, int count);
@@ -1406,7 +1507,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   rxvt_fontset *scr_find_fontset (rend_t r = DEFAULT_RSTYLE);
   void scr_recolour ();
   void scr_remap_chars ();
-  void scr_remap_chars (const line_t &l);
+  void scr_remap_chars (line_t &l);
 
   void scr_poweron ();
   void scr_cursor (int mode);
@@ -1414,7 +1515,7 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   int scr_change_screen (int scrn);
   void scr_color (unsigned int color, int fgbg);
   void scr_rendition (int set, int style);
-  void scr_add_lines (const unicode_t *str, int nlines, int len);
+  void scr_add_lines (const wchar_t *str, int len, int minlines = 0);
   void scr_backspace ();
   void scr_tab (int count, bool ht = false);
   void scr_gotorc (int row, int col, int relative);
@@ -1439,6 +1540,8 @@ struct rxvt_term : zero_initialized, rxvt_vars {
   int scr_changeview (unsigned int oldviewstart);
   void scr_bell ();
   void scr_printscreen (int fullhist);
+  void scr_xor_rect (int beg_row, int beg_col, int end_row, int end_col, rend_t rstyle1, rend_t rstyle2);
+  void scr_xor_span (int beg_row, int beg_col, int end_row, int end_col, rend_t rstyle);
   void scr_reverse_selection ();
   void scr_dump (int fd);
   void selection_check (int check_more);

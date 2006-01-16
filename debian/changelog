@@ -1,3 +1,12 @@
+rxvt-unicode (7.0-1) unstable; urgency=low
+
+  * New upstream release
+    + autodetection of (incorrect) Latin1 in pure UTF-8 environment works
+      again (closes: #347718)
+  * removed the font name preset, automatic selection works acceptably well
+
+ -- Eduard Bloch <blade@debian.org>  Mon, 16 Jan 2006 16:51:28 +0100
+
 rxvt-unicode (6.3-1) unstable; urgency=low
 
   * New upstream release
