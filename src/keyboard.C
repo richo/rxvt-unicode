@@ -76,7 +76,7 @@ output_string (rxvt_term *rt, const char *str)
   if (strncmp (str, "command:", 8) == 0)
     rt->cmd_write (str + 8, strlen (str) - 8);
   else if (strncmp (str, "perl:", 5) == 0)
-    HOOK_INVOKE((rt, HOOK_KEYBOARD_COMMAND, DT_STR, str + 5, DT_END));
+    HOOK_INVOKE((rt, HOOK_USER_COMMAND, DT_STR, str + 5, DT_END));
   else
     rt->tt_write (str, strlen (str));
 }
@@ -422,7 +422,7 @@ keyboard_manager::setup_hash ()
 
   keymap.swap (sorted_keymap);
 
-#if defined (DEBUG_STRICT) || defined (DEBUG_KEYBOARD)
+#ifdef DEBUG_STRICT
   // check for invariants
   for (i = 0; i < KEYSYM_HASH_BUDGETS; ++i)
     {

@@ -5,7 +5,7 @@ sub msg {
 
    my $overlay = $self->overlay (0, 0, $self->strwidth ($msg), 1);
    $overlay->set (0, 0, $msg);
-   my $iow; $iow = urxvt::timer->new->start (urxvt::NOW + 1)->cb (sub {
+   my $iow; $iow = urxvt::timer->new->after (1)->cb (sub {
       undef $overlay;
       undef $iow;
    });
@@ -14,7 +14,7 @@ sub msg {
 sub on_start {
    my ($self) = @_;
 
-   $self->{browser} = urxvt::untaint $self->x_resource ("urlLauncher") || "x-www-browser";
+   $self->{browser} = $self->x_resource ("urlLauncher") || "x-www-browser";
 
    $self->grab_button (3, urxvt::ControlMask);
 
@@ -56,10 +56,11 @@ sub on_button_press {
       };
 
       for ($text) {
-         $add_button->("rot13" => sub { y/A-Za-z/N-ZA-Mn-za-m/ });
+         /./
+            and $add_button->("rot13" => sub { y/A-Za-z/N-ZA-Mn-za-m/ });
 
-         urxvt::safe
-            and $add_button->("eval perl expression" => sub { no warnings; $_ = eval urxvt::untaint $_ });
+         /./
+            and $add_button->("eval perl expression" => sub { no warnings; $_ = eval $_ });
 
          /^(\S+):(\d+):?$/
             and $add_button->("vi-commands to load '$1'" => sub { s/^(\S+):(\d+):?$/\x1b:e $1\x0d:$2\x0d/ });
@@ -71,7 +72,19 @@ sub on_button_press {
             and $add_button->("shell quote" => sub { $_ = "\Q$_" });
 
          /^(http|ftp|telnet|irc|news):\//
-            and $add_button->("run $self->{browser}" => sub { urxvt::exec_async $self->{browser}, $_ });
+            and $add_button->("run $self->{browser}" => sub { $self->exec_async ($self->{browser}, $_) });
+
+         for my $hook (@{ $self->{term}{selection_popup_hook} || [] }) {
+            if (my ($title, $cb) = $hook->($popup)) {
+               $add_button->($title, $cb);
+            }
+         }
+
+         if (/^\s*((?:0x)?\d+)\s*$/) {
+            $popup->add_title (sprintf "%20s", eval $1);
+            $popup->add_title (sprintf "%20s", sprintf "0x%x", eval $1);
+            $popup->add_title (sprintf "%20s", sprintf "0%o", eval $1);
+         }
       }
 
       $popup->show;

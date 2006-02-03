@@ -4,6 +4,8 @@
   def (DESTROY)
   def (RESET)
   def (START)
+  def (CHILD_START)
+  def (CHILD_EXIT)
 
   def (SEL_BEGIN)
   def (SEL_EXTEND)
@@ -22,7 +24,7 @@
   def (REFRESH_BEGIN)
   def (REFRESH_END)
 
-  def (KEYBOARD_COMMAND)
+  def (USER_COMMAND)
 
   def (X_EVENT)
   def (FOCUS_IN)
@@ -34,4 +36,16 @@
   def (MOTION_NOTIFY)
   def (MAP_NOTIFY)
   def (UNMAP_NOTIFY)
+  def (CONFIGURE_NOTIFY)
+  def (CLIENT_MESSAGE)
+  def (WM_DELETE_WINDOW)
+  def (WM_PROTOCOLS)
+  def (PROPERTY_NOTIFY)
+
+  def (XIM_PREEDIT_START)
+  def (XIM_PREEDIT_DONE)
+  def (XIM_PREEDIT_DRAW)
+  def (XIM_PREEDIT_CARET)
+
   def (CUSTOM_REND) // hovering over custom rendition, generate enter/leave maybe?
+

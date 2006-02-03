@@ -95,6 +95,11 @@ Attempt to open a window on the named X display (B<-d> still
 respected). In the absence of this option, the display specified by the
 B<DISPLAY> environment variable is used.
 
+=item B<-depth> I<bitdepth>
+
+Compile I<xft>: Attempt to find a visual with the given bit depth;
+resource B<depth>.
+
 =item B<-geometry> I<geom>
 
 Window geometry (B<-g> still respected); resource B<geometry>.
@@ -112,6 +117,9 @@ Turn on/off jump scrolling; resource B<jumpScroll>.
 Turn on/off inheriting parent window's pixmap. Alternative form is
 B<-tr>; resource B<inheritPixmap>.
 
+I<Please note that transparency of any kind if completely unsupported by
+the author. Don't bug him with installation questions!>
+
 =item B<-fade> I<number>
 
 Fade the text by the given percentage when focus is lost. Small values
@@ -121,7 +129,7 @@ colour; resource B<fading>.
 =item B<-fadecolor> I<colour>
 
 Fade to this colour when fading is used (see B<-fade>). The default colour
-is black. resource B<fadeColor>.
+is opaque black. resource B<fadeColor>.
 
 =item B<-tint> I<colour>
 
@@ -298,6 +306,11 @@ B<externalBorder>.
 Compile I<frills>: Set MWM hints to request a borderless window, i.e.
 if honoured by the WM, the rxvt-unicode window will not have window
 decorations; resource B<borderLess>.
+
+=item B<-override-redirect>
+
+Compile I<frills>: Sets override-redirect on the window; resource
+B<override-redirect>.
 
 =item B<-sbg>
 
@@ -502,6 +515,11 @@ extensions not documented here):
 
 =over 4
 
+=item B<depth:> I<bitdepth>
+
+Compile I<xft>: Attempt to find a visual with the given bit depth;
+option B<-depth>.
+
 =item B<geometry:> I<geom>
 
 Create the window with the specified X window geometry [default 80x24];
@@ -584,6 +602,9 @@ B<True>: make the background inherit the parent windows' pixmap, giving
 artificial transparency. B<False>: do not inherit the parent windows'
 pixmap.
 
+I<Please note that transparency of any kind if completely unsupported by
+the author. Don't bug him with installation questions!>
+
 =item B<fading:> I<number>
 
 Fade the text by the given percentage when focus is lost; option B<-fade>.
@@ -629,17 +650,9 @@ specifies an integer number of images in that direction. No image will
 be magnified beyond 10 times its original size. The maximum permitted
 scale is 1000. [default 0x0+50+50]
 
-=item B<menu:> I<file[;tag]>
-
-Read in the specified menu file (note the `.menu' extension is
-optional) and also optionally specify a starting tag to find. See the
-reference documentation for details on the syntax for the menuBar.
-
 =item B<path:> I<path>
 
-Specify the colon-delimited search path for finding files (XPM and
-menus), in addition to the paths specified by the B<RXVTPATH> and
-B<PATH> environment variables.
+Specify the colon-delimited search path for finding XPM files.
 
 =item B<font:> I<fontlist>
 
@@ -659,7 +672,7 @@ fonts.
 
 For example, this font resource
 
-   URxvt*font: 9x15bold,\
+   URxvt.font: 9x15bold,\
                -misc-fixed-bold-r-normal--15-140-75-75-c-90-iso10646-1,\
                -misc-fixed-medium-r-normal--15-140-75-75-c-90-iso10646-1, \
                [codeset=JISX0208]xft:Kochi Gothic:antialias=false, \
@@ -766,7 +779,7 @@ The string will be interpreted as if typed into the shell as-is.
 
 Example:
 
-   URxvt*print-pipe: cat > $(TMPDIR=$HOME mktemp urxvt.XXXXXX)
+   URxvt.print-pipe: cat > $(TMPDIR=$HOME mktemp urxvt.XXXXXX)
 
 This creates a new file in your home directory with the screen contents
 everytime you hit C<Print>.
@@ -901,8 +914,16 @@ with the B<Execute> key.
 
 =item B<cutchars:> I<string>
 
-The characters used as delimiters for double-click word selection. The
-built-in default:
+The characters used as delimiters for double-click word selection
+(whitespace delimiting is added automatically if resource is given).
+
+When the selection extension is in use (the default if compiled in, see
+the @@RXVT_NAME@@perl(3) manpage), a suitable regex using these characters
+will be created (if the resource exists, otherwise, no regex will be
+created). In this mode, characters outside ISO-8859-1 can be used.
+
+When the selection extension is not used, only ISO-8859-1 characters can
+be used. If not specified, the built-in default is used:
 
 B<< BACKSLASH `"'&()*,;<=>?@[]{|} >>
 
@@ -948,8 +969,7 @@ sequences enabled by default, which doesn't make it safer, though).
 
 You can enable them by setting this boolean resource or specifying
 B<-insecure> as an option. At the moment, this enables display-answer,
-locale, findfont, icon label and window title requests as well as dynamic
-menubar dispatch.
+locale, findfont, icon label and window title requests.
 
 =item B<modifier:> I<modifier>
 
@@ -963,18 +983,18 @@ Specify the reply rxvt-unicode sends to the shell when an ENQ (control-E)
 character is passed through. It may contain escape values as described
 in the entry on B<keysym> following.
 
-=item B<secondaryScreen:> I<bool>
+=item B<secondaryScreen:> I<boolean>
 
 Turn on/off secondary screen (default enabled).
 
-=item B<secondaryScroll:> I<bool>
+=item B<secondaryScroll:> I<boolean>
 
 Turn on/off secondary screen scroll (default enabled). If the this
 option is enabled, scrolls on the secondary screen will change the
 scrollback buffer and switching to/from the secondary screen will
 instead scroll the screen up.
 
-=item B<hold>: I<bool>
+=item B<hold>: I<boolean>
 
 Turn on/off hold window after exit support. If enabled, @@RXVT_NAME@@
 will not immediately destroy its window when the program executed within
@@ -1139,7 +1159,12 @@ C<selection-popup> and C<mark-urls> perl extensions.
 
 =item B<transient-for>: I<windowid>
 
-Sets the WM_TRANSIENT_FOR property to the given window iw.
+Compile I<frills>: Sets the WM_TRANSIENT_FOR property to the given window id.
+
+=item B<override-redirect>: I<boolean>
+
+Compile I<frills>: Sets override-redirect for the terminal window, making
+it almost invisible to window managers; option B<-override-redirect>.
 
 =back
 
@@ -1191,9 +1216,12 @@ the selection.
 
 =item B<Insertion>:
 
-Pressing and releasing the Middle mouse button (or B<Shift-Insert>) in
-an B<@@RXVT_NAME@@> window causes the current text selection to be
-inserted as if it had been typed on the keyboard.
+Pressing and releasing the Middle mouse button in an B<@@RXVT_NAME@@>
+window causes the value of the PRIMARY selection (or CLIPBOARD with the
+Meta modifier) to be inserted as if it had been typed on the keyboard.
+
+Pressing B<Shift-Insert> causes the value of the PRIMARY selection to be
+inserted too.
 
 =back
 
@@ -1202,10 +1230,14 @@ inserted as if it had been typed on the keyboard.
 Changing fonts (or font sizes, respectively) via the keypad is not yet
 supported in rxvt-unicode. Bug me if you need this.
 
-You can, however, switch fonts at runtime using escape sequences (and
-therefore using the menubar), e.g.:
+You can, however, switch fonts at runtime using escape sequences, e.g.:
 
    printf '\e]710;%s\007' "9x15bold,xft:Kochi Gothic"
+
+You can use keyboard shortcuts, too:
+
+   URxvt.keysym.M-C-1: command:\033]710;suxuseuro\007\033]711;suxuseuro\007
+   URxvt.keysym.M-C-2: command:\033]710;9x15bold\007\033]711;9x15bold\007
 
 rxvt-unicode will automatically re-apply these fonts to the output so far.
 
@@ -1286,7 +1318,7 @@ on some systems or setgid to root or to some other group on others.
 In addition to the default foreground and background colours,
 B<@@RXVT_NAME@@> can display up to 16 colours (8 ANSI colours plus
 high-intensity bold/blink versions of the same). Here is a list of the
-colours with their B<rgb.txt> names.
+colours with their names.
 
 =begin table
 
@@ -1329,6 +1361,28 @@ would yield White on Black, while on I<xterm>(1) it would yield Black
 on White.
 
 =back
+
+=head2 ALPHA CHANNEL SUPPORT
+
+If Xft support has been compiled in and as long as Xft/Xrender/X don't get
+their act together, rxvt-unicode will support C<rgba:rrrr/gggg/bbbb/aaaa>
+(recommended, but B<MUST> have 4 digits/component) colour specifications,
+in addition to the ones provided by X, where the additional A component
+specifies opacity (alpha) values. The minimum value of C<0> is completely
+transparent). You can also prefix any color with C<[a]>, where C<a> is on
+to four hex digits specifiying the opacity value.
+
+You probably need to specify B<"-depth 32">, too, and have the luck that
+your X-server uses ARGB pixel layout, as X is far from just supporting
+ARGB visuals out of the box, and rxvt-unicode just fudges around.
+
+For example, the following selects an almost completely transparent red
+background, and an almost opaque pink foreground:
+
+   @@RXVT_NAME@@ -depth 32 -bg rgba:0000/0000/0000/2222 -fg "[e]pink"
+
+I<Please note that transparency of any kind if completely unsupported by
+the author. Don't bug him with installation questions!>
 
 =head1 ENVIRONMENT
 
@@ -1376,15 +1430,6 @@ display in it's child processes.
 =item B<SHELL>
 
 The shell to be used for command execution, defaults to C</bin/sh>.
-
-=item B<RXVTPATH>
-
-The path where @@RXVT_NAME@@ looks for support files such as menu and xpm
-files.
-
-=item B<PATH>
-
-Used in the same way as C<RXVTPATH>.
 
 =item B<RXVT_SOCKET>
 
@@ -1464,16 +1509,20 @@ Project Coordinator (changes.txt 2.21a to 2.4.5)
 
 =item Geoff Wing L<< <gcw@pobox.com> >>
 
-Rewrote screen display and text selection routines. Project Coordinator
-(changes.txt 2.4.6 - rxvt-unicode)
+Rewrote screen display and text selection routines.
+   
+Project Coordinator (changes.txt 2.4.6 - rxvt-unicode)
 
 =item Marc Alexander Lehmann L<< <rxvt-unicode@schmorp.de> >>
 
-Forked rxvt-unicode, rewrote most of the display code and internal
-character handling to store text in unicode, improve xterm
-compatibility and apply numerous other bugfixes and extensions.
+Forked rxvt-unicode, unicode support, rewrote almost all the code, perl
+extension, random hacks, numerous bugfixes and extensions.
 
 Project Coordinator (Changes 1.0 -)
+
+=item Emanuele Giaquinta L<< <e.giaquinta@glauco.it> >>
+
+Pty/tty/utmp/wtmp rewrite, lots of random hacking and bugfixing.
 
 =back
 

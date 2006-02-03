@@ -21,11 +21,6 @@
  *----------------------------------------------------------------------*/
 
 #include "../config.h"
-#include "rxvtdaemon.h"
-#include "fdpass.h"
-
-#include "rxvt.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -35,13 +30,18 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "rxvtdaemon.h"
+#include "libptytty.h"
+
+#include "rxvt.h"
+
 struct client : rxvt_connection {
   client ();
 };
 
 client::client ()
 {
-  if ((fd = socket (PF_UNIX, SOCK_STREAM, 0)) < 0)
+  if ((fd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0)
     {
       perror ("unable to create communications socket");
       exit (EXIT_FAILURE);
@@ -110,16 +110,14 @@ main (int argc, const char *const *argv)
       }
     else if (!strcmp (tok, "MSG") && c.recv (tok))
       fprintf (stderr, "%s", (const char *)tok);
-#if ENABLE_FRILLS && HAVE_UNIX_FDPASS
     else if (!strcmp (tok, "GETFD") && c.recv (cint))
       {
-        if (rxvt_send_fd (c.fd, cint) < 0)
+        if (!ptytty::send_fd (c.fd, cint))
           {
             fprintf (stderr, "unable to send fd %d: ", cint); perror (0);
             exit (EXIT_FAILURE);
           }
       }
-#endif
     else if (!strcmp (tok, "END"))
       {
         int success;

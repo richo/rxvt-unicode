@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "rxvt 3"
-.TH rxvt 3 "2006-01-13" "7.0" "RXVT-UNICODE"
+.TH rxvt 3 "2006-01-29" "7.4" "RXVT-UNICODE"
 .SH "NAME"
 @@RXVT_NAME@@perl \- rxvt\-unicode's embedded perl interpreter
 .SH "SYNOPSIS"
@@ -172,6 +172,12 @@ You can activate them like this:
 .Vb 1
 \&  @@RXVT_NAME@@ -pe <extensionname>
 .Ve
+.PP
+Or by adding them to the resource for extensions loaded by default:
+.PP
+.Vb 1
+\&  URxvt.perl-ext-common: default,automove-background,selection-autotransform
+.Ve
 .IP "selection (enabled by default)" 4
 .IX Item "selection (enabled by default)"
 (More) intelligent selection. This extension tries to be more intelligent
@@ -202,10 +208,19 @@ between two vertical bars:
 \&   URxvt.selection.pattern-0: \e\e|([^|]+)\e\e|
 .Ve
 .Sp
+Another example: Programs I use often output \*(L"absolute path: \*(R" at the
+beginning of a line when they process multiple files. The following
+pattern matches the filename (note, there is a single space at the very
+end):
+.Sp
+.Vb 1
+\&   URxvt.selection.pattern-0: ^(/[^:]+):\e
+.Ve
+.Sp
 You can look at the source of the selection extension to see more
 interesting uses, such as parsing a line from beginning to end.
 .Sp
-This extension also offers the following bindable keyboard command:
+This extension also offers following bindable keyboard commands:
 .RS 4
 .IP "rot13" 4
 .IX Item "rot13"
@@ -225,7 +240,28 @@ runtime.
 .IX Item "selection-popup (enabled by default)"
 Binds a popup menu to Ctrl\-Button3 that lets you convert the selection
 text into various other formats/action (such as uri unescaping, perl
-evalution, web-browser starting etc.), depending on content.
+evaluation, web-browser starting etc.), depending on content.
+.Sp
+Other extensions can extend this popup menu by pushing a code reference
+onto \f(CW\*(C`@{ $term\-\*(C'\fR{selection_popup_hook} }>, that is called whenever the
+popup is displayed.
+.Sp
+It's sole argument is the popup menu, which can be modified. The selection
+is in \f(CW$_\fR, which can be used to decide wether to add something or not.
+It should either return nothing or a string and a code reference. The
+string will be used as button text and the code reference will be called
+when the button gets activated and should transform \f(CW$_\fR.
+.Sp
+The following will add an entry \f(CW\*(C`a to b\*(C'\fR that transforms all \f(CW\*(C`a\*(C'\fRs in
+the selection to \f(CW\*(C`b\*(C'\fRs, but only if the selection currently contains any
+\&\f(CW\*(C`a\*(C'\fRs:
+.Sp
+.Vb 4
+\&   push @{ $self->{term}{selection_popup_hook} }, sub {
+\&      /a/ ? ("a to be" => sub { s/a/b/g }
+\&          : ()
+\&   };
+.Ve
 .IP "searchable\-scrollback<hotkey> (enabled by default)" 4
 .IX Item "searchable-scrollback<hotkey> (enabled by default)"
 Adds regex search functionality to the scrollback buffer, triggered
@@ -240,6 +276,32 @@ bottom. \f(CW\*(C`Escape\*(C'\fR leaves search mode and returns to the point whe
 was started, while \f(CW\*(C`Enter\*(C'\fR or \f(CW\*(C`Return\*(C'\fR stay at the current position and
 additionally stores the first match in the current line into the primary
 selection.
+.IP "readline (enabled by default)" 4
+.IX Item "readline (enabled by default)"
+A support package that tries to make editing with readline easier. At the
+moment, it reacts to clicking with the left mouse button by trying to
+move the text cursor to this position. It does so by generating as many
+cursor-left or cursor-right keypresses as required (the this only works
+for programs that correctly support wide characters).
+.Sp
+To avoid too many false positives, this is only done when:
+.RS 4
+.IP "\- the tty is in \s-1ICANON\s0 state." 4
+.IX Item "- the tty is in ICANON state."
+.PD 0
+.IP "\- the text cursor is visible." 4
+.IX Item "- the text cursor is visible."
+.IP "\- the primary screen is currently being displayed." 4
+.IX Item "- the primary screen is currently being displayed."
+.IP "\- the mouse is on the same (multi\-row\-) line as the text cursor." 4
+.IX Item "- the mouse is on the same (multi-row-) line as the text cursor."
+.RE
+.RS 4
+.PD
+.Sp
+The normal selection mechanism isn't disabled, so quick successive clicks
+might interfere with selection creation in harmless ways.
+.RE
 .IP "selection-autotransform" 4
 .IX Item "selection-autotransform"
 This selection allows you to do automatic transforms on a selection
@@ -266,7 +328,7 @@ And this example matches the same,but replaces it with vi-commands you can
 paste directly into your (vi :) editor:
 .Sp
 .Vb 1
-\&   URxvt.selection-autotransform.0: s/^([^:[:space:]]+(\e\ed+):?$/\e\ex1b:e \e\eQ$1\e\eE\e\ex0d:$2\e\ex0d/
+\&   URxvt.selection-autotransform.0: s/^([^:[:space:]]+(\e\ed+):?$/:e \e\eQ$1\e\eE\e\ex0d:$2\e\ex0d/
 .Ve
 .Sp
 Of course, this can be modified to suit your needs and your editor :)
@@ -275,19 +337,51 @@ To expand the example above to typical perl error messages (\*(L"\s-1XXX\s0 at
 \&\s-1FILENAME\s0 line \s-1YYY\s0.\*(R"), you need a slightly more elaborate solution:
 .Sp
 .Vb 2
-\&   URxvt.selection.pattern-0: ( at .*? line \e\ed+\e\e.)
-\&   URxvt.selection-autotransform.0: s/^ at (.*?) line (\e\ed+)\e\e.$/\ex1b:e \e\eQ$1\eE\e\ex0d:$2\e\ex0d/
+\&   URxvt.selection.pattern-0: ( at .*? line \e\ed+[,.])
+\&   URxvt.selection-autotransform.0: s/^ at (.*?) line (\e\ed+)[,.]$/:e \e\eQ$1\eE\e\ex0d:$2\e\ex0d/
 .Ve
 .Sp
 The first line tells the selection code to treat the unchanging part of
 every error message as a selection pattern, and the second line transforms
 the message into vi commands to load the file.
+.IP "tabbed" 4
+.IX Item "tabbed"
+This transforms the terminal into a tabbar with additional terminals, that
+is, it implements what is commonly refered to as \*(L"tabbed terminal\*(R". The topmost line
+displays a \*(L"[\s-1NEW\s0]\*(R" button, which, when clicked, will add a new tab, followed by one
+button per tab.
+.Sp
+Clicking a button will activate that tab. Pressing \fBShift-Left\fR and
+\&\fBShift-Right\fR will switch to the tab left or right of the current one,
+while \fBShift-Down\fR creates a new tab.
 .IP "mark-urls" 4
 .IX Item "mark-urls"
 Uses per-line display filtering (\f(CW\*(C`on_line_update\*(C'\fR) to underline urls and
 make them clickable. When middle\-clicked, the program specified in the
 resource \f(CW\*(C`urlLauncher\*(C'\fR (default \f(CW\*(C`x\-www\-browser\*(C'\fR) will be started with
 the \s-1URL\s0 as first argument.
+.IP "xim-onthespot" 4
+.IX Item "xim-onthespot"
+This (experimental) perl extension implements OnTheSpot editing. It does
+not work perfectly, and some input methods don't seem to work well with
+OnTheSpot editing in general, but it seems to work at leats for \s-1SCIM\s0 and
+kinput2.
+.Sp
+You enable it by specifying this extension and a preedit style of
+\&\f(CW\*(C`OnTheSpot\*(C'\fR, i.e.:
+.Sp
+.Vb 1
+\&   @@RXVT_NAME@@ -pt OnTheSpot -pe xim-onthespot
+.Ve
+.IP "automove-background" 4
+.IX Item "automove-background"
+This is basically a one-line extension that dynamically changes the background pixmap offset
+to the window position, in effect creating the same effect as pseudo transparency with
+a custom pixmap. No scaling is supported in this mode. Exmaple:
+.Sp
+.Vb 1
+\&   @@RXVT_NAME@@ -pixmap background.xpm -pe automove-background
+.Ve
 .IP "block-graphics-to-ascii" 4
 .IX Item "block-graphics-to-ascii"
 A not very useful example of filtering all text output to the terminal,
@@ -296,6 +390,61 @@ similar-looking ascii character.
 .IP "digital-clock" 4
 .IX Item "digital-clock"
 Displays a digital clock using the built-in overlay.
+.IP "remote-clipboard" 4
+.IX Item "remote-clipboard"
+Somewhat of a misnomer, this extension adds two menu entries to the
+selection popup that allows one ti run external commands to store the
+selection somewhere and fetch it again.
+.Sp
+We use it to implement a \*(L"distributed selection mechanism\*(R", which just
+means that one command uploads the file to a remote server, and another
+reads it.
+.Sp
+The commands can be set using the \f(CW\*(C`URxvt.remote\-selection.store\*(C'\fR and
+\&\f(CW\*(C`URxvt.remote\-selection.fetch\*(C'\fR resources. The first should read the
+selection to store from \s-1STDIN\s0 (always in \s-1UTF\-8\s0), the second should provide
+the selection data on \s-1STDOUT\s0 (also in \s-1UTF\-8\s0).
+.Sp
+The defaults (which are likely useless to you) use rsh and cat:
+.Sp
+.Vb 2
+\&   URxvt.remote-selection.store: rsh ruth 'cat >/tmp/distributed-selection'
+\&   URxvt.remote-selection.fetch: rsh ruth 'cat /tmp/distributed-selection'
+.Ve
+.IP "selection-pastebin" 4
+.IX Item "selection-pastebin"
+This is a little rarely useful extension that Uploads the selection as
+textfile to a remote site (or does other things). (The implementation is
+not currently secure for use in a multiuser environment as it writes to
+\&\fI/tmp\fR directly.).
+.Sp
+It listens to the \f(CW\*(C`selection\-pastebin:remote\-pastebin\*(C'\fR keyboard command,
+i.e.
+.Sp
+.Vb 1
+\&   URxvt.keysym.C-M-e: perl:selection-pastebin:remote-pastebin
+.Ve
+.Sp
+Pressing this combination runs a command with \f(CW\*(C`%\*(C'\fR replaced by the name of
+the textfile. This command can be set via a resource:
+.Sp
+.Vb 1
+\&   URxvt.selection-pastebin.cmd: rsync -apP % ruth:/var/www/www.ta-sa.org/files/txt/.
+.Ve
+.Sp
+And the default is likely not useful to anybody but the few people around
+here :)
+.Sp
+The name of the textfile is the hex encoded md5 sum of the selection, so
+the same content should lead to the same filename.
+.Sp
+After a successful upload the selection will be replaced by the text given
+in the \f(CW\*(C`selection\-pastebin\-url\*(C'\fR resource (again, the % is the placeholder
+for the filename):
+.Sp
+.Vb 1
+\&   URxvt.selection-pastebin.url: http://www.ta-sa.org/files/txt/%
+.Ve
 .IP "example-refresh-hooks" 4
 .IX Item "example-refresh-hooks"
 Displays a very simple digital clock in the upper right corner of the
@@ -367,9 +516,9 @@ called whenever the relevant event happens.
 The first argument passed to them is an extension oject as described in
 the in the \f(CW\*(C`Extension Objects\*(C'\fR section.
 .PP
-\&\fBAll\fR of these hooks must return a boolean value. If it is true, then the
-event counts as being \fIconsumed\fR, and the invocation of other hooks is
-skipped, and the relevant action might not be carried out by the \*(C+ code.
+\&\fBAll\fR of these hooks must return a boolean value. If any of the called
+hooks returns true, then the event counts as being \fIconsumed\fR, and the
+relevant action might not be carried out by the \*(C+ code.
 .PP
 \&\fIWhen in doubt, return a false value (preferably \f(CI\*(C`()\*(C'\fI).\fR
 .ie n .IP "on_init $term" 4
@@ -378,19 +527,34 @@ skipped, and the relevant action might not be carried out by the \*(C+ code.
 Called after a new terminal object has been initialized, but before
 windows are created or the command gets run. Most methods are unsafe to
 call or deliver senseless data, as terminal size and other characteristics
-have not yet been determined. You can safely query and change resources,
-though.
+have not yet been determined. You can safely query and change resources
+and options, though. For many purposes the \f(CW\*(C`on_start\*(C'\fR hook is a better
+place.
+.ie n .IP "on_start $term" 4
+.el .IP "on_start \f(CW$term\fR" 4
+.IX Item "on_start $term"
+Called at the very end of initialisation of a new terminal, just before
+trying to map (display) the toplevel and returning to the mainloop.
+.ie n .IP "on_destroy $term" 4
+.el .IP "on_destroy \f(CW$term\fR" 4
+.IX Item "on_destroy $term"
+Called whenever something tries to destroy terminal, when the terminal is
+still fully functional (not for long, though).
 .ie n .IP "on_reset $term" 4
 .el .IP "on_reset \f(CW$term\fR" 4
 .IX Item "on_reset $term"
 Called after the screen is \*(L"reset\*(R" for any reason, such as resizing or
 control sequences. Here is where you can react on changes to size-related
 variables.
-.ie n .IP "on_start $term" 4
-.el .IP "on_start \f(CW$term\fR" 4
-.IX Item "on_start $term"
-Called at the very end of initialisation of a new terminal, just before
-returning to the mainloop.
+.ie n .IP "on_child_start $term\fR, \f(CW$pid" 4
+.el .IP "on_child_start \f(CW$term\fR, \f(CW$pid\fR" 4
+.IX Item "on_child_start $term, $pid"
+Called just after the child process has been \f(CW\*(C`fork\*(C'\fRed.
+.ie n .IP "on_child_exit $term\fR, \f(CW$status" 4
+.el .IP "on_child_exit \f(CW$term\fR, \f(CW$status\fR" 4
+.IX Item "on_child_exit $term, $status"
+Called just after the child process has exited. \f(CW$status\fR is the status
+from \f(CW\*(C`waitpid\*(C'\fR.
 .ie n .IP "on_sel_make $term\fR, \f(CW$eventtime" 4
 .el .IP "on_sel_make \f(CW$term\fR, \f(CW$eventtime\fR" 4
 .IX Item "on_sel_make $term, $eventtime"
@@ -486,12 +650,15 @@ code is run after this hook, and takes precedence.
 .el .IP "on_refresh_end \f(CW$term\fR" 4
 .IX Item "on_refresh_end $term"
 Called just after the screen gets redrawn. See \f(CW\*(C`on_refresh_begin\*(C'\fR.
-.ie n .IP "on_keyboard_command $term\fR, \f(CW$string" 4
-.el .IP "on_keyboard_command \f(CW$term\fR, \f(CW$string\fR" 4
-.IX Item "on_keyboard_command $term, $string"
-Called whenever the user presses a key combination that has a
-\&\f(CW\*(C`perl:string\*(C'\fR action bound to it (see description of the \fBkeysym\fR
+.ie n .IP "on_user_command $term\fR, \f(CW$string" 4
+.el .IP "on_user_command \f(CW$term\fR, \f(CW$string\fR" 4
+.IX Item "on_user_command $term, $string"
+Called whenever the a user-configured event is being activated (e.g. via
+a \f(CW\*(C`perl:string\*(C'\fR action bound to a key, see description of the \fBkeysym\fR
 resource in the @@RXVT_NAME@@(1) manpage).
+.Sp
+The event is simply the action string. This interface is assumed to change
+slightly in the future.
 .ie n .IP "on_x_event $term\fR, \f(CW$event" 4
 .el .IP "on_x_event \f(CW$term\fR, \f(CW$event\fR" 4
 .IX Item "on_x_event $term, $event"
@@ -508,10 +675,16 @@ does focus in processing.
 .IX Item "on_focus_out $term"
 Called wheneever the window loses keyboard focus, before rxvt-unicode does
 focus out processing.
+.ie n .IP "on_configure_notify $term\fR, \f(CW$event" 4
+.el .IP "on_configure_notify \f(CW$term\fR, \f(CW$event\fR" 4
+.IX Item "on_configure_notify $term, $event"
+.PD 0
+.ie n .IP "on_property_notify $term\fR, \f(CW$event" 4
+.el .IP "on_property_notify \f(CW$term\fR, \f(CW$event\fR" 4
+.IX Item "on_property_notify $term, $event"
 .ie n .IP "on_key_press $term\fR, \f(CW$event\fR, \f(CW$keysym\fR, \f(CW$octets" 4
 .el .IP "on_key_press \f(CW$term\fR, \f(CW$event\fR, \f(CW$keysym\fR, \f(CW$octets\fR" 4
 .IX Item "on_key_press $term, $event, $keysym, $octets"
-.PD 0
 .ie n .IP "on_key_release $term\fR, \f(CW$event\fR, \f(CW$keysym" 4
 .el .IP "on_key_release \f(CW$term\fR, \f(CW$event\fR, \f(CW$keysym\fR" 4
 .IX Item "on_key_release $term, $event, $keysym"
@@ -535,13 +708,26 @@ Called whenever the corresponding X event is received for the terminal If
 the hook returns true, then the even will be ignored by rxvt\-unicode.
 .Sp
 The event is a hash with most values as named by Xlib (see the XEvent
-manpage), with the additional members \f(CW\*(C`row\*(C'\fR and \f(CW\*(C`col\*(C'\fR, which are the row
-and column under the mouse cursor.
+manpage), with the additional members \f(CW\*(C`row\*(C'\fR and \f(CW\*(C`col\*(C'\fR, which are the
+(real, not screen\-based) row and column under the mouse cursor.
 .Sp
 \&\f(CW\*(C`on_key_press\*(C'\fR additionally receives the string rxvt-unicode would
 output, if any, in locale-specific encoding.
 .Sp
 subwindow.
+.ie n .IP "on_client_message $term\fR, \f(CW$event" 4
+.el .IP "on_client_message \f(CW$term\fR, \f(CW$event\fR" 4
+.IX Item "on_client_message $term, $event"
+.PD 0
+.ie n .IP "on_wm_protocols $term\fR, \f(CW$event" 4
+.el .IP "on_wm_protocols \f(CW$term\fR, \f(CW$event\fR" 4
+.IX Item "on_wm_protocols $term, $event"
+.ie n .IP "on_wm_delete_window $term\fR, \f(CW$event" 4
+.el .IP "on_wm_delete_window \f(CW$term\fR, \f(CW$event\fR" 4
+.IX Item "on_wm_delete_window $term, $event"
+.PD
+Called when various types of ClientMessage events are received (all with
+format=32, \s-1WM_PROTOCOLS\s0 or \s-1WM_PROTOCOLS:WM_DELETE_WINDOW\s0).
 .ie n .Sh "Variables in the ""urxvt"" Package"
 .el .Sh "Variables in the \f(CWurxvt\fP Package"
 .IX Subsection "Variables in the urxvt Package"
@@ -560,6 +746,20 @@ The basename of the installed binaries, usually \f(CW\*(C`urxvt\*(C'\fR.
 .IX Item "$urxvt::TERM"
 The current terminal. This variable stores the current \f(CW\*(C`urxvt::term\*(C'\fR
 object, whenever a callback/hook is executing.
+.IP "@urxvt::TERM_INIT" 4
+.IX Item "@urxvt::TERM_INIT"
+All coderefs in this array will be called as methods of the next newly
+created \f(CW\*(C`urxvt::term\*(C'\fR object (during the \f(CW\*(C`on_init\*(C'\fR phase). The array
+gets cleared before the codereferences that were in it are being executed,
+so coderefs can push themselves onto it again if they so desire.
+.Sp
+This complements to the perl-eval commandline option, but gets executed
+first.
+.IP "@urxvt::TERM_EXT" 4
+.IX Item "@urxvt::TERM_EXT"
+Works similar to \f(CW@TERM_INIT\fR, but contains perl package/class names, which
+get registered as normal extensions after calling the hooks in \f(CW@TERM_INIT\fR
+but before other extensions. Gets cleared just like \f(CW@TERM_INIT\fR.
 .ie n .Sh "Functions in the ""urxvt"" Package"
 .el .Sh "Functions in the \f(CWurxvt\fP Package"
 .IX Subsection "Functions in the urxvt Package"
@@ -580,11 +780,12 @@ Using this function has the advantage that its output ends up in the
 correct place, e.g. on stderr of the connecting urxvtc client.
 .Sp
 Messages have a size limit of 1023 bytes currently.
-.IP "$is_safe = urxvt::safe" 4
-.IX Item "$is_safe = urxvt::safe"
-Returns true when it is safe to do potentially unsafe things, such as
-evaluating perl code specified by the user. This is true when urxvt was
-started setuid or setgid.
+.IP "@terms = urxvt::termlist" 4
+.IX Item "@terms = urxvt::termlist"
+Returns all urxvt::term objects that exist in this process, regardless of
+wether they are started, being destroyed etc., so be careful. Only term
+objects that have perl extensions attached will be returned (because there
+is no urxvt::term objet associated with others).
 .IP "$time = urxvt::NOW" 4
 .IX Item "$time = urxvt::NOW"
 Returns the \*(L"current time\*(R" (as per the event loop).
@@ -671,12 +872,22 @@ hash which defines the environment of the new terminal.
 Croaks (and probably outputs an error message) if the new instance
 couldn't be created.  Returns \f(CW\*(C`undef\*(C'\fR if the new instance didn't
 initialise perl, and the terminal object otherwise. The \f(CW\*(C`init\*(C'\fR and
-\&\f(CW\*(C`start\*(C'\fR hooks will be called during this call.
+\&\f(CW\*(C`start\*(C'\fR hooks will be called before this call returns, and are free to
+refer to global data (which is race free).
 .IP "$term\->destroy" 4
 .IX Item "$term->destroy"
 Destroy the terminal object (close the window, free resources
 etc.). Please note that @@RXVT_NAME@@ will not exit as long as any event
 watchers (timers, io watchers) are still active.
+.ie n .IP "$term\->exec_async ($cmd[, @args])" 4
+.el .IP "$term\->exec_async ($cmd[, \f(CW@args\fR])" 4
+.IX Item "$term->exec_async ($cmd[, @args])"
+Works like the combination of the \f(CW\*(C`fork\*(C'\fR/\f(CW\*(C`exec\*(C'\fR builtins, which executes
+(\*(L"starts\*(R") programs in the background. This function takes care of setting
+the user environment before exec'ing the command (e.g. \f(CW\*(C`PATH\*(C'\fR) and should
+be preferred over explicit calls to \f(CW\*(C`exec\*(C'\fR or \f(CW\*(C`system\*(C'\fR.
+.Sp
+Returns the pid of the subprocess or \f(CW\*(C`undef\*(C'\fR on error.
 .ie n .IP "$isset = $term\fR\->option ($optval[, \f(CW$set])" 4
 .el .IP "$isset = \f(CW$term\fR\->option ($optval[, \f(CW$set\fR])" 4
 .IX Item "$isset = $term->option ($optval[, $set])"
@@ -690,10 +901,10 @@ source file \fI/src/optinc.h\fR to see the actual list:
 .Vb 6
 \& borderLess console cursorBlink cursorUnderline hold iconic insecure
 \& intensityStyles jumpScroll loginShell mapAlert meta8 mouseWheelScrollPage
-\& pastableTabs pointerBlank reverseVideo scrollBar scrollBar_floating
-\& scrollBar_right scrollTtyKeypress scrollTtyOutput scrollWithBuffer
-\& secondaryScreen secondaryScroll skipBuiltinGlyphs transparent
-\& tripleclickwords utmpInhibit visualBell
+\& override-redirect pastableTabs pointerBlank reverseVideo scrollBar
+\& scrollBar_floating scrollBar_right scrollTtyKeypress scrollTtyOutput
+\& scrollWithBuffer secondaryScreen secondaryScroll skipBuiltinGlyphs
+\& transparent tripleclickwords utmpInhibit visualBell
 .Ve
 .ie n .IP "$value = $term\fR\->resource ($name[, \f(CW$newval])" 4
 .el .IP "$value = \f(CW$term\fR\->resource ($name[, \f(CW$newval\fR])" 4
@@ -717,19 +928,20 @@ Here is a a likely non-exhaustive list of resource names, not all of which
 are supported in every build, please see the source file \fI/src/rsinc.h\fR
 to see the actual list:
 .Sp
-.Vb 12
+.Vb 13
 \&  answerbackstring backgroundPixmap backspace_key boldFont boldItalicFont
 \&  borderLess color cursorBlink cursorUnderline cutchars delete_key
 \&  display_name embed ext_bwidth fade font geometry hold iconName
 \&  imFont imLocale inputMethod insecure int_bwidth intensityStyles
-\&  italicFont jumpScroll lineSpace loginShell mapAlert menu meta8 modifier
-\&  mouseWheelScrollPage name pastableTabs path perl_eval perl_ext_1 perl_ext_2
-\&  perl_lib pointerBlank pointerBlankDelay preeditType print_pipe pty_fd
-\&  reverseVideo saveLines scrollBar scrollBar_align scrollBar_floating
-\&  scrollBar_right scrollBar_thickness scrollTtyKeypress scrollTtyOutput
-\&  scrollWithBuffer scrollstyle secondaryScreen secondaryScroll selectstyle
-\&  shade term_name title transparent transparent_all tripleclickwords
-\&  utmpInhibit visualBell
+\&  italicFont jumpScroll lineSpace loginShell mapAlert meta8 modifier
+\&  mouseWheelScrollPage name override_redirect pastableTabs path perl_eval
+\&  perl_ext_1 perl_ext_2 perl_lib pointerBlank pointerBlankDelay
+\&  preeditType print_pipe pty_fd reverseVideo saveLines scrollBar
+\&  scrollBar_align scrollBar_floating scrollBar_right scrollBar_thickness
+\&  scrollTtyKeypress scrollTtyOutput scrollWithBuffer scrollstyle
+\&  secondaryScreen secondaryScroll selectstyle shade term_name title
+\&  transient_for transparent transparent_all tripleclickwords utmpInhibit
+\&  visualBell
 .Ve
 .ie n .IP "$value = $term\->x_resource ($pattern)" 4
 .el .IP "$value = \f(CW$term\fR\->x_resource ($pattern)" 4
@@ -869,6 +1081,9 @@ string is a normal text string, not in locale-dependent encoding.
 Normally its not a good idea to use this function, as programs might be
 confused by changes in cursor position or scrolling. Its useful inside a
 \&\f(CW\*(C`on_add_lines\*(C'\fR hook, though.
+.IP "$term\->scr_change_screen ($screen)" 4
+.IX Item "$term->scr_change_screen ($screen)"
+Switch to given screen \- 0 primary, 1 secondary.
 .IP "$term\->cmd_parse ($octets)" 4
 .IX Item "$term->cmd_parse ($octets)"
 Similar to \f(CW\*(C`scr_add_lines\*(C'\fR, but the argument must be in the
@@ -886,6 +1101,11 @@ Replaces the event mask of the pty watcher by the given event mask. Can
 be used to suppress input and output handling to the pty/tty. See the
 description of \f(CW\*(C`urxvt::timer\->events\*(C'\fR. Make sure to always restore
 the previous value.
+.ie n .IP "$fd = $term\->pty_fd" 4
+.el .IP "$fd = \f(CW$term\fR\->pty_fd" 4
+.IX Item "$fd = $term->pty_fd"
+Returns the master file descriptor for the pty in use, or \f(CW\*(C`\-1\*(C'\fR if no pty
+is used.
 .ie n .IP "$windowid = $term\->parent" 4
 .el .IP "$windowid = \f(CW$term\fR\->parent" 4
 .IX Item "$windowid = $term->parent"
@@ -936,9 +1156,9 @@ to receive pointer events all the times:
 .ie n .IP "$nrow_plus_saveLines = $term\->total_rows" 4
 .el .IP "$nrow_plus_saveLines = \f(CW$term\fR\->total_rows" 4
 .IX Item "$nrow_plus_saveLines = $term->total_rows"
-.ie n .IP "$lines_in_scrollback = $term\->nsaved" 4
-.el .IP "$lines_in_scrollback = \f(CW$term\fR\->nsaved" 4
-.IX Item "$lines_in_scrollback = $term->nsaved"
+.ie n .IP "$topmost_scrollback_row = $term\->top_row" 4
+.el .IP "$topmost_scrollback_row = \f(CW$term\fR\->top_row" 4
+.IX Item "$topmost_scrollback_row = $term->top_row"
 .PD
 Return various integers describing terminal characteristics.
 .ie n .IP "$x_display = $term\->display_id" 4
@@ -967,11 +1187,19 @@ similar to \f(CW\*(C`\e%ENV\*(C'\fR.
 .PD
 Return the modifier masks corresponding to the \*(L"\s-1ISO\s0 Level 3 Shift\*(R" (often
 AltGr), the meta key (often Alt) and the num lock key, if applicable.
+.ie n .IP "$screen = $term\->current_screen" 4
+.el .IP "$screen = \f(CW$term\fR\->current_screen" 4
+.IX Item "$screen = $term->current_screen"
+Returns the currently displayed screen (0 primary, 1 secondary).
+.ie n .IP "$cursor_is_hidden = $term\->hidden_cursor" 4
+.el .IP "$cursor_is_hidden = \f(CW$term\fR\->hidden_cursor" 4
+.IX Item "$cursor_is_hidden = $term->hidden_cursor"
+Returns wether the cursor is currently hidden or not.
 .ie n .IP "$view_start = $term\->view_start ([$newvalue])" 4
 .el .IP "$view_start = \f(CW$term\fR\->view_start ([$newvalue])" 4
 .IX Item "$view_start = $term->view_start ([$newvalue])"
-Returns the negative row number of the topmost line. Minimum value is
-\&\f(CW0\fR, which displays the normal terminal contents. Larger values scroll
+Returns the row number of the topmost displayed line. Maximum value is
+\&\f(CW0\fR, which displays the normal terminal contents. Lower values scroll
 this many lines into the scrollback buffer.
 .IP "$term\->want_refresh" 4
 .IX Item "$term->want_refresh"
@@ -995,10 +1223,10 @@ to replace only parts of a line. The font index in the rendition will
 automatically be updated.
 .Sp
 \&\f(CW$text\fR is in a special encoding: tabs and wide characters that use more
-than one cell when displayed are padded with urxvt::NOCHAR characters
-(\f(CW\*(C`chr 65535\*(C'\fR). Characters with combining characters and other characters
-that do not fit into the normal tetx encoding will be replaced with
-characters in the private use area.
+than one cell when displayed are padded with \f(CW$urxvt::NOCHAR\fR (chr 65535)
+characters. Characters with combining characters and other characters that
+do not fit into the normal tetx encoding will be replaced with characters
+in the private use area.
 .Sp
 You have to obey this encoding when changing text. The advantage is
 that \f(CW\*(C`substr\*(C'\fR and similar functions work on screen cells and not on
@@ -1081,10 +1309,16 @@ where one character corresponds to one screen cell. See
 .IX Item "$string = $term->special_decode $text"
 Converts rxvt-unicodes text reprsentation into a perl string. See
 \&\f(CW\*(C`$term\->ROW_t\*(C'\fR for details.
-.ie n .IP "$success = $term\fR\->grab_button ($button, \f(CW$modifiermask)" 4
-.el .IP "$success = \f(CW$term\fR\->grab_button ($button, \f(CW$modifiermask\fR)" 4
-.IX Item "$success = $term->grab_button ($button, $modifiermask)"
-Registers a synchronous button grab. See the XGrabButton manpage.
+.ie n .IP "$success = $term\fR\->grab_button ($button, \f(CW$modifiermask\fR[, \f(CW$window\fR = \f(CW$term\->vt])" 4
+.el .IP "$success = \f(CW$term\fR\->grab_button ($button, \f(CW$modifiermask\fR[, \f(CW$window\fR = \f(CW$term\fR\->vt])" 4
+.IX Item "$success = $term->grab_button ($button, $modifiermask[, $window = $term->vt])"
+.PD 0
+.ie n .IP "$term\->ungrab_button ($button, $modifiermask\fR[, \f(CW$window\fR = \f(CW$term\->vt])" 4
+.el .IP "$term\->ungrab_button ($button, \f(CW$modifiermask\fR[, \f(CW$window\fR = \f(CW$term\fR\->vt])" 4
+.IX Item "$term->ungrab_button ($button, $modifiermask[, $window = $term->vt])"
+.PD
+Register/unregister a synchronous button grab. See the XGrabButton
+manpage.
 .ie n .IP "$success = $term\fR\->grab ($eventtime[, \f(CW$sync])" 4
 .el .IP "$success = \f(CW$term\fR\->grab ($eventtime[, \f(CW$sync\fR])" 4
 .IX Item "$success = $term->grab ($eventtime[, $sync])"
@@ -1105,6 +1339,48 @@ recent grab.
 Calls XUngrab for the most recent grab. Is called automatically on
 evaluation errors, as it is better to lose the grab in the error case as
 the session.
+.ie n .IP "$atom = $term\fR\->XInternAtom ($atom_name[, \f(CW$only_if_exists])" 4
+.el .IP "$atom = \f(CW$term\fR\->XInternAtom ($atom_name[, \f(CW$only_if_exists\fR])" 4
+.IX Item "$atom = $term->XInternAtom ($atom_name[, $only_if_exists])"
+.PD 0
+.ie n .IP "$atom_name = $term\->XGetAtomName ($atom)" 4
+.el .IP "$atom_name = \f(CW$term\fR\->XGetAtomName ($atom)" 4
+.IX Item "$atom_name = $term->XGetAtomName ($atom)"
+.ie n .IP "@atoms = $term\->XListProperties ($window)" 4
+.el .IP "@atoms = \f(CW$term\fR\->XListProperties ($window)" 4
+.IX Item "@atoms = $term->XListProperties ($window)"
+.ie n .IP "($type,$format,$octets) = $term\fR\->XGetWindowProperty ($window, \f(CW$property)" 4
+.el .IP "($type,$format,$octets) = \f(CW$term\fR\->XGetWindowProperty ($window, \f(CW$property\fR)" 4
+.IX Item "($type,$format,$octets) = $term->XGetWindowProperty ($window, $property)"
+.ie n .IP "$term\->XChangeWindowProperty ($window, $property\fR, \f(CW$type\fR, \f(CW$format\fR, \f(CW$octets)" 4
+.el .IP "$term\->XChangeWindowProperty ($window, \f(CW$property\fR, \f(CW$type\fR, \f(CW$format\fR, \f(CW$octets\fR)" 4
+.IX Item "$term->XChangeWindowProperty ($window, $property, $type, $format, $octets)"
+.ie n .IP "$term\->XDeleteProperty ($window, $property)" 4
+.el .IP "$term\->XDeleteProperty ($window, \f(CW$property\fR)" 4
+.IX Item "$term->XDeleteProperty ($window, $property)"
+.ie n .IP "$window = $term\->DefaultRootWindow" 4
+.el .IP "$window = \f(CW$term\fR\->DefaultRootWindow" 4
+.IX Item "$window = $term->DefaultRootWindow"
+.ie n .IP "$term\->XReparentWindow ($window, $parent\fR, [$x, \f(CW$y])" 4
+.el .IP "$term\->XReparentWindow ($window, \f(CW$parent\fR, [$x, \f(CW$y\fR])" 4
+.IX Item "$term->XReparentWindow ($window, $parent, [$x, $y])"
+.IP "$term\->XMapWindow ($window)" 4
+.IX Item "$term->XMapWindow ($window)"
+.IP "$term\->XUnmapWindow ($window)" 4
+.IX Item "$term->XUnmapWindow ($window)"
+.ie n .IP "$term\->XMoveResizeWindow ($window, $x\fR, \f(CW$y\fR, \f(CW$width\fR, \f(CW$height)" 4
+.el .IP "$term\->XMoveResizeWindow ($window, \f(CW$x\fR, \f(CW$y\fR, \f(CW$width\fR, \f(CW$height\fR)" 4
+.IX Item "$term->XMoveResizeWindow ($window, $x, $y, $width, $height)"
+.ie n .IP "($x, $y\fR, \f(CW$child_window\fR) = \f(CW$term\fR\->XTranslateCoordinates ($src, \f(CW$dst\fR, \f(CW$x\fR, \f(CW$y)" 4
+.el .IP "($x, \f(CW$y\fR, \f(CW$child_window\fR) = \f(CW$term\fR\->XTranslateCoordinates ($src, \f(CW$dst\fR, \f(CW$x\fR, \f(CW$y\fR)" 4
+.IX Item "($x, $y, $child_window) = $term->XTranslateCoordinates ($src, $dst, $x, $y)"
+.ie n .IP "$term\->XChangeInput ($window, $add_events\fR[, \f(CW$del_events])" 4
+.el .IP "$term\->XChangeInput ($window, \f(CW$add_events\fR[, \f(CW$del_events\fR])" 4
+.IX Item "$term->XChangeInput ($window, $add_events[, $del_events])"
+.PD
+Various X or X\-related functions. The \f(CW$term\fR object only serves as
+the source of the display, otherwise those functions map more-or-less
+directory onto the X functions of the same name.
 .ie n .Sh "The ""urxvt::popup"" Class"
 .el .Sh "The \f(CWurxvt::popup\fP Class"
 .IX Subsection "The urxvt::popup Class"
@@ -1174,6 +1450,10 @@ Start the timer.
 .el .IP "$timer = \f(CW$timer\fR\->start ($tstamp)" 4
 .IX Item "$timer = $timer->start ($tstamp)"
 Set the event trigger time to \f(CW$tstamp\fR and start the timer.
+.ie n .IP "$timer = $timer\->after ($delay)" 4
+.el .IP "$timer = \f(CW$timer\fR\->after ($delay)" 4
+.IX Item "$timer = $timer->after ($delay)"
+Like \f(CW\*(C`start\*(C'\fR, but sets the expiry timer to c<urxvt::NOW + \f(CW$delay\fR>.
 .ie n .IP "$timer = $timer\->stop" 4
 .el .IP "$timer = \f(CW$timer\fR\->stop" 4
 .IX Item "$timer = $timer->stop"
@@ -1223,6 +1503,59 @@ Start watching for requested events on the given handle.
 .el .IP "$iow = \f(CW$iow\fR\->stop" 4
 .IX Item "$iow = $iow->stop"
 Stop watching for events on the given filehandle.
+.ie n .Sh "The ""urxvt::iw"" Class"
+.el .Sh "The \f(CWurxvt::iw\fP Class"
+.IX Subsection "The urxvt::iw Class"
+This class implements idle watchers, that get called automatically when
+the process is idle. They should return as fast as possible, after doing
+some useful work.
+.IP "$iw = new urxvt::iw" 4
+.IX Item "$iw = new urxvt::iw"
+Create a new idle watcher object in stopped state.
+.ie n .IP "$iw = $iw\fR\->cb (sub { my ($iw) = \f(CW@_; ... })" 4
+.el .IP "$iw = \f(CW$iw\fR\->cb (sub { my ($iw) = \f(CW@_\fR; ... })" 4
+.IX Item "$iw = $iw->cb (sub { my ($iw) = @_; ... })"
+Set the callback to be called when the watcher triggers.
+.ie n .IP "$timer = $timer\->start" 4
+.el .IP "$timer = \f(CW$timer\fR\->start" 4
+.IX Item "$timer = $timer->start"
+Start the watcher.
+.ie n .IP "$timer = $timer\->stop" 4
+.el .IP "$timer = \f(CW$timer\fR\->stop" 4
+.IX Item "$timer = $timer->stop"
+Stop the watcher.
+.ie n .Sh "The ""urxvt::pw"" Class"
+.el .Sh "The \f(CWurxvt::pw\fP Class"
+.IX Subsection "The urxvt::pw Class"
+This class implements process watchers. They create an event whenever a
+process exits, after which they stop automatically.
+.PP
+.Vb 9
+\&   my $pid = fork;
+\&   ...
+\&   $term->{pw} = urxvt::pw
+\&                    ->new
+\&                    ->start ($pid)
+\&                    ->cb (sub {
+\&                       my ($pw, $exit_status) = @_;
+\&                       ...
+\&                    });
+.Ve
+.IP "$pw = new urxvt::pw" 4
+.IX Item "$pw = new urxvt::pw"
+Create a new process watcher in stopped state.
+.ie n .IP "$pw = $pw\fR\->cb (sub { my ($pw, \f(CW$exit_status\fR) = \f(CW@_; ... })" 4
+.el .IP "$pw = \f(CW$pw\fR\->cb (sub { my ($pw, \f(CW$exit_status\fR) = \f(CW@_\fR; ... })" 4
+.IX Item "$pw = $pw->cb (sub { my ($pw, $exit_status) = @_; ... })"
+Set the callback to be called when the timer triggers.
+.ie n .IP "$pw = $timer\->start ($pid)" 4
+.el .IP "$pw = \f(CW$timer\fR\->start ($pid)" 4
+.IX Item "$pw = $timer->start ($pid)"
+Tells the wqtcher to start watching for process \f(CW$pid\fR.
+.ie n .IP "$pw = $pw\->stop" 4
+.el .IP "$pw = \f(CW$pw\fR\->stop" 4
+.IX Item "$pw = $pw->stop"
+Stop the watcher.
 .SH "ENVIRONMENT"
 .IX Header "ENVIRONMENT"
 .Sh "\s-1URXVT_PERL_VERBOSITY\s0"

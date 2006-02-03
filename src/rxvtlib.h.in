@@ -30,10 +30,10 @@
 // stdlib.h might provide it
 #endif
 
-#include "ptytty.h"
-
 extern "C" {
-#include <X11/Intrinsic.h>      /* Xlib, Xutil, Xresource, Xfuncproto */
+#include <X11/Xlib.h>
+#include <X11/Xutil.h>
+#include <X11/Xresource.h>
 }
 
 /*
@@ -54,7 +54,6 @@ struct rxvt_fontset;
 struct rxvt_color;
 struct rxvt_vars;               /* defined later on */
 struct rxvt_term;
-struct rxvt_display;
 struct rxvt_im;
 struct rxvt_drawable;
 
@@ -62,11 +61,8 @@ typedef struct rxvt_term *rxvt_t;
 
 extern rxvt_t rxvt_current_term;
 
-#define SET_R(r) rxvt_current_term = (r)
+#define SET_R(r) rxvt_current_term = const_cast<rxvt_term *>(r)
 #define GET_R rxvt_current_term
-
-#define scrollbar_visible()    scrollBar.state
-#define menubar_visible()      menuBar.state
 
 typedef struct {
   int row;
@@ -92,10 +88,11 @@ struct line_t;
  *  ncol       : 1 <= ncol       <= MAX(tlen_t)
  *  nrow       : 1 <= nrow       <= MAX(int)
  *  saveLines  : 0 <= saveLines  <= MAX(int)
- *  total_rows : nrow + saveLines
- *  nsaved     : 0 <= nsaved     <= saveLines
  *  term_start : 0 <= term_start < saveLines
- *  view_start : 0 <= view_start < saveLines
+ *  total_rows : nrow + saveLines
+ *
+ *  top_row    : -saveLines <= top_row    <= 0
+ *  view_start : top_row    <= view_start <= 0
  *
  *          | most coordinates are stored relative to term_start,
  *  ROW_BUF | which is the first line of the terminal screen
@@ -103,9 +100,9 @@ struct line_t;
  *  |························= row_buf[1]
  *  |························= row_buf[2] etc.
  *  |
- *  +------------+···········= term_start - nsaved
+ *  +------------+···········= term_start + top_row
  *  | scrollback |                                      
- *  | scrollback +---------+·= term_start - view_start
+ *  | scrollback +---------+·= term_start + view_start
  *  | scrollback | display |
  *  | scrollback | display |
  *  +------------+·display·+·= term_start
@@ -134,9 +131,9 @@ struct TermWin_t {
   int            lineSpace;     /* number of extra pixels between rows      */
   int            saveLines;     /* number of lines that fit in scrollback   */
   int            total_rows;    /* total number of rows in this terminal    */
-  int            nsaved;        /* number of rows saved to scrollback       */
   int            term_start;    /* term lines start here                    */
   int            view_start;    /* scrollback view starts here              */
+  int            top_row;       /* topmost row index of scrollback          */
   Window         parent[6];     /* parent identifiers - we're parent[0]     */
   Window         vt;            /* vt100 window                             */
   GC             gc;            /* GC for drawing                           */
@@ -217,12 +214,6 @@ enum {
 /* ------------------------------------------------------------------------- */
 
 typedef struct {
-  short           state;
-  Window          win;
-  struct rxvt_drawable *drawable;
-} menuBar_t;
-
-typedef struct {
   char            state;        /* scrollbar state                          */
   char            init;         /* scrollbar has been initialised           */
   unsigned int    beg;          /* slider sub-window begin height           */
@@ -242,10 +233,8 @@ typedef struct {
 
 struct rxvt_vars : TermWin_t {
   scrollBar_t     scrollBar;
-  menuBar_t       menuBar;
   uint32_t        options;
   XSizeHints      szHint;
-  rxvt_display   *display;
   rxvt_color     *pix_colors;
   rxvt_color     *pix_colors_focused;
 #ifdef OFF_FOCUS_FADING
@@ -254,7 +243,6 @@ struct rxvt_vars : TermWin_t {
   short           numpix_colors;
   Cursor          TermWin_cursor;       /* cursor for vt window */
   int             sb_shadow;    /* scrollbar shadow width                    */
-  rxvt_ptytty     pty;
   int             numlock_state;
   line_t         *row_buf;      // all lines, scrollback + terminal, circular, followed by temp_buf
   line_t         *drawn_buf;    // text on screen
@@ -266,7 +254,6 @@ struct rxvt_vars : TermWin_t {
 };
 
 void rxvt_init ();
-bool rxvt_tainted ();
 
 #endif                          /* _RXVTLIB_H_ */
 

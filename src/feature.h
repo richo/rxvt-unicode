@@ -34,16 +34,41 @@
 # define XAPPLOADDIRLOCALE	X11LIBDIR "/%s/app-defaults"
 #endif
 
+/*-------------------------------SECURITY-------------------------------*/
+
+/*
+ * Default mode to restore when releasing the PTS device. It is relaxed to be
+ * compatible with most systems, change it to a more secure value if your
+ * system supports it (0640 for example).
+ */
+#define RESTORE_TTY_MODE 0666
+
+/*
+ * Define if you want to use a separate process for pty/tty handling
+ * when running setuid/setgid. You need this when making it setuid/setgid.
+ */
+#define PTYTTY_HELPER 1
+
 /*-----------------------SCREEN OPTIONS AND COLOURS---------------------*/
 
 /*
  * NOTE:
  *
- * Most of these configuration options have not been tested within the new
+ * Some of these configuration options have not been tested within the new
  * rxvt-unicode framework. Changing them should work, might have no effect,
  * destroy your disks or have any other effects. You may freely try (and
  * report bugs, too!), but don't _expect_ them to work.
  */
+
+/*
+ * The cursor blink interval, in seconds.
+ */
+#define CURSOR_BLINK_INTERVAL 0.5
+
+/*
+ * The text blink interval, in seconds.
+ */
+#define TEXT_BLINK_INTERVAL CURSOR_BLINK_INTERVAL
 
 /*
  * Avoid enabling the colour cursor (-cr, cursorColor, cursorColor2)
@@ -74,15 +99,16 @@
 /*
  * Define default colours for certain items.  If you have a low colour
  * display, then consider using colours which are already pre-allocated:
+ *
  *   Black		(#000000)
- *   Red3		(#CD0000)	+ these
- *   Green3		(#00CD00)	+ colours
- *   Yellow3		(#CDCD00)	+ are
- *   Blue3		(#0000CD)	+ not
- *   Magenta3		(#CD00CD)	+ pre-allocated
- *   Cyan3		(#00CDCD)	+ if
- *   AntiqueWhite	(#FAEBD7)	+ NO_BRIGHTCOLOR
- *   Grey25		(#404040)	+ defined
+ *   Red3		(#CD0000)
+ *   Green3		(#00CD00)
+ *   Yellow3		(#CDCD00)
+ *   Blue3		(#0000CD)
+ *   Magenta3		(#CD00CD)
+ *   Cyan3		(#00CDCD)
+ *   AntiqueWhite	(#FAEBD7)
+ *   Grey25		(#404040)
  *   Red		(#FF0000)
  *   Green		(#00FF00)
  *   Yellow		(#FFFF00)
@@ -92,10 +118,10 @@
  *   White		(#FFFFFF)
  */
 /* These colours MUST be defined */
-#define COLOR_FOREGROUND	"Black"
-#define COLOR_BACKGROUND	"White"
-#define COLOR_SCROLLBAR		"#B2B2B2"	/* scrollColor match Netscape */
-#define COLOR_SCROLLTROUGH	"#969696"
+#define COLOR_FOREGROUND	"rgb:00/00/00"
+#define COLOR_BACKGROUND	"rgb:ff/ff/ff"
+#define COLOR_SCROLLBAR		"rgb:b2/b2/b2"	/* scrollColor match Netscape */
+#define COLOR_SCROLLTROUGH	"rgb:96/96/96"
 
 /*
  * The cursor colours are special.  Be very careful about setting these:
@@ -122,11 +148,6 @@
  */
 /* #define ALLOW_132_MODE */
  
-/*
- * Add support for the Offix DND (Drag 'n' Drop) protocol
- */
-/* #define OFFIX_DND */
-
 /*---------------------------------KEYS---------------------------------*/
 
 /*
@@ -245,14 +266,9 @@
 
 /*--------------------------------MISC----------------------------------*/
 /*
- * Disable to reset tty device to pre-incovation state
+ * Only log in wtmp and lastlog files when we're a login shell (-ls option)
  */
-#define RESET_TTY_TO_COMMON_DEFAULTS
-
-/*
- * Only log in wtmp file when we're a login shell (-ls option)
- */
-#define WTMP_ONLY_ON_LOGIN
+#define LOG_ONLY_ON_LOGIN
 
 /*--------------------------------BELL----------------------------------*/
 /*
@@ -294,26 +310,6 @@
  * (Hops) draw an internal border line on inside edge of the scrollbar
  */
 /* #define SB_BORDER */
-
-/*------------------------------MENU BAR--------------------------------*/
-/*
- * Choose how many of (experimental) menuBars you want to be able to stack at
- * one time.
- *  A value of 1 disables menuBar stacking.
- *  A value of 0 disables menuBar all together.
- *  Note that the amount of memory overhead is the same for any value >= 2.
- */
-#define MENUBAR_MAX 16
-
-/*
- * Change the default shadow style
- */
-/* #define MENUBAR_SHADOW_IN */
-
-/*
- * Change the default shadow style
- */
-#define MENU_SHADOW_IN
 
 /*---------------------------MULTILINGUAL-------------------------------*/
 /*
@@ -371,20 +367,13 @@
 /*
  * Provide termcap/terminfo bw support (wrap backwards on cub1)
  */
-#define TERMCAP_HAS_BW
+#define TERMCAP_HAS_BW 1
 
 /*
- * Some (older, e.g. fvwm 2.2.2) window managers need some time when
- * updating window positions. If transparency isn't working correctly
- * then you might try out this one.
- */
-/* #define WAIT_FOR_WM */
-
-/*
- * The duration of the visual bell flash in µs. The default of 20ms
+ * The duration of the visual bell flash in s. The default of 20ms
  * corresponds to the delay given in the terminfo flash code.
  */
-#define VISUAL_BELL_DURATION 20000
+#define VISUAL_BELL_DURATION .020
 
 #endif
 

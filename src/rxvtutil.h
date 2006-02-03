@@ -1,12 +1,38 @@
 #ifndef RXVT_UTIL_H
 #define RXVT_UTIL_H
 
+#include <cstdlib>
 #include <cstring>
 
 #define PP_CONCAT_(a, b) a ## b
 #define PP_CONCAT(a, b) PP_CONCAT_(a, b)
 #define PP_STRINGIFY_(a) #a
 #define PP_STRINGIFY(a) PP_STRINGIFY_(a)
+
+// actually, some gcc-3.x versions work, too
+#define HAVE_GCC_BUILTINS (__GNUC__ >= 4)
+
+#ifndef __attribute__
+# if __GNUC__
+#  if (__GNUC__ == 2 && __GNUC_MINOR__ < 5) || (__GNUC__ < 2)
+#   define __attribute__(x)
+#  endif
+# endif
+# define __attribute__(x)
+#endif
+
+#define NORETURN __attribute__ ((noreturn))
+#define UNUSED   __attribute__ ((unused))
+#define CONST    __attribute__ ((const))
+
+// increases code size unless -fno-enforce-eh-specs
+#if __GNUC__
+# define NOTHROW
+# define THROW(x)
+#else
+# define NOTHROW  throw()
+# define THROW(x) throw x
+#endif
 
 extern class byteorder {
   static unsigned int e; // at least 32 bits
@@ -29,6 +55,26 @@ template<typename T, typename U, typename V> static inline T    clamp    (T  v, 
 template<typename T, typename U, typename V> static inline void clamp_it (T &v, U a, V b) {    v = v < (T)a ? a : v >(T)b ? b : v; }
 
 template<typename T, typename U> static inline void swap (T& a, U& b) { T t=a; a=(T)b; b=(U)t; }
+
+template<typename T> static inline T squared_diff (T a, T b) { return (a-b)*(a-b); }
+
+// linear interpolation
+template<typename T, typename U, typename P>
+static inline
+T lerp (T a, U b, P p)
+{
+  return (int(a) * int(p) + int(b) * int(100 - p)) / 100;
+}
+
+// some bit functions, xft fuck me plenty
+#if HAVE_GCC_BUILTINS
+static inline int ctz      (unsigned int x) CONST { return __builtin_ctz      (x); }
+static inline int popcount (unsigned int x) CONST { return __builtin_popcount (x); }
+#else
+// count trailing zero bits and count # of one bits
+int ctz      (unsigned int x) CONST;
+int popcount (unsigned int x) CONST;
+#endif
 
 // in range including end
 #define IN_RANGE_INC(val,beg,end) \
@@ -258,14 +304,14 @@ public:
     void erase (iterator first, iterator last)
     {
         if (last != first) {
-            memmove (first, last, (end ()-last)*sizeof (T));
+            memmove (first, last, (end () - last) * sizeof (T));
             _last -= last - first;
         }
     }
     void erase (iterator pos)
     {
         if (pos != end ()) {
-            memmove (pos, pos+1, (end ()- (pos+1))*sizeof (T));
+            memmove (pos, pos+1, (end () - (pos+1)) * sizeof (T));
             --_last;
         }
     }
@@ -393,9 +439,19 @@ struct stringvec : simplevec<char *>
   ~stringvec ()
   {
     for (char **c = begin (); c != end (); c++)
-      delete [] *c;
+      free (*c);
   }
 };
+
+// return a very temporary (and never deallocated) buffer. keep small.
+void *rxvt_temp_buf (int len);
+
+template<typename T>
+static inline T *
+rxvt_temp_buf (int len)
+{
+  return (T *)rxvt_temp_buf (len * sizeof (T));
+}
 
 #endif
 

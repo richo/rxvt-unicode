@@ -1,4 +1,7 @@
-/*--------------------------------*-C-*---------------------------------*
+// This file is part of libptytty. Do not make local modifications.
+// http://software.schmorp.de/pkg/libptytty
+
+/*----------------------------------------------------------------------*
  * File:	fdpass.C
  *----------------------------------------------------------------------*
  *
@@ -21,23 +24,21 @@
  *----------------------------------------------------------------------*/
 
 #include "../config.h"
-#include "rxvt.h"
 
-#if ENABLE_FRILLS && HAVE_UNIX_FDPASS
+#include <cstddef> // needed by broken bsds for NULL used in sys/uio.h
 
+#include <sys/uio.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 
-#include "fdpass.h"
-
-#include <cstdio> //d
+#include "libptytty.h"
 
 #ifndef CMSG_LEN // CMSG_SPACe && CMSG_LEN are rfc2292 extensions to unix
 # define CMSG_LEN(len) (sizeof (cmsghdr) + len)
 #endif
 
-int
-rxvt_send_fd (int socket, int fd)
+bool
+ptytty::send_fd (int socket, int fd)
 {
   msghdr msg;
   iovec iov;
@@ -63,11 +64,11 @@ rxvt_send_fd (int socket, int fd)
 
   msg.msg_controllen = cmsg->cmsg_len;
 
-  return sendmsg (socket, &msg, 0);
+  return sendmsg (socket, &msg, 0) >= 0;
 }
 
 int
-rxvt_recv_fd (int socket)
+ptytty::recv_fd (int socket)
 {
   msghdr msg;
   iovec iov;
@@ -101,6 +102,4 @@ rxvt_recv_fd (int socket)
 
   return *(int *)CMSG_DATA (cmsg);
 }
-
-#endif
 

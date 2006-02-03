@@ -1,10 +1,14 @@
-/*--------------------------------*-C-*---------------------------------*
+// This file is part of libptytty. Do not make local modifications.
+// http://software.schmorp.de/pkg/libptytty
+
+/*----------------------------------------------------------------------*
  * File:	ptytty.C
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
  * Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
  * Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2006      Emanuele Giaquinta <e.giaquinta@glauco.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,25 +25,22 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *---------------------------------------------------------------------*/
 
-#include "../config.h"		/* NECESSARY */
-#include "rxvt.h"
+#include "../config.h"
 
-# include <cstdlib>
-# include <cstring>
+#include "ptytty.h"
 
-#ifdef HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#ifdef HAVE_UNISTD_H
-# include <unistd.h>
-#endif
-#ifdef HAVE_FCNTL_H
-# include <fcntl.h>
-#endif
+#include <cstdlib>
+#include <cstring>
+#include <csignal>
+
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 #ifdef HAVE_SYS_IOCTL_H
 # include <sys/ioctl.h>
 #endif
-#if defined(PTYS_ARE_PTMX) && defined(HAVE_SYS_STROPTS_H)
+#if defined(HAVE_DEV_PTMX) && defined(HAVE_SYS_STROPTS_H)
 # include <sys/stropts.h>      /* for I_PUSH */
 #endif
 #ifdef HAVE_ISASTREAM
@@ -52,9 +53,13 @@
 #elif defined(HAVE_UTIL_H)
 # include <util.h>
 #endif
+#ifdef TTY_GID_SUPPORT
+#include <grp.h>
+#endif
 
 #include <cstdio>
-#include <grp.h>
+
+/////////////////////////////////////////////////////////////////////////////
 
 /* ------------------------------------------------------------------------- *
  *                  GET PSEUDO TELETYPE - MASTER AND SLAVE                   *
@@ -64,142 +69,122 @@
  * If successful, ttydev is set to the name of the slave device.
  * fd_tty _may_ also be set to an open fd to the slave device
  */
+#if defined(UNIX98_PTY)
 static int
 get_pty (int *fd_tty, char **ttydev)
 {
   int pfd;
 
-#ifdef PTYS_ARE_OPENPTY
-  char tty_name[sizeof "/dev/pts/????\0"];
+# if defined(HAVE_GETPT)
+  pfd = getpt();
+# elif defined(HAVE_POSIX_OPENPT)
+  pfd = posix_openpt (O_RDWR);
+# else
+  pfd = open (CLONE_DEVICE, O_RDWR | O_NOCTTY, 0);
+# endif
+  if (pfd >= 0)
+    {
+      if (grantpt (pfd) == 0	/* change slave permissions */
+          && unlockpt (pfd) == 0)
+        {	/* slave now unlocked */
+          *ttydev = strdup (ptsname (pfd));	/* get slave's name */
+          return pfd;
+        }
 
-  rxvt_privileges(RESTORE);
-  int res = openpty (&pfd, fd_tty, tty_name, NULL, NULL);
-  rxvt_privileges(IGNORE);
+      close (pfd);
+    }
 
+  return -1;
+}
+#elif defined(HAVE_OPENPTY)
+static int
+get_pty (int *fd_tty, char **ttydev)
+{
+  int pfd;
+  int res;
+  char tty_name[32];
+  
+  res = openpty (&pfd, fd_tty, tty_name, NULL, NULL);
   if (res != -1)
     {
       *ttydev = strdup (tty_name);
       return pfd;
     }
-#endif
 
-#ifdef PTYS_ARE__GETPTY
+  return -1;
+}
+#elif defined(HAVE__GETPTY)
+static int
+get_pty (int *fd_tty, char **ttydev)
+{
+  int pfd;
+
   *ttydev = _getpty (&pfd, O_RDWR | O_NONBLOCK | O_NOCTTY, 0622, 0);
   if (*ttydev != NULL)
     return pfd;
-#endif
 
-#if defined(HAVE_GRANTPT) && defined(HAVE_UNLOCKPT)
-# if defined(PTYS_ARE_POSIX) || defined(PTYS_ARE_PTMX)
+  return -1;
+}
+#elif defined(HAVE_DEV_PTC)
+static int
+get_pty (int *fd_tty, char **ttydev)
+{
+  int pfd;
 
-  {
-#  ifdef PTYS_ARE_POSIX
-    pfd = posix_openpt (O_RDWR);
-#  else
-    pfd = open ("/dev/ptmx", O_RDWR | O_NOCTTY, 0);
-#  endif
-
-    if (pfd >= 0)
-      {
-        if (grantpt (pfd) == 0	/* change slave permissions */
-            && unlockpt (pfd) == 0)
-          {	/* slave now unlocked */
-            *ttydev = strdup (ptsname (pfd));	/* get slave's name */
-            return pfd;
-          }
-        close (pfd);
-      }
-  }
-# endif
-#endif
-
-#ifdef PTYS_ARE_PTC
   if ((pfd = open ("/dev/ptc", O_RDWR | O_NOCTTY, 0)) >= 0)
     {
       *ttydev = strdup (ttyname (pfd));
       return pfd;
     }
-#endif
 
-#ifdef PTYS_ARE_CLONE
+  return -1;
+}
+#elif defined(HAVE_DEV_CLONE)
+static int
+get_pty (int *fd_tty, char **ttydev)
+{
+  int pfd;
+
   if ((pfd = open ("/dev/ptym/clone", O_RDWR | O_NOCTTY, 0)) >= 0)
     {
       *ttydev = strdup (ptsname (pfd));
       return pfd;
     }
-#endif
-
-#ifdef PTYS_ARE_NUMERIC
-  {
-    int idx;
-    char *c1, *c2;
-    char pty_name[] = "/dev/ptyp???";
-    char tty_name[] = "/dev/ttyp???";
-
-    c1 = &(pty_name[sizeof (pty_name) - 4]);
-    c2 = &(tty_name[sizeof (tty_name) - 4]);
-    for (idx = 0; idx < 256; idx++)
-      {
-        sprintf (c1, "%d", idx);
-        sprintf (c2, "%d", idx);
-        if (access (tty_name, F_OK) < 0)
-          {
-            idx = 256;
-            break;
-          }
-
-        if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) >= 0)
-          {
-            if (access (tty_name, R_OK | W_OK) == 0)
-              {
-                *ttydev = strdup (tty_name);
-                return pfd;
-              }
-
-            close (pfd);
-          }
-      }
-  }
-#endif
-
-#ifdef PTYS_ARE_SEARCHED
-  {
-    const char *c1, *c2;
-    char pty_name[] = "/dev/pty??";
-    char tty_name[] = "/dev/tty??";
-
-# ifndef PTYCHAR1
-#  define PTYCHAR1	"pqrstuvwxyz"
-# endif
-# ifndef PTYCHAR2
-#  define PTYCHAR2	"0123456789abcdef"
-# endif
-
-    for (c1 = PTYCHAR1; *c1; c1++)
-      {
-        pty_name[ (sizeof (pty_name) - 3)] =
-          tty_name[ (sizeof (pty_name) - 3)] = *c1;
-        for (c2 = PTYCHAR2; *c2; c2++)
-          {
-            pty_name[ (sizeof (pty_name) - 2)] =
-              tty_name[ (sizeof (pty_name) - 2)] = *c2;
-            if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) >= 0)
-              {
-                if (access (tty_name, R_OK | W_OK) == 0)
-                  {
-                    *ttydev = strdup (tty_name);
-                    return pfd;
-                  }
-
-                close (pfd);
-              }
-          }
-      }
-  }
-#endif
 
   return -1;
 }
+#else
+/* Based on the code in openssh/openbsd-compat/bsd-openpty.c */
+static int
+get_pty (int *fd_tty, char **ttydev)
+{
+  int pfd;
+  int i;
+  char pty_name[32];
+  char tty_name[32];
+  const char *majors = "pqrstuvwxyzabcde";
+  const char *minors = "0123456789abcdef";
+  for (i = 0; i < 256; i++)
+    {
+      snprintf(pty_name, 32, "/dev/pty%c%c", majors[i / 16], minors[i % 16]);
+      snprintf(tty_name, 32, "/dev/tty%c%c", majors[i / 16], minors[i % 16]);
+      if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) == -1)
+        {
+	  snprintf(pty_name, 32, "/dev/ptyp%d", i);
+	  snprintf(tty_name, 32, "/dev/ttyp%d", i);
+	  if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) == -1)
+	    continue;
+        }
+      if (access (tty_name, R_OK | W_OK) == 0)
+        {
+	  *ttydev = strdup (tty_name);
+	  return pfd;
+        }
+
+      close (pfd);
+    }
+}
+#endif
 
 /*----------------------------------------------------------------------*/
 /*
@@ -216,38 +201,11 @@ get_tty (char *ttydev)
  * Make our tty a controlling tty so that /dev/tty points to us
  */
 static int
-control_tty (int fd_tty, const char *ttydev)
+control_tty (int fd_tty)
 {
-#ifndef __QNX__
-  int fd;
-
-  /* ---------------------------------------- */
-# ifdef HAVE_SETSID
   setsid ();
-# endif
-# if defined(HAVE_SETPGID)
-  setpgid (0, 0);
-# elif defined(HAVE_SETPGRP)
-  setpgrp (0, 0);
-# endif
 
-  /* ---------------------------------------- */
-# ifdef TIOCNOTTY
-  fd = open ("/dev/tty", O_RDWR | O_NOCTTY);
-  if (fd >= 0)
-    {
-      ioctl (fd, TIOCNOTTY, NULL);	/* void tty associations */
-      close (fd);
-    }
-# endif
-
-  /* ---------------------------------------- */
-  fd = open ("/dev/tty", O_RDWR | O_NOCTTY);
-  if (fd >= 0)
-    close (fd);		/* ouch: still have controlling tty */
-
-  /* ---------------------------------------- */
-#if defined(PTYS_ARE_PTMX) && defined(I_PUSH)
+#if defined(HAVE_DEV_PTMX) && defined(I_PUSH)
   /*
    * Push STREAMS modules:
    *    ptem: pseudo-terminal hardware emulation module.
@@ -274,112 +232,20 @@ control_tty (int fd_tty, const char *ttydev)
       ioctl (fd_tty, I_PUSH, "ttcompat");
     }
 #endif
-  /* ---------------------------------------- */
-# if defined(TIOCSCTTY)
-  fd = ioctl (fd_tty, TIOCSCTTY, NULL);
-# elif defined(TIOCSETCTTY)
-  fd = ioctl (fd_tty, TIOCSETCTTY, NULL);
-# else
-  fd = open (ttydev, O_RDWR);
-  if (fd >= 0)
-    close (fd);
-# endif
-  /* ---------------------------------------- */
-  fd = open ("/dev/tty", O_WRONLY);
+
+  ioctl (fd_tty, TIOCSCTTY, NULL);
+
+  int fd = open ("/dev/tty", O_WRONLY);
   if (fd < 0)
-    return -1;		/* fatal */
+    return -1; /* fatal */
+
   close (fd);
-  /* ---------------------------------------- */
-#endif				/* ! __QNX__ */
 
   return 0;
 }
 
-#ifndef NO_SETOWNER_TTYDEV
-static struct ttyconf {
-  gid_t gid;
-  mode_t mode;
-
-  ttyconf ()
-    {
-#ifdef TTY_GID_SUPPORT
-      struct group *gr = getgrnam ("tty");
-
-      if (gr)
-        {           /* change group ownership of tty to "tty" */
-          mode = S_IRUSR | S_IWUSR | S_IWGRP;
-          gid = gr->gr_gid;
-        }
-      else
-#endif                          /* TTY_GID_SUPPORT */
-        {
-          mode = S_IRUSR | S_IWUSR | S_IWGRP | S_IWOTH;
-          gid = getgid ();
-        }
-    }
-} ttyconf;
-
 void
-rxvt_ptytty::privileges (rxvt_privaction action)
-{
-  if (!name || !*name)
-    return;
-
-  rxvt_privileges (RESTORE);
-
-  if (action == SAVE)
-    {
-# ifndef RESET_TTY_TO_COMMON_DEFAULTS
-      /* store original tty status for restoration rxvt_clean_exit () -- rgg 04/12/95 */
-      if (lstat (name, &savestat) < 0)       /* you lose out */
-        ;
-      else
-# endif
-        {
-          saved = true;
-          chown (name, getuid (), ttyconf.gid);      /* fail silently */
-          chmod (name, ttyconf.mode);
-# ifdef HAVE_REVOKE
-          revoke (name);
-# endif
-        }
-    }
-  else
-    {                    /* action == RESTORE */
-# ifndef RESET_TTY_TO_COMMON_DEFAULTS
-      if (saved)
-        {
-          chmod (name, savestat.st_mode);
-          chown (name, savestat.st_uid, savestat.st_gid);
-        }
-# else
-      chmod (name, (S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH | S_IWOTH));
-      chown (name, 0, 0);
-# endif
-
-    }
-
-  rxvt_privileges (IGNORE);
-}
-#endif
-
-rxvt_ptytty::rxvt_ptytty ()
-{
-  pty = tty = -1;
-  name = 0;
-#ifndef NO_SETOWNER_TTYDEV
-  saved = false;
-#endif
-}
-
-rxvt_ptytty::~rxvt_ptytty ()
-{
-  put ();
-}
-
-void
-
-rxvt_ptytty::close_tty ()
+ptytty::close_tty ()
 {
   if (tty < 0)
     return;
@@ -388,55 +254,14 @@ rxvt_ptytty::close_tty ()
   tty = -1;
 }
 
-void
-rxvt_ptytty::put ()
-{
-#ifndef NO_SETOWNER_TTYDEV
-  privileges (RESTORE);
-#endif
-
-  if (pty >= 0) close (pty);
-  close_tty ();
-  free (name);
-
-  pty = tty = -1;
-  name = 0;
-}
-
 bool
-rxvt_ptytty::make_controlling_tty ()
+ptytty::make_controlling_tty ()
 {
-  return control_tty (tty, name) >= 0;
-}
-
-bool
-rxvt_ptytty::get ()
-{
-  /* get master (pty) */
-  if ((pty = get_pty (&tty, &name)) < 0)
-    return false;
-
-  fcntl (pty, F_SETFL, O_NONBLOCK);
-
-  /* get slave (tty) */
-  if (tty < 0)
-    {
-#ifndef NO_SETOWNER_TTYDEV
-      privileges (SAVE);
-#endif
-
-      if ((tty = get_tty (name)) < 0)
-        {
-          put ();
-          return false;
-        }
-    }
-
-  return true;
+  return control_tty (tty) >= 0;
 }
 
 void
-rxvt_ptytty::set_utf8_mode (bool on)
+ptytty::set_utf8_mode (bool on)
 {
 #ifdef IUTF8
   if (pty < 0)
@@ -462,5 +287,89 @@ rxvt_ptytty::set_utf8_mode (bool on)
 #endif
 }
 
-/*----------------------- end-of-file (C source) -----------------------*/
+static struct ttyconf {
+  gid_t gid;
+  mode_t mode;
+
+  ttyconf ()
+    {
+#ifdef TTY_GID_SUPPORT
+      struct group *gr = getgrnam ("tty");
+
+      if (gr)
+        {           /* change group ownership of tty to "tty" */
+          mode = S_IRUSR | S_IWUSR | S_IWGRP;
+          gid = gr->gr_gid;
+        }
+      else
+#endif                          /* TTY_GID_SUPPORT */
+        {
+          mode = S_IRUSR | S_IWUSR | S_IWGRP | S_IWOTH;
+          gid = 0;
+        }
+    }
+} ttyconf;
+
+ptytty_unix::ptytty_unix ()
+{
+  name = 0;
+#if UTMP_SUPPORT
+  cmd_pid = 0;
+#endif
+}
+
+ptytty_unix::~ptytty_unix ()
+{
+#if UTMP_SUPPORT
+  logout ();
+#endif
+  put ();
+}
+
+void
+ptytty_unix::put ()
+{
+  chmod (name, RESTORE_TTY_MODE);
+  chown (name, 0, ttyconf.gid);
+
+  close_tty ();
+
+  if (pty >= 0)
+    close (pty);
+
+  free (name);
+
+  pty = tty = -1;
+  name = 0;
+}
+
+bool
+ptytty_unix::get ()
+{
+  /* get master (pty) */
+  if ((pty = get_pty (&tty, &name)) < 0)
+    return false;
+
+  fcntl (pty, F_SETFL, O_NONBLOCK);
+
+  /* get slave (tty) */
+  if (tty < 0)
+    {
+#ifndef NO_SETOWNER_TTYDEV
+      chown (name, getuid (), ttyconf.gid);      /* fail silently */
+      chmod (name, ttyconf.mode);
+# ifdef HAVE_REVOKE
+      revoke (name);
+# endif
+#endif
+
+      if ((tty = get_tty (name)) < 0)
+        {
+          put ();
+          return false;
+        }
+    }
+
+  return true;
+}
 

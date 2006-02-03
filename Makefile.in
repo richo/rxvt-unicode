@@ -1,5 +1,46 @@
 # ./Makefile.in			-*- Makefile -*-
-@MCOMMON@
+
+DATE=@DATE@
+VERSION=@VERSION@
+RXVTNAME=@RXVTNAME@
+SHELL = /bin/sh
+prefix = @prefix@
+exec_prefix = @exec_prefix@
+bindir = @bindir@
+libdir = @libdir@
+includedir = @includedir@
+man1dir = @mandir@/man1
+man1ext = 1
+man3dir = @mandir@/man3
+man3ext = 3
+man7dir = @mandir@/man7
+man7ext = 7
+CC = @CC@
+CXX = @CXX@
+CPP = @CPP@
+MV = @MV@
+CP = @CP@
+LN = @LN@
+SED = @SED@
+AWK = @AWK@
+ECHO = @ECHO@
+CMP = @CMP@
+TBL = @TBL@
+PERL = @PERL@
+INSTALL = @INSTALL@
+INSTALL_PROGRAM = @INSTALL@ -m 755
+INSTALL_DATA = @INSTALL@ -m 644
+CXXFLAGS = @CXXFLAGS@ 
+CPPFLAGS = @CPPFLAGS@ @XPM_CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+DEFS = @DEFS@
+LIBS = @LIBS@
+DINCLUDE = @DINCLUDE@
+DLIB = @DLIB@
+XINC = @X_CFLAGS@ @XPM_CFLAGS@
+XLIB = @X_LIBS@ @XPM_LIBS@ -lX11 @X_EXTRA_LIBS@
+COMPILE = $(CXX) $(DEFS) $(INCLUDES) $(CPPFLAGS) $(CXXFLAGS) $(DEBUG) $(DINCLUDE) $(XINC) -I$(basedir) -I$(srcdir) -I.
+LINK = @LINKER@ $(LDFLAGS)
 
 VERNAME = rxvt-unicode-$(VERSION)
 
@@ -15,13 +56,7 @@ allsubdirs = $(subdirs)
 
 DIST =	INSTALL README.configure configure Makefile Makefile.in ChangeLog
 
-DIST_CFG = autoconf/aclocal.m4 autoconf/xpm.m4 autoconf/libtool.m4 \
-	autoconf/configure.in  autoconf/config.h.in \
-	autoconf/Make.common.in autoconf/install-sh autoconf/mkinstalldirs \
-	autoconf/config.guess autoconf/config.sub \
-	autoconf/ltmain.sh \
-
-MKDIR = $(srcdir)/autoconf/mkinstalldirs
+MKDIR = $(srcdir)/mkinstalldirs
 
 #-------------------------------------------------------------------------
 
@@ -29,11 +64,11 @@ all allbin alldoc tags:
 	@for I in ${subdirs}; do (cd $$I; ${MAKE} $@) || exit 1; done
 
 realclean: clean
-	$(RMF) config.h config.status config.log libtool
+	rm -f config.h config.status config.log libtool
 
 clean:
-	$(RMF) *~ config.cache
-	$(RMF) -r autom4te.cache
+	rm -f *~ config.cache
+	rm -f -r autom4te.cache
 	@for I in ${subdirs}; do (cd $$I; ${MAKE} $@) || exit 1; done
 
 #
@@ -46,17 +81,15 @@ tests:
 	(cd src/test; ${MAKE} tests)
 
 #-------------------------------------------------------------------------
-configure: autoconf/configure.in autoconf/aclocal.m4 autoconf/config.h.in
-	cd $(srcdir);
-	./.prebuild
+configure: configure.ac aclocal.m4 config.h.in
+	cd $(srcdir); ./autogen.sh
 
 config.status:
 	if test -x config.status; then config.status --recheck; \
 	else $(SHELL) configure; fi
 
-autoconf/config.h.in: autoconf/configure.in
-	cd $(srcdir);
-	./.prebuild
+config.h.in: configure.ac
+	cd $(srcdir); ./autogen.sh
 
 installdirs:
 	$(MKDIR) $(DESTDIR)$(bindir)
@@ -79,9 +112,9 @@ cleandir: realclean
 # In that case most of those commands do nothing, except cleaning *~
 # and cleaning source links.
 distclean:
-	(cd $(srcdir); $(RMF) *~ config.cache config.h config.log config.status libtool)
+	(cd $(srcdir); rm -f *~ config.cache config.h config.log config.status libtool)
 	@for I in $(allsubdirs); do (cd $$I; $(MAKE) $@) || exit 1; done
-	(cd $(srcdir); $(RMF) Makefile autoconf/Make.common)
+	(cd $(srcdir); rm -f Makefile)
 
 distdir:
 	cd doc && $(MAKE) distdepend

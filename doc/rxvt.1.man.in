@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "rxvt 1"
-.TH rxvt 1 "2006-01-13" "7.0" "RXVT-UNICODE"
+.TH rxvt 1 "2006-01-31" "7.5" "RXVT-UNICODE"
 .SH "NAME"
 rxvt\-unicode (ouR XVT, unicode) \- (a VT102 emulator for the X window system)
 .SH "SYNOPSIS"
@@ -216,6 +216,10 @@ Print out a message describing available options.
 Attempt to open a window on the named X display (\fB\-d\fR still
 respected). In the absence of this option, the display specified by the
 \&\fB\s-1DISPLAY\s0\fR environment variable is used.
+.IP "\fB\-depth\fR \fIbitdepth\fR" 4
+.IX Item "-depth bitdepth"
+Compile \fIxft\fR: Attempt to find a visual with the given bit depth;
+resource \fBdepth\fR.
 .IP "\fB\-geometry\fR \fIgeom\fR" 4
 .IX Item "-geometry geom"
 Window geometry (\fB\-g\fR still respected); resource \fBgeometry\fR.
@@ -229,6 +233,9 @@ Turn on/off jump scrolling; resource \fBjumpScroll\fR.
 .IX Item "-ip|+ip | -tr|+tr"
 Turn on/off inheriting parent window's pixmap. Alternative form is
 \&\fB\-tr\fR; resource \fBinheritPixmap\fR.
+.Sp
+\&\fIPlease note that transparency of any kind if completely unsupported by
+the author. Don't bug him with installation questions!\fR
 .IP "\fB\-fade\fR \fInumber\fR" 4
 .IX Item "-fade number"
 Fade the text by the given percentage when focus is lost. Small values
@@ -237,7 +244,7 @@ colour; resource \fBfading\fR.
 .IP "\fB\-fadecolor\fR \fIcolour\fR" 4
 .IX Item "-fadecolor colour"
 Fade to this colour when fading is used (see \fB\-fade\fR). The default colour
-is black. resource \fBfadeColor\fR.
+is opaque black. resource \fBfadeColor\fR.
 .IP "\fB\-tint\fR \fIcolour\fR" 4
 .IX Item "-tint colour"
 Tint the transparent background pixmap with the given colour when
@@ -387,6 +394,10 @@ and \fB\-borderwidth\fR. See resource entry for limits; resource
 Compile \fIfrills\fR: Set \s-1MWM\s0 hints to request a borderless window, i.e.
 if honoured by the \s-1WM\s0, the rxvt-unicode window will not have window
 decorations; resource \fBborderLess\fR.
+.IP "\fB\-override\-redirect\fR" 4
+.IX Item "-override-redirect"
+Compile \fIfrills\fR: Sets override-redirect on the window; resource
+\&\fBoverride-redirect\fR.
 .IP "\fB\-sbg\fR" 4
 .IX Item "-sbg"
 Compile \fIfrills\fR: Disable the usage of the built-in block graphics/line
@@ -576,6 +587,10 @@ be used. Command-line arguments can be used to override resource
 settings. The following resources are supported (you might want to
 check the @@RXVT_NAME@@\fIperl\fR\|(3) manpage for additional settings by perl
 extensions not documented here):
+.IP "\fBdepth:\fR \fIbitdepth\fR" 4
+.IX Item "depth: bitdepth"
+Compile \fIxft\fR: Attempt to find a visual with the given bit depth;
+option \fB\-depth\fR.
 .IP "\fBgeometry:\fR \fIgeom\fR" 4
 .IX Item "geometry: geom"
 Create the window with the specified X window geometry [default 80x24];
@@ -647,6 +662,9 @@ quickly, fewer screen updates are performed [default]; option \fB\-j\fR.
 \&\fBTrue\fR: make the background inherit the parent windows' pixmap, giving
 artificial transparency. \fBFalse\fR: do not inherit the parent windows'
 pixmap.
+.Sp
+\&\fIPlease note that transparency of any kind if completely unsupported by
+the author. Don't bug him with installation questions!\fR
 .IP "\fBfading:\fR \fInumber\fR" 4
 .IX Item "fading: number"
 Fade the text by the given percentage when focus is lost; option \fB\-fade\fR.
@@ -684,16 +702,9 @@ of 1 displays the image without any scaling. A scale of 2 to 9
 specifies an integer number of images in that direction. No image will
 be magnified beyond 10 times its original size. The maximum permitted
 scale is 1000. [default 0x0+50+50]
-.IP "\fBmenu:\fR \fIfile[;tag]\fR" 4
-.IX Item "menu: file[;tag]"
-Read in the specified menu file (note the `.menu' extension is
-optional) and also optionally specify a starting tag to find. See the
-reference documentation for details on the syntax for the menuBar.
 .IP "\fBpath:\fR \fIpath\fR" 4
 .IX Item "path: path"
-Specify the colon-delimited search path for finding files (\s-1XPM\s0 and
-menus), in addition to the paths specified by the \fB\s-1RXVTPATH\s0\fR and
-\&\fB\s-1PATH\s0\fR environment variables.
+Specify the colon-delimited search path for finding \s-1XPM\s0 files.
 .IP "\fBfont:\fR \fIfontlist\fR" 4
 .IX Item "font: fontlist"
 Select the fonts to be used. This is a comma separated list of font names
@@ -713,7 +724,7 @@ fonts.
 For example, this font resource
 .Sp
 .Vb 5
-\&   URxvt*font: 9x15bold,\e
+\&   URxvt.font: 9x15bold,\e
 \&               -misc-fixed-bold-r-normal--15-140-75-75-c-90-iso10646-1,\e
 \&               -misc-fixed-medium-r-normal--15-140-75-75-c-90-iso10646-1, \e
 \&               [codeset=JISX0208]xft:Kochi Gothic:antialias=false, \e
@@ -813,7 +824,7 @@ The string will be interpreted as if typed into the shell as\-is.
 Example:
 .Sp
 .Vb 1
-\&   URxvt*print-pipe: cat > $(TMPDIR=$HOME mktemp urxvt.XXXXXX)
+\&   URxvt.print-pipe: cat > $(TMPDIR=$HOME mktemp urxvt.XXXXXX)
 .Ve
 .Sp
 This creates a new file in your home directory with the screen contents
@@ -924,8 +935,16 @@ pressed. If unset it will send the sequence traditionally associated
 with the \fBExecute\fR key.
 .IP "\fBcutchars:\fR \fIstring\fR" 4
 .IX Item "cutchars: string"
-The characters used as delimiters for double-click word selection. The
-built-in default:
+The characters used as delimiters for double-click word selection
+(whitespace delimiting is added automatically if resource is given).
+.Sp
+When the selection extension is in use (the default if compiled in, see
+the @@RXVT_NAME@@\fIperl\fR\|(3) manpage), a suitable regex using these characters
+will be created (if the resource exists, otherwise, no regex will be
+created). In this mode, characters outside \s-1ISO\-8859\-1\s0 can be used.
+.Sp
+When the selection extension is not used, only \s-1ISO\-8859\-1\s0 characters can
+be used. If not specified, the built-in default is used:
 .Sp
 \&\fB\s-1BACKSLASH\s0 `"'&()*,;<=>?@[]{|}\fR
 .IP "\fBpreeditType:\fR \fIstyle\fR" 4
@@ -965,8 +984,7 @@ sequences enabled by default, which doesn't make it safer, though).
 .Sp
 You can enable them by setting this boolean resource or specifying
 \&\fB\-insecure\fR as an option. At the moment, this enables display\-answer,
-locale, findfont, icon label and window title requests as well as dynamic
-menubar dispatch.
+locale, findfont, icon label and window title requests.
 .IP "\fBmodifier:\fR \fImodifier\fR" 4
 .IX Item "modifier: modifier"
 Set the key to be interpreted as the Meta key to: \fBalt\fR, \fBmeta\fR,
@@ -977,17 +995,17 @@ Set the key to be interpreted as the Meta key to: \fBalt\fR, \fBmeta\fR,
 Specify the reply rxvt-unicode sends to the shell when an \s-1ENQ\s0 (control\-E)
 character is passed through. It may contain escape values as described
 in the entry on \fBkeysym\fR following.
-.IP "\fBsecondaryScreen:\fR \fIbool\fR" 4
-.IX Item "secondaryScreen: bool"
+.IP "\fBsecondaryScreen:\fR \fIboolean\fR" 4
+.IX Item "secondaryScreen: boolean"
 Turn on/off secondary screen (default enabled).
-.IP "\fBsecondaryScroll:\fR \fIbool\fR" 4
-.IX Item "secondaryScroll: bool"
+.IP "\fBsecondaryScroll:\fR \fIboolean\fR" 4
+.IX Item "secondaryScroll: boolean"
 Turn on/off secondary screen scroll (default enabled). If the this
 option is enabled, scrolls on the secondary screen will change the
 scrollback buffer and switching to/from the secondary screen will
 instead scroll the screen up.
-.IP "\fBhold\fR: \fIbool\fR" 4
-.IX Item "hold: bool"
+.IP "\fBhold\fR: \fIboolean\fR" 4
+.IX Item "hold: boolean"
 Turn on/off hold window after exit support. If enabled, @@RXVT_NAME@@
 will not immediately destroy its window when the program executed within
 it exits. Instead, it will wait till it is being killed or closed by the
@@ -1158,7 +1176,11 @@ Specifies the program to be started with a \s-1URL\s0 argument. Used by the
 \&\f(CW\*(C`selection\-popup\*(C'\fR and \f(CW\*(C`mark\-urls\*(C'\fR perl extensions.
 .IP "\fBtransient-for\fR: \fIwindowid\fR" 4
 .IX Item "transient-for: windowid"
-Sets the \s-1WM_TRANSIENT_FOR\s0 property to the given window iw.
+Compile \fIfrills\fR: Sets the \s-1WM_TRANSIENT_FOR\s0 property to the given window id.
+.IP "\fBoverride-redirect\fR: \fIboolean\fR" 4
+.IX Item "override-redirect: boolean"
+Compile \fIfrills\fR: Sets override-redirect for the terminal window, making
+it almost invisible to window managers; option \fB\-override\-redirect\fR.
 .SH "THE SCROLLBAR"
 .IX Header "THE SCROLLBAR"
 Lines of text that scroll off the top of the \fB@@RXVT_NAME@@\fR window
@@ -1201,19 +1223,28 @@ selection, and trailing whitespace is visually underlined and removed from
 the selection.
 .IP "\fBInsertion\fR:" 4
 .IX Item "Insertion:"
-Pressing and releasing the Middle mouse button (or \fBShift-Insert\fR) in
-an \fB@@RXVT_NAME@@\fR window causes the current text selection to be
-inserted as if it had been typed on the keyboard.
+Pressing and releasing the Middle mouse button in an \fB@@RXVT_NAME@@\fR
+window causes the value of the \s-1PRIMARY\s0 selection (or \s-1CLIPBOARD\s0 with the
+Meta modifier) to be inserted as if it had been typed on the keyboard.
+.Sp
+Pressing \fBShift-Insert\fR causes the value of the \s-1PRIMARY\s0 selection to be
+inserted too.
 .SH "CHANGING FONTS"
 .IX Header "CHANGING FONTS"
 Changing fonts (or font sizes, respectively) via the keypad is not yet
 supported in rxvt\-unicode. Bug me if you need this.
 .PP
-You can, however, switch fonts at runtime using escape sequences (and
-therefore using the menubar), e.g.:
+You can, however, switch fonts at runtime using escape sequences, e.g.:
 .PP
 .Vb 1
 \&   printf '\ee]710;%s\e007' "9x15bold,xft:Kochi Gothic"
+.Ve
+.PP
+You can use keyboard shortcuts, too:
+.PP
+.Vb 2
+\&   URxvt.keysym.M-C-1: command:\e033]710;suxuseuro\e007\e033]711;suxuseuro\e007
+\&   URxvt.keysym.M-C-2: command:\e033]710;9x15bold\e007\e033]711;9x15bold\e007
 .Ve
 .PP
 rxvt-unicode will automatically re-apply these fonts to the output so far.
@@ -1284,7 +1315,7 @@ on some systems or setgid to root or to some other group on others.
 In addition to the default foreground and background colours,
 \&\fB@@RXVT_NAME@@\fR can display up to 16 colours (8 \s-1ANSI\s0 colours plus
 high-intensity bold/blink versions of the same). Here is a list of the
-colours with their \fBrgb.txt\fR names.
+colours with their names.
 .TS
 l l l .
 color0	(black)	= Black
@@ -1321,6 +1352,29 @@ been specified. For example,
 .IX Item "@@RXVT_NAME@@ -fg Black -bg White -rv"
 would yield White on Black, while on \fIxterm\fR(1) it would yield Black
 on White.
+.Sh "\s-1ALPHA\s0 \s-1CHANNEL\s0 \s-1SUPPORT\s0"
+.IX Subsection "ALPHA CHANNEL SUPPORT"
+If Xft support has been compiled in and as long as Xft/Xrender/X don't get
+their act together, rxvt-unicode will support \f(CW\*(C`rgba:rrrr/gggg/bbbb/aaaa\*(C'\fR
+(recommended, but \fB\s-1MUST\s0\fR have 4 digits/component) colour specifications,
+in addition to the ones provided by X, where the additional A component
+specifies opacity (alpha) values. The minimum value of \f(CW0\fR is completely
+transparent). You can also prefix any color with \f(CW\*(C`[a]\*(C'\fR, where \f(CW\*(C`a\*(C'\fR is on
+to four hex digits specifiying the opacity value.
+.PP
+You probably need to specify \fB\*(L"\-depth 32\*(R"\fR, too, and have the luck that
+your X\-server uses \s-1ARGB\s0 pixel layout, as X is far from just supporting
+\&\s-1ARGB\s0 visuals out of the box, and rxvt-unicode just fudges around.
+.PP
+For example, the following selects an almost completely transparent red
+background, and an almost opaque pink foreground:
+.PP
+.Vb 1
+\&   @@RXVT_NAME@@ -depth 32 -bg rgba:0000/0000/0000/2222 -fg "[e]pink"
+.Ve
+.PP
+\&\fIPlease note that transparency of any kind if completely unsupported by
+the author. Don't bug him with installation questions!\fR
 .SH "ENVIRONMENT"
 .IX Header "ENVIRONMENT"
 \&\fB@@RXVT_NAME@@\fR sets and/or uses the following environment variables:
@@ -1358,13 +1412,6 @@ display in it's child processes.
 .IP "\fB\s-1SHELL\s0\fR" 4
 .IX Item "SHELL"
 The shell to be used for command execution, defaults to \f(CW\*(C`/bin/sh\*(C'\fR.
-.IP "\fB\s-1RXVTPATH\s0\fR" 4
-.IX Item "RXVTPATH"
-The path where @@RXVT_NAME@@ looks for support files such as menu and xpm
-files.
-.IP "\fB\s-1PATH\s0\fR" 4
-.IX Item "PATH"
-Used in the same way as \f(CW\*(C`RXVTPATH\*(C'\fR.
 .IP "\fB\s-1RXVT_SOCKET\s0\fR" 4
 .IX Item "RXVT_SOCKET"
 The unix domain socket path used by @@RXVT_NAME@@c(1) and
@@ -1419,12 +1466,15 @@ Project Coordinator (changes.txt 2.11 to 2.21)
 Project Coordinator (changes.txt 2.21a to 2.4.5)
 .IP "Geoff Wing <gcw@pobox.com>" 4
 .IX Item "Geoff Wing <gcw@pobox.com>"
-Rewrote screen display and text selection routines. Project Coordinator
-(changes.txt 2.4.6 \- rxvt\-unicode)
+Rewrote screen display and text selection routines.
+.Sp
+Project Coordinator (changes.txt 2.4.6 \- rxvt\-unicode)
 .IP "Marc Alexander Lehmann <rxvt\-unicode@schmorp.de>" 4
 .IX Item "Marc Alexander Lehmann <rxvt-unicode@schmorp.de>"
-Forked rxvt\-unicode, rewrote most of the display code and internal
-character handling to store text in unicode, improve xterm
-compatibility and apply numerous other bugfixes and extensions.
+Forked rxvt\-unicode, unicode support, rewrote almost all the code, perl
+extension, random hacks, numerous bugfixes and extensions.
 .Sp
 Project Coordinator (Changes 1.0 \-)
+.IP "Emanuele Giaquinta <e.giaquinta@glauco.it>" 4
+.IX Item "Emanuele Giaquinta <e.giaquinta@glauco.it>"
+Pty/tty/utmp/wtmp rewrite, lots of random hacking and bugfixing.
