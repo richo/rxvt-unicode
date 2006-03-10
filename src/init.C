@@ -1,4 +1,4 @@
-/*--------------------------------*-C-*---------------------------------*
+/*----------------------------------------------------------------------*
  * File:        init.C
  *----------------------------------------------------------------------*
  *
@@ -260,10 +260,10 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   const char **cmd_argv, **r_argv;
 
   /*
-   * Look for -exec option.  Find => split and make cmd_argv[] of command args
+   * Look for -e option. Find => split and make cmd_argv[] of command args
    */
   for (r_argc = 0; r_argc < argc; r_argc++)
-    if (!strcmp (argv[r_argc], "-e") || !strcmp (argv[r_argc], "-exec"))
+    if (!strcmp (argv[r_argc], "-e"))
       break;
 
   r_argv = (const char **)rxvt_malloc (sizeof (char *) * (r_argc + 1));
@@ -299,6 +299,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   if (!(display = displays.get (rs[Rs_display_name])))
     rxvt_fatal ("can't open display %s, aborting.\n", rs[Rs_display_name]);
 
+  // using a local pointer decreases code size a lot
   xa = display->xa;
 
 #if XFT
@@ -311,6 +312,10 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   extract_resources ();
 
   free (r_argv);
+
+  for (int i = NUM_RESOURCES; i--; )
+    if (rs [i] == resval_undef)
+      rs [i] = 0;
 
 #if ENABLE_PERL
   if (!rs[Rs_perl_ext_1])
@@ -423,6 +428,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     {
       if (!rs[Rs_color + Color_fg])
         rs[Rs_color + Color_fg] = def_colorName[Color_bg];
+
       if (!rs[Rs_color + Color_bg])
         rs[Rs_color + Color_bg] = def_colorName[Color_fg];
     }
@@ -484,7 +490,7 @@ rxvt_term::init_env ()
 
   if (val == NULL)
 #endif                          /* DISPLAY_IS_IP */
-    val = XDisplayString (xdisp);
+    val = XDisplayString (dpy);
 
   if (rs[Rs_display_name] == NULL)
     rs[Rs_display_name] = val;   /* use broken `:0' value */
@@ -657,62 +663,58 @@ rxvt_term::Get_Colours ()
   
   for (i = 0; i < (depth <= 2 ? 2 : NRS_COLORS); i++)
     {
-      rxvt_color xcol;
+      const char *name = rs[Rs_color + i];
 
-      if (!rs[Rs_color + i])
+      if (!name)
         continue;
 
-      if (!set_color (xcol, rs[Rs_color + i]))
+      rxvt_color xcol;
+
+      if (!set_color (xcol, name))
         {
 #ifndef XTERM_REVERSE_VIDEO
           if (i < 2 && OPTION (Opt_reverseVideo))
-            rs[Rs_color + i] = def_colorName[!i];
+            name = def_colorName [1 - i];
           else
 #endif
-            rs[Rs_color + i] = def_colorName[i];
+            name = def_colorName [i];
 
-          if (!rs[Rs_color + i])
+          if (!name)
             continue;
 
-          if (!set_color (xcol, rs[Rs_color + i]))
+          if (!set_color (xcol, name))
             {
               switch (i)
                 {
                   case Color_fg:
                   case Color_bg:
-                    /* fatal: need bg/fg color */
                     rxvt_warn ("unable to get foreground/background colour, continuing.\n");
+                    name = "";
                     break;
 #ifndef NO_CURSORCOLOR
                   case Color_cursor2:
-                    xcol = pix_colors[Color_fg];
-                    break;
-#endif                          /* ! NO_CURSORCOLOR */
+#endif
                   case Color_pointer_fg:
-                    xcol = pix_colors[Color_fg];
+                    name = rs[Rs_color + Color_fg];
+                    xcol.set (this, name);
                     break;
                   default:
-                    xcol = pix_colors[Color_bg];      /* None */
+                    name = rs[Rs_color + Color_bg];
+                    xcol.set (this, name);
                     break;
                 }
             }
         }
 
       pix_colors[i] = xcol;
-      SET_PIXCOLOR (i);
+      rs[Rs_color + i] = name;
     }
-
-#ifdef OFF_FOCUS_FADING
-  if (rs[Rs_fade])
-    for (i = 0; i < (depth <= 2 ? 2 : NRS_COLORS); i++)
-      pix_colors_unfocused[i] = pix_colors_focused[i].fade (this, atoi (rs[Rs_fade]), pix_colors[Color_fade]);
-#endif
 
   if (depth <= 2)
     {
-      if (!rs[Rs_color + Color_pointer_fg]) pix_colors[Color_pointer_fg] = pix_colors[Color_fg];
-      if (!rs[Rs_color + Color_pointer_bg]) pix_colors[Color_pointer_bg] = pix_colors[Color_bg];
-      if (!rs[Rs_color + Color_border]    ) pix_colors[Color_border]     = pix_colors[Color_fg];
+      if (!rs[Rs_color + Color_pointer_fg]) alias_color (Color_pointer_fg, Color_fg);
+      if (!rs[Rs_color + Color_pointer_bg]) alias_color (Color_pointer_bg, Color_bg);
+      if (!rs[Rs_color + Color_border]    ) alias_color (Color_border,     Color_fg);
     }
 
   /*
@@ -722,44 +724,41 @@ rxvt_term::Get_Colours ()
    * from the fvwm window manager.
    */
 #ifdef KEEP_SCROLLCOLOR
-
   if (depth <= 2)
     {
       /* Monochrome */
-      pix_colors[Color_scroll]       = pix_colors[Color_fg];
-      pix_colors[Color_topShadow]    = pix_colors[Color_bg];
-      pix_colors[Color_bottomShadow] = pix_colors[Color_bg];
+      alias_color (Color_scroll,       Color_fg);
+      alias_color (Color_topShadow,    Color_bg);
+      alias_color (Color_bottomShadow, Color_bg);
     }
   else
     {
-      rxvt_color xcol[2];
-      /* xcol[0] == white
-       * xcol[1] == top shadow
-       * xcol[2] == bot shadow */
+      pix_colors [Color_scroll].fade (this, 50, pix_colors [Color_bottomShadow]);
 
-      xcol[1] = pix_colors[Color_scroll];
-      xcol[0].set (this, rxvt_rgba (rxvt_rgba::MAX_CC, rxvt_rgba::MAX_CC, rxvt_rgba::MAX_CC));
-
-      rxvt_rgba c0, c1;
-
-      xcol[0].get (this, c0);
-      xcol[1].get (this, c1);
-
-      pix_colors[Color_bottomShadow] = xcol[1].fade (this, 50);
+      rgba cscroll;
+      pix_colors [Color_scroll].get (cscroll);
 
       /* topShadowColor */
-      if (!xcol[1].set (this,
-                        rxvt_rgba (
-                          min (c0.r, max (c1.r / 5, c1.r) * 7 / 5),
-                          min (c0.g, max (c1.g / 5, c1.g) * 7 / 5),
-                          min (c0.b, max (c1.b / 5, c1.b) * 7 / 5),
-                          c1.a) // pa1 vs. pa0: arbitrary
-                        ));
-        xcol[1] = pix_colors[Color_White];
-
-      pix_colors[Color_topShadow] = xcol[1];
+      if (!pix_colors[Color_topShadow].set (this,
+                       rgba (
+                         min ((int)rgba::MAX_CC, max (cscroll.r / 5, cscroll.r) * 7 / 5),
+                         min ((int)rgba::MAX_CC, max (cscroll.g / 5, cscroll.g) * 7 / 5),
+                         min ((int)rgba::MAX_CC, max (cscroll.b / 5, cscroll.b) * 7 / 5),
+                         cscroll.a)
+                       ))
+        alias_color (Color_topShadow, Color_White);
     }
 #endif                          /* KEEP_SCROLLCOLOR */
+
+#ifdef OFF_FOCUS_FADING
+  if (rs[Rs_fade])
+    for (i = 0; i < (depth <= 2 ? 2 : NRS_COLORS); i++)
+      {
+        rgba c;
+        pix_colors [Color_fade].get (c);
+        pix_colors_focused [i].fade (this, atoi (rs[Rs_fade]), pix_colors_unfocused[i],c);
+      }
+#endif
 }
 
 /*----------------------------------------------------------------------*/
@@ -808,7 +807,7 @@ rxvt_term::get_ourmods ()
       && strcasecmp (rsmod, "mod1") >= 0 && strcasecmp (rsmod, "mod5") <= 0)
     requestedmeta = rsmod[3] - '0';
 
-  map = XGetModifierMapping (xdisp);
+  map = XGetModifierMapping (dpy);
   kc = map->modifiermap;
 
   for (i = 1; i < 6; i++)
@@ -820,7 +819,7 @@ rxvt_term::get_ourmods ()
           if (kc[k] == 0)
             break;
 
-          switch (XKeycodeToKeysym (xdisp, kc[k], 0))
+          switch (XKeycodeToKeysym (dpy, kc[k], 0))
             {
               case XK_Num_Lock:
                 ModNumLockMask = modmasks[i - 1];
@@ -886,7 +885,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   XSetWindowAttributes attributes;
   Window top, parent;
 
-  dLocal (Display *, xdisp);
+  dLocal (Display *, dpy);
 
   /* grab colors before netscape does */
   Get_Colours ();
@@ -901,7 +900,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 #if ENABLE_FRILLS
   if (OPTION (Opt_borderLess))
     {
-      if (XInternAtom (xdisp, "_MOTIF_WM_INFO", True) == None)
+      if (XInternAtom (dpy, "_MOTIF_WM_INFO", True) == None)
         {
           /*     print_warning("Window Manager does not support MWM hints.  Bypassing window manager control for borderless window.\n");*/
           attributes.override_redirect = true;
@@ -924,7 +923,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
       parent = strtol (rs[Rs_embed], 0, 0);
 
-      if (!XGetWindowAttributes (xdisp, parent, &wattr))
+      if (!XGetWindowAttributes (dpy, parent, &wattr))
         rxvt_fatal ("invalid window-id specified with -embed, aborting.\n");
 
       window_calc (wattr.width, wattr.height);
@@ -938,7 +937,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   attributes.border_pixel     = pix_colors_focused [Color_border];
   attributes.colormap         = cmap;
 
-  top = XCreateWindow (xdisp, parent,
+  top = XCreateWindow (dpy, parent,
                        szHint.x, szHint.y,
                        szHint.width, szHint.height,
                        ext_bwidth,
@@ -962,12 +961,12 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   wmHint.initial_state = OPTION (Opt_iconic) ? IconicState : NormalState;
   wmHint.window_group  = top;
 
-  XmbSetWMProperties (xdisp, top, NULL, NULL, (char **)argv, argc,
+  XmbSetWMProperties (dpy, top, NULL, NULL, (char **)argv, argc,
                       &szHint, &wmHint, &classHint);
 
 #if ENABLE_FRILLS
   if (mwmhints.flags)
-    XChangeProperty (xdisp, top, xa[XA_MOTIF_WM_HINTS], xa[XA_MOTIF_WM_HINTS], 32,
+    XChangeProperty (dpy, top, xa[XA_MOTIF_WM_HINTS], xa[XA_MOTIF_WM_HINTS], 32,
                      PropModeReplace, (unsigned char *)&mwmhints, PROP_MWM_HINTS_ELEMENTS);
 #endif
 
@@ -978,24 +977,24 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 #endif
   };
 
-  XSetWMProtocols (xdisp, top, protocols, sizeof (protocols) / sizeof (protocols[0]));
+  XSetWMProtocols (dpy, top, protocols, sizeof (protocols) / sizeof (protocols[0]));
 
 #if ENABLE_FRILLS
   if (rs[Rs_transient_for])
-    XSetTransientForHint (xdisp, top, (Window)strtol (rs[Rs_transient_for], 0, 0));
+    XSetTransientForHint (dpy, top, (Window)strtol (rs[Rs_transient_for], 0, 0));
 #endif
 
 #if ENABLE_EWMH
   long pid = getpid ();
 
-  XChangeProperty (xdisp, top,
+  XChangeProperty (dpy, top,
                    xa[XA_NET_WM_PID], XA_CARDINAL, 32,
                    PropModeReplace, (unsigned char *)&pid, 1);
 
   // _NET_WM_WINDOW_TYPE is NORMAL, which is the default
 #endif
 
-  XSelectInput (xdisp, top,
+  XSelectInput (dpy, top,
                 KeyPressMask
 #if (MOUSE_WHEEL && MOUSE_SLIP_WHEELING) || ENABLE_FRILLS || ISO_14755
                 | KeyReleaseMask
@@ -1006,15 +1005,15 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   termwin_ev.start (display, top);
 
   /* vt cursor: Black-on-White is standard, but this is more popular */
-  TermWin_cursor = XCreateFontCursor (xdisp, XC_xterm);
+  TermWin_cursor = XCreateFontCursor (dpy, XC_xterm);
 
 #ifdef HAVE_SCROLLBARS
   /* cursor scrollBar: Black-on-White */
-  leftptr_cursor = XCreateFontCursor (xdisp, XC_left_ptr);
+  leftptr_cursor = XCreateFontCursor (dpy, XC_left_ptr);
 #endif
 
   /* the vt window */
-  vt = XCreateSimpleWindow (xdisp, top,
+  vt = XCreateSimpleWindow (dpy, top,
                             window_vt_x, window_vt_y,
                             width, height,
                             0,
@@ -1022,7 +1021,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
                             pix_colors_focused[Color_bg]);
 
   attributes.bit_gravity = NorthWestGravity;
-  XChangeWindowAttributes (xdisp, vt, CWBitGravity, &attributes);
+  XChangeWindowAttributes (dpy, vt, CWBitGravity, &attributes);
 
   vt_emask = ExposureMask | ButtonPressMask | ButtonReleaseMask | PropertyChangeMask;
 
@@ -1055,9 +1054,9 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   /* graphics context for the vt window */
   gcvalue.foreground         = pix_colors[Color_fg];
   gcvalue.background         = pix_colors[Color_bg];
-  gcvalue.graphics_exposures = 1;
+  gcvalue.graphics_exposures = 0;
 
-  gc = XCreateGC (xdisp, vt,
+  gc = XCreateGC (dpy, vt,
                   GCForeground | GCBackground | GCGraphicsExposures,
                   &gcvalue);
 
@@ -1065,11 +1064,11 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
 #ifdef RXVT_SCROLLBAR
   gcvalue.foreground = pix_colors[Color_topShadow];
-  topShadowGC = XCreateGC (xdisp, vt, GCForeground, &gcvalue);
+  topShadowGC = XCreateGC (dpy, vt, GCForeground, &gcvalue);
   gcvalue.foreground = pix_colors[Color_bottomShadow];
-  botShadowGC = XCreateGC (xdisp, vt, GCForeground, &gcvalue);
+  botShadowGC = XCreateGC (dpy, vt, GCForeground, &gcvalue);
   gcvalue.foreground = pix_colors[ (depth <= 2 ? Color_fg : Color_scroll)];
-  scrollbarGC = XCreateGC (xdisp, vt, GCForeground, &gcvalue);
+  scrollbarGC = XCreateGC (dpy, vt, GCForeground, &gcvalue);
 #endif
 
 #ifdef OFF_FOCUS_FADING

@@ -1,21 +1,77 @@
 rxvt-unicode changelog <= google-friendly title
 
+TODO: xcopyarea pass broken, fix and improve
 TODO: event mechanism that replaces on_keyboard_command with something more scalable.
 TODO: overlays collide with the way the out-of-focus cursor is being drawn
-TODO: simplify selection_request and make it callable from perl.
 TODO: split perl documentation and urxvt.pm into separate files
 TODO: harmonize --disable-options into position-dependent options.
-TODO: "slow" rendering mode for bidi and scripts
+TODO: "slow" rendering mode for bidi and scripts, pango!
 TODO: read property sequence is broken with respect to utf-8 etc.
+TODO: slow drag selection on remote display - other things seem fast (rxvt illness, motion hints?)
+TODO: default selection should handle = better
 WISH: look into XAddConnectionWatch, does anybody need that?
 WISH: anyevent mouse notification / manage MotionMask better.
 WISH: http://www120.pair.com/mccarthy/nextstep/intro.htmld/Workspace.html is the correct nextstep look.
 DUMB: support tex fonts
 
-THINK: struct passwd *userinfo; /* defined in pwd.h + if ((userinfo = getpwuid(getuid())) != NULL) + shell = strdup(userinfo->pw_shell); /* retrieve current shell */ 
+7.7  Tue Feb 21 12:32:49 CET 2006
+	- use double-buffered drawing (xft fonts only). On many driver/hardware
+          combination this actually increases xft drawing speed, at the expense
+          of more network bandwidth and slight nausea on the side of the author.
+	- readline perl extension now requires shift-click instead of a normal
+          click, and eats the click.
+        - tabbed perl extension now supports -e.
+        - disabled graphics-exposures on the main drawing GC, report any
+          refresh bugs please.
+	- improve property handling for -pe tabbed: avoid unnecessary property
+          changes (for kde's benefit) at the expense of extra round-trips,
+          improve size hint setting.
+        - modified XIM according to a patch sent by Takano Akio that sets
+          the preedit rectangle for OverTheSpot, which helps some input methods
+          to correctly position their preedit window.
+        - un-optimise the line clearing on newly scrolled-in lines a bit: the
+          former reasoning was that any fg colour on default bg looks the same
+          in empts spaces, but thats not true when reversing (e.g. selection),
+          so also check for matching fg colours. This fixes the problem where
+          selecting newly scrolled-in lines would exhibit wrong colours.
+        - fix a bug in the perl interface causing focus in events to generate
+          focus out perl events, causing bad focus effects with -pe tabbed.
+        - fix a race resulting in a crash on exiting.
+        - fix a with --disable-xft that caused xfreecolors to be called on
+          colors never allocated, resulting in aborts (reported by Paco-Paco).
+        - resources on non-initial screens weren't refetched correctly
+          (reported by Paco-Paco).
+        - fix a bug in xcopyarea pass and _disable_ it, as it seems not to be
+          working in either rxvt-unicode nor in the original rxvt.
+        - removed undocumented -exec alias for the -e option.
 
-TODO: xim "how to" faq entry
-TODO: reorganize faq
+7.6  Fri Feb 10 08:52:36 CET 2006
+	- changed interpretation of [alpha] colour prefix.
+        - +option now really sets the option to default, instead of using the
+          resource value.
+        - options that require an argument now really _require_ an argument.
+        - the tabbed extension now forwards focus and keys events to th
+          relevant tab window.
+        - tab colours are now configurable and have sensible defaults
+          (initial patch by hednod).
+        - option menu is extendable, readline, selection and
+          selection-autotransform can now be disabled/enabled at runtime.
+        - forcing a configure event to tabbed subwindows with -pe tabbed, for
+          the benefit of automove-background.
+        - the automove-background extension added a wrong constant offset.
+        - force refresh of XA_RESOURCE_STRING on virtual reconnect.
+        - return exit status 2 in urxvtc when urxvtd couldn't be contacted.
+        - the linux yield hack is back, now using usleep, and enabled only on
+          __linux__.
+        - further round trip eliminations in the !XFT case by remembering
+          the colour components.
+        - plain scrollbar works better with -sr.
+        - fixed half-shadow scrollbar look.
+        - more colour rtt optimisations.
+        - properly(?) free colours on window close.
+        - reorganised the FAQ into multiple sections.
+        - add ISO646.1991-IRV to the list of supported codesets.
+        - minor libptytty update.
 
 7.5  Tue Jan 31 15:15:43 CET 2006
         - further improvements to the careful mode detection, and font width

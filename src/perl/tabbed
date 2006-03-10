@@ -6,12 +6,12 @@ sub refresh {
    my $ncol = $self->ncol;
 
    my $text = " " x $ncol;
-   my $rend = [(urxvt::DEFAULT_RSTYLE | urxvt::RS_RVid) x $ncol];
+   my $rend = [($self->{rs_tabbar}) x $ncol];
 
    my @ofs;
 
    substr $text, 0, 7, "[NEW] |";
-   @$rend[0 .. 5] = (urxvt::OVERLAY_RSTYLE) x 6;
+   @$rend[0 .. 5] = ($self->{rs_tab}) x 6;
    push @ofs, [0, 6, sub { $_[0]->new_tab }];
 
    my $ofs = 7;
@@ -27,7 +27,7 @@ sub refresh {
       my $len = length $txt;
 
       substr $text, $ofs, $len + 1, "$txt|";
-      @$rend[$ofs .. $ofs + $len - 1] = (urxvt::OVERLAY_RSTYLE) x $len
+      @$rend[$ofs .. $ofs + $len - 1] = ($self->{rs_tab}) x $len
          if $tab == $self->{cur};
 
       push @ofs, [ $ofs, $ofs + $len, sub { $_[0]->make_current ($tab) } ];
@@ -44,7 +44,7 @@ sub refresh {
 }
 
 sub new_tab {
-   my ($self) = @_;
+   my ($self, @argv) = @_;
 
    my $offset = $self->fheight;
 
@@ -65,6 +65,7 @@ sub new_tab {
    my $term = new urxvt::term
       $self->env, $urxvt::RXVTNAME,
       -embed => $self->parent,
+      @argv,
    ;
 }
 
@@ -73,11 +74,23 @@ sub configure {
 
    my $tab = $self->{cur};
 
+   # this is an extremely dirty way to force a configurenotify, but who cares
+   $tab->XMoveResizeWindow (
+      $tab->parent,
+      0, $self->{tabheight} + 1,
+      $self->width, $self->height - $self->{tabheight}
+   );
    $tab->XMoveResizeWindow (
       $tab->parent,
       0, $self->{tabheight},
       $self->width, $self->height - $self->{tabheight}
    );
+}
+
+sub on_resize_all_windows {
+   my ($self, $width, $height) = @_;
+
+   1
 }
 
 sub copy_properties {
@@ -88,6 +101,10 @@ sub copy_properties {
 
    my %our_props = map +($_ => undef), $self->XListProperties ($self->parent);
 
+   delete $our_props{$self->XInternAtom ($_)}
+      for qw(WM_STATE WM_ICON_SIZE
+             _NET_WM_VISIBLE_NAME _NET_WM_VISIBLE_ICON_NAME _NET_WM_ICON_GEOMETRY _NET_FRAME_EXTENTS);
+
    for my $atom ($tab->XListProperties ($tab->parent)) {
       my ($type, $format, $items) = $self->XGetWindowProperty ($tab->parent, $atom);
       
@@ -95,12 +112,17 @@ sub copy_properties {
 
       if ($atom == $wm_normal_hints) {
          my (@hints) = unpack "l!*", $items;
-
+      
          $hints[$_] += $self->{tabheight} for (4, 6, 16);
-
+      
          $items = pack "l!*", @hints;
       }
-      $self->XChangeWindowProperty ($self->parent, $atom, $type, $format, $items);
+
+      my ($dtype, $dformat, $ditems) = $self->XGetWindowProperty ($self->parent, $atom);
+
+      if ($dtype != $type or $dformat != $format or $ditems ne $items) {
+         $self->XChangeWindowProperty ($self->parent, $atom, $type, $format, $items);
+      }
    }
 
    $self->XDeleteProperty ($self->parent, $_) for keys %our_props;
@@ -119,12 +141,47 @@ sub make_current {
 
    $self->configure;
    $self->copy_properties;
-   $tab->focus_in;
+   
+   $tab->focus_out; # just in case, should be a nop
+   $tab->focus_in if $self->focus;
+   
    $tab->XMapWindow ($tab->parent);
    delete $tab->{activity};
    $self->refresh;
 
    ()
+}
+
+sub on_focus_in {
+   my ($self, $event) = @_;
+
+   $self->{cur}->focus_in;
+
+   ()
+}
+
+sub on_focus_out {
+   my ($self, $event) = @_;
+
+   $self->{cur}->focus_out;
+
+   ()
+}
+
+sub on_key_press {
+   my ($self, $event) = @_;
+
+   $self->{cur}->key_press ($event->{state}, $event->{keycode}, $event->{time});
+
+   1
+}
+
+sub on_key_release {
+   my ($self, $event) = @_;
+
+   $self->{cur}->key_release ($event->{state}, $event->{keycode}, $event->{time});
+
+   1
 }
 
 sub on_button_press {
@@ -160,10 +217,23 @@ sub on_init {
    }
 
    $self->resource (int_bwidth => 0);
-   $self->resource (name => "URxvt.tab");
+   $self->resource (name => "URxvt.tabbed");
    $self->resource (pty_fd => -1);
 
    $self->option ($urxvt::OPTION{scrollBar}, 0);
+
+   my $fg    = $self->x_resource ("tabbar-fg");
+   my $bg    = $self->x_resource ("tabbar-bg");
+   my $tabfg = $self->x_resource ("tab-fg");
+   my $tabbg = $self->x_resource ("tab-bg");
+
+   defined $fg    or $fg    = 3;
+   defined $bg    or $bg    = 0;
+   defined $tabfg or $tabfg = 0;
+   defined $tabbg or $tabbg = 1;
+
+   $self->{rs_tabbar} = urxvt::SET_COLOR (urxvt::DEFAULT_RSTYLE, $fg    + 2, $bg    + 2);
+   $self->{rs_tab}    = urxvt::SET_COLOR (urxvt::DEFAULT_RSTYLE, $tabfg + 2, $tabbg + 2);
 
    ()
 }
@@ -173,7 +243,15 @@ sub on_start {
 
    $self->{tabheight} = $self->int_bwidth + $self->fheight + $self->lineSpace;
 
-   $self->new_tab;
+   $self->cmd_parse ("\033[?25l");
+
+   my @argv = $self->argv;
+
+   do {
+      shift @argv;
+   } while @argv && $argv[0] ne "-e";
+
+   $self->new_tab (@argv);
 
    ()
 }

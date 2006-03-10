@@ -1,20 +1,18 @@
-
-! to override any if the settings below, use the file
-! /etc/X11/app-defaults/URxvt-local
-
-! now preloaded some defaults for Debian
+! Debian-specific rxvt-unicode defaults. To override any if the settings
+! below, use the file /etc/X11/app-defaults/URxvt-local.
 
 URxvt.saveLines: 512
 
-! a sane non-Xft font - if autoselection fails...
-! URxvt.font: -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
+! A sane non-Xft font, in case autoselection fails
 
-! uncomment to get rxvt-unicode terminfo compatibility. Also read 
-! README.Debian.gz and generate the terminfo file in this case.
-! URxvt.termName: rxvt-unicode
+URxvt.font: -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
+
+! Uncomment to change the terminfo entry used
+
+!URxvt.termName: rxvt
 
 ! Color/font settings like in Debian's uxterm
-!
+
 !URxvt.color0: black
 !URxvt.color1: red3
 !URxvt.color2: green3
@@ -35,7 +33,7 @@ URxvt.saveLines: 512
 !URxvt.colorBD: yellow
 !URxvt.reverseVideo: true
 
-! examples for custom keysyms overrides
+! Examples for custom keysyms overrides
 
 !URxvt.keysym.KP_Up: ^[[A
 !URxvt.keysym.KP_Right: ^[[C
@@ -49,5 +47,6 @@ URxvt.saveLines: 512
 !URxvt.keysym.KP_Divide: /
 !URxvt.keysym.KP_Enter: ^M
 
-! some settings by the local admin which should override the above ones
+! Some settings by the local admin which should override the above ones
+
 #include "URxvt-local"

@@ -1,9 +1,9 @@
-/*--------------------------------*-C-*---------------------------------*
+/*----------------------------------------------------------------------*
  * File:	encoding.C
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 2003-2004 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -59,6 +59,7 @@ const struct n2cs {
   { "ASCII",		CS_US_ASCII         },
   { "USASCII",		CS_US_ASCII         },
   { "ANSIX341968",	CS_US_ASCII         },
+  { "ISO646.1991-IRV",  CS_US_ASCII         }, // older versions used the currency sign
                                             
   { "KOI8R*",		CS_KOI8_R           },
   { "GOST1976874*",     CS_KOI8_R           },

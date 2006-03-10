@@ -21,131 +21,116 @@ all escape sequences, and other background information.
 The newest version of this document is also available on the World Wide Web at
 L<http://cvs.schmorp.de/browse/*checkout*/rxvt-unicode/doc/rxvt.7.html>.
 
-=head1 FREQUENTLY ASKED QUESTIONS
+=head1 RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
 
-=head2 The new selection selects pieces that are too big, how can I select single words?
 
-If you want to select e.g. alphanumeric words, you can use the following
-setting:
+=head2 Meta, Features & Commandline Issues
 
-   URxvt.selection.pattern-0: ([[:word:]]+)
+=head3 My question isn't answered here, can I ask a human?
 
-If you click more than twice, the selection will be extended
-more and more.
+Before sending me mail, you could go to IRC: C<irc.freenode.net>,
+channel C<#rxvt-unicode> has some rxvt-unicode enthusiasts that might be
+interested in learning about new and exciting problems (but not FAQs :).
 
-To get a selection that is very similar to the old code, try this pattern:
+=head3 Does it support tabs, can I have a tabbed rxvt-unicode?
 
-   URxvt.selection.pattern-0: ([^"&'()*,;<=>?@[\\\\]^`{|})]+)
+Beginning with version 7.3, there is a perl extension that implements a
+simple tabbed terminal. It is installed by default, so any of these should
+give you tabs:
 
-Please also note that the I<LeftClick Shift-LeftClik> combination also
-selects words like the old code.
+   @@URXVT_NAME@@ -pe tabbed
 
-=head2 I don't like the new selection/popups/hotkeys/perl, how do I change/disable it?
+   URxvt.perl-ext-common: default,tabbed
 
-You can disable the perl extension completely by setting the
-B<perl-ext-common> resource to the empty string, which also keeps
-rxvt-unicode from initialising perl, saving memory.
+It will also work fine with tabbing functionality of many window managers
+or similar tabbing programs, and its embedding-features allow it to be
+embedded into other programs, as witnessed by F<doc/rxvt-tabbed> or
+the upcoming C<Gtk2::URxvt> perl module, which features a tabbed urxvt
+(murxvt) terminal as an example embedding application.
 
-If you only want to disable specific features, you first have to
-identify which perl extension is responsible. For this, read the section
-B<PREPACKAGED EXTENSIONS> in the @@RXVT_NAME@@perl(3) manpage. For
-example, to disable the B<selection-popup> and B<option-popup>, specify
-this B<perl-ext-common> resource:
+=head3 How do I know which rxvt-unicode version I'm using?
 
-   URxvt.perl-ext-common: default,-selection-popup,-option-popup
+The version number is displayed with the usage (-h). Also the escape
+sequence C<ESC [ 8 n> sets the window title to the version number. When
+using the @@URXVT_NAME@@c client, the version displayed is that of the
+daemon.
 
-This will keep the default extensions, but disable the two popup
-extensions. Some extensions can also be configured, for example,
-scrollback search mode is triggered by B<M-s>. You can move it to any
-other combination either by setting the B<searchable-scrollback> resource:
+=head3 Rxvt-unicode uses gobs of memory, how can I reduce that?
 
-   URxvt.searchable-scrollback: CM-s
+Rxvt-unicode tries to obey the rule of not charging you for something you
+don't use. One thing you should try is to configure out all settings that
+you don't need, for example, Xft support is a resource hog by design,
+when used. Compiling it out ensures that no Xft font will be loaded
+accidentally when rxvt-unicode tries to find a font for your characters.
 
-=head2 The cursor moves when selecting text in the current input line, how do I switch this off?
+Also, many people (me included) like large windows and even larger
+scrollback buffers: Without C<--enable-unicode3>, rxvt-unicode will use
+6 bytes per screen cell. For a 160x?? window this amounts to almost a
+kilobyte per line. A scrollback buffer of 10000 lines will then (if full)
+use 10 Megabytes of memory. With C<--enable-unicode3> it gets worse, as
+rxvt-unicode then uses 8 bytes per screen cell.
 
-See next entry.
+=head3 How can I start @@URXVT_NAME@@d in a race-free way?
 
-=head2 During rlogin/ssh/telnet/etc. sessions, clicking near the cursor outputs strange escape sequences, how do I fix this?
+Try C<@@URXVT_NAME@@d -f -o>, which tells @@URXVT_NAME@@d to open the
+display, create the listening socket and then fork.
 
-These are caused by the C<readline> perl extension. Under normal
-circumstances, it will move your cursor around when you click into the
-line that contains it. It tries hard not to do this at the wrong moment,
-but when running a program that doesn't parse cursor movements or in some
-cases during rlogin sessions, it fails to detect this properly.
+=head3 How can I start @@URXVT_NAME@@d automatically when I run URXVT_NAME@@c?
 
-You can permamently switch this feature off by disabling the C<readline>
-extension:
+If you want to start @@URXVT_NAME@@d automatically whenever you run
+@@URXVT_NAME@@c and the daemon isn't running yet, use this script:
 
-   URxvt.perl-ext-common: default,-readline
+   #!/bin/sh
+   @@URXVT_NAME@@c "$@"
+   if [ $? -eq 2 ]; then
+      @@URXVT_NAME@@d -q -o -f
+      @@URXVT_NAME@@c "$@"
+   fi
 
-=head2 Why doesn't rxvt-unicode read my resources?
+This tries to create a new terminal, and if fails with exit status 2,
+meaning it couldn't connect to the daemon, it will start the daemon and
+re-run the command. Subsequent invocations of the script will re-use the
+existing daemon.
 
-Well, why, indeed? It does, in a way very similar to other X
-applications. Most importantly, this means that if you or your OS loads
-resources into the X display (the right way to do it), rxvt-unicode will
-ignore any resource files in your home directory. It will only read
-F<$HOME/.Xdefaults> when no resources are attached to the display.
+=head3 How do I distinguish wether I'm running rxvt-unicode or a regular xterm? I need this to decide about setting colors etc.
 
-If you have or use an F<$HOME/.Xresources> file, chances are that
-resources are loaded into your X-server. In this case, you have to
-re-login after every change (or run F<xrdb -merge $HOME/.Xresources>).
+The original rxvt and rxvt-unicode always export the variable "COLORTERM",
+so you can check and see if that is set. Note that several programs, JED,
+slrn, Midnight Commander automatically check this variable to decide
+whether or not to use color.
 
-Also consider the form resources have to use:
+=head3 How do I set the correct, full IP address for the DISPLAY variable?
 
-  URxvt.resource: value
+If you've compiled rxvt-unicode with DISPLAY_IS_IP and have enabled
+insecure mode then it is possible to use the following shell script
+snippets to correctly set the display. If your version of rxvt-unicode
+wasn't also compiled with ESCZ_ANSWER (as assumed in these snippets) then
+the COLORTERM variable can be used to distinguish rxvt-unicode from a
+regular xterm.
 
-If you want to use another form (there are lots of different ways of
-specifying resources), make sure you understand wether and why it
-works. If unsure, use the form above.
+Courtesy of Chuck Blake <cblake@BBN.COM> with the following shell script
+snippets:
 
-=head2 I can't get transparency working, what am I doing wrong?
+   # Bourne/Korn/POSIX family of shells:
+   [ ${TERM:-foo} = foo ] && TERM=xterm # assume an xterm if we don't know
+   if [ ${TERM:-foo} = xterm ]; then
+      stty -icanon -echo min 0 time 15 # see if enhanced rxvt or not
+      echo -n '^[Z'
+      read term_id
+      stty icanon echo
+      if [ ""${term_id} = '^[[?1;2C' -a ${DISPLAY:-foo} = foo ]; then
+         echo -n '^[[7n'        # query the rxvt we are in for the DISPLAY string
+         read DISPLAY           # set it in our local shell
+      fi
+   fi
 
-First of all, transparency isn't officially supported in rxvt-unicode, so
-you are mostly on your own. Do not bug the author about it (but you may
-bug everybody else). Also, if you can't get it working consider it a rite
-of passage: ... and you failed.
+=head3 How do I compile the manual pages on my own?
 
-Here are four ways to get transparency. B<Do> read the manpage and option
-descriptions for the programs mentioned and rxvt-unicode. Really, do it!
+You need to have a recent version of perl installed as F</usr/bin/perl>,
+one that comes with F<pod2man>, F<pod2text> and F<pod2html>. Then go to
+the doc subdirectory and enter C<make alldoc>.
 
-1. Use inheritPixmap:
-
-   Esetroot wallpaper.jpg
-   @@RXVT_NAME@@ -ip -tint red -sh 40
-
-That works. If you think it doesn't, you lack transparency and tinting
-support, or you are unable to read.
-
-2. Use a simple pixmap and emulate pseudo-transparency. This enables you
-to use effects other than tinting and shading: Just shade/tint/whatever
-your picture with gimp:
-
-   convert wallpaper.jpg -blur 20x20 -modulate 30 background.xpm
-   @@RXVT_NAME@@ -pixmap background.xpm -pe automove-background
-
-That works. If you think it doesn't, you lack XPM and Perl support, or you
-are unable to read.
-
-3. Use an ARGB visual:
-
-   @@RXVT_NAME@@ -depth 32 -fg grey90 -bg rgba:0000/0000/4444/cccc
-
-This requires XFT support, and the support of your X-server. If that
-doesn't work for you, blame Xorg and Keith Packard. ARGB visuals aren't
-there yet, no matter what they claim. Rxvt-Unicode contains the neccessary
-bugfixes and workarounds for Xft and Xlib to make it work, but that
-doesn't mean that your WM has the required kludges in place.
-
-4. Use xcompmgr and let it do the job:
-
-  xprop -frame -f _NET_WM_WINDOW_OPACITY 32c \
-        -set _NET_WM_WINDOW_OPACITY 0xc0000000
-
-Then click on a window you want to make transparent. Replace C<0xc0000000>
-by other values to change the degree of opacity. If it doesn't work and
-your server crashes, you got to keep the pieces.
-
-=head2 Isn't rxvt supposed to be small? Don't all those features bloat?
+=head3 Isn't rxvt-unicode supposed to be small? Don't all those features bloat?
 
 I often get asked about this, and I think, no, they didn't cause extra
 bloat. If you compare a minimal rxvt and a minimal urxvt, you can see
@@ -159,7 +144,7 @@ already in use in this mode.
    98398    1664      24   15695    1824 rxvt --disable-everything
   188985    9048   66616   18222    1788 urxvt --disable-everything
 
-When you C<--enable-everything> (which _is_ unfair, as this involves xft
+When you C<--enable-everything> (which I<is> unfair, as this involves xft
 and full locale/XIM support which are quite bloaty inside libX11 and my
 libc), the two diverge, but not unreasnobaly so.
 
@@ -187,7 +172,7 @@ still fares rather well. And compared to some monsters like gnome-terminal
 startup time, including the hundreds of warnings it spits out), it fares
 extremely well *g*.
 
-=head2 Why C++, isn't that unportable/bloated/uncool?
+=head3 Why C++, isn't that unportable/bloated/uncool?
 
 Is this a question? :) It comes up very often. The simple answer is: I had
 to write it, and C++ allowed me to write and maintain it in a fraction
@@ -221,83 +206,635 @@ And here is rxvt-unicode:
 No large bloated libraries (of course, none were linked in statically),
 except maybe libX11 :)
 
-=head2 Does it support tabs, can I have a tabbed rxvt-unicode?
 
-Beginning with version 7.3, there is a perl extension that implements a
-simple tabbed terminal. It is installed by default, so any of these should
-give you tabs:
+=head2 Rendering, Font & Look and Feel Issues
 
-   @@RXVT_NAME@@ -pe tabbed
+=head3 I can't get transparency working, what am I doing wrong?
 
-   URxvt.perl-ext-common: default,tabbed
+First of all, transparency isn't officially supported in rxvt-unicode, so
+you are mostly on your own. Do not bug the author about it (but you may
+bug everybody else). Also, if you can't get it working consider it a rite
+of passage: ... and you failed.
 
-It will also work fine with tabbing functionality of many window managers
-or similar tabbing programs, and its embedding-features allow it to be
-embedded into other programs, as witnessed by F<doc/rxvt-tabbed> or
-the upcoming C<Gtk2::URxvt> perl module, which features a tabbed urxvt
-(murxvt) terminal as an example embedding application.
+Here are four ways to get transparency. B<Do> read the manpage and option
+descriptions for the programs mentioned and rxvt-unicode. Really, do it!
 
-=head2 How do I know which rxvt-unicode version I'm using?
+1. Use inheritPixmap:
 
-The version number is displayed with the usage (-h). Also the escape
-sequence C<ESC [ 8 n> sets the window title to the version number. When
-using the @@RXVT_NAME@@c client, the version displayed is that of the
-daemon.
+   Esetroot wallpaper.jpg
+   @@URXVT_NAME@@ -ip -tint red -sh 40
 
-=head2 I am using Debian GNU/Linux and have a problem...
+That works. If you think it doesn't, you lack transparency and tinting
+support, or you are unable to read.
 
-The Debian GNU/Linux package of rxvt-unicode in sarge contains large
-patches that considerably change the behaviour of rxvt-unicode (but
-unfortunately this notice has been removed). Before reporting a bug to
-the original rxvt-unicode author please download and install the genuine
-version (L<http://software.schmorp.de#rxvt-unicode>) and try to reproduce
-the problem. If you cannot, chances are that the problems are specific to
-Debian GNU/Linux, in which case it should be reported via the Debian Bug
-Tracking System (use C<reportbug> to report the bug).
+2. Use a simple pixmap and emulate pseudo-transparency. This enables you
+to use effects other than tinting and shading: Just shade/tint/whatever
+your picture with gimp or any other tool:
 
-For other problems that also affect the Debian package, you can and
-probably should use the Debian BTS, too, because, after all, it's also a
-bug in the Debian version and it serves as a reminder for other users that
-might encounter the same issue.
+   convert wallpaper.jpg -blur 20x20 -modulate 30 background.xpm
+   @@URXVT_NAME@@ -pixmap background.xpm -pe automove-background
 
-=head2 I am maintaining rxvt-unicode for distribution/OS XXX, any recommendation?
+That works. If you think it doesn't, you lack XPM and Perl support, or you
+are unable to read.
 
-You should build one binary with the default options. F<configure>
-now enables most useful options, and the trend goes to making them
-runtime-switchable, too, so there is usually no drawback to enbaling them,
-except higher disk and possibly memory usage. The perl interpreter should
-be enabled, as important functionality (menus, selection, likely more in
-the future) depends on it.
+3. Use an ARGB visual:
 
-You should not overwrite the C<perl-ext-common> snd C<perl-ext> resources
-system-wide (except maybe with C<defaults>). This will result in useful
-behaviour. If your distribution aims at low memory, add an empty
-C<perl-ext-common> resource to the app-defaults file. This will keep the
-perl interpreter disabled until the user enables it.
+   @@URXVT_NAME@@ -depth 32 -fg grey90 -bg rgba:0000/0000/4444/cccc
 
-If you can/want build more binaries, I recommend building a minimal
-one with C<--disable-everything> (very useful) and a maximal one with
-C<--enable-everything> (less useful, it will be very big due to a lot of
-encodings built-in that increase download times and are rarely used).
+This requires XFT support, and the support of your X-server. If that
+doesn't work for you, blame Xorg and Keith Packard. ARGB visuals aren't
+there yet, no matter what they claim. Rxvt-Unicode contains the neccessary
+bugfixes and workarounds for Xft and Xlib to make it work, but that
+doesn't mean that your WM has the required kludges in place.
 
-=head2 I need to make it setuid/setgid to support utmp/ptys on my OS, is this safe?
+4. Use xcompmgr and let it do the job:
 
-It should be, starting with release 7.1. You are encouraged to properly
-install urxvt with privileges necessary for your OS now.
+  xprop -frame -f _NET_WM_WINDOW_OPACITY 32c \
+        -set _NET_WM_WINDOW_OPACITY 0xc0000000
 
-When rxvt-unicode detects that it runs setuid or setgid, it will fork
-into a helper process for privileged operations (pty handling on some
-systems, utmp/wtmp/lastlog handling on others) and drop privileges
-immediately. This is much safer than most other terminals that keep
-privileges while running (but is more relevant to urxvt, as it contains
-things as perl interpreters, which might be "helpful" to attackers).
+Then click on a window you want to make transparent. Replace C<0xc0000000>
+by other values to change the degree of opacity. If it doesn't work and
+your server crashes, you got to keep the pieces.
 
-This forking is done as the very first within main(), which is very early
-and reduces possible bugs to initialisation code run before main(), or
-things like the dynamic loader of your system, which should result in very
-little risk.
+=head3 Why does rxvt-unicode sometimes leave pixel droppings?
 
-=head2 When I log-in to another system it tells me about missing terminfo data?
+Most fonts were not designed for terminal use, which means that character
+size varies a lot. A font that is otherwise fine for terminal use might
+contain some characters that are simply too wide. Rxvt-unicode will avoid
+these characters. For characters that are just "a bit" too wide a special
+"careful" rendering mode is used that redraws adjacent characters.
+
+All of this requires that fonts do not lie about character sizes,
+however: Xft fonts often draw glyphs larger than their acclaimed bounding
+box, and rxvt-unicode has no way of detecting this (the correct way is to
+ask for the character bounding box, which unfortunately is wrong in these
+cases).
+
+It's not clear (to me at least), wether this is a bug in Xft, freetype,
+or the respective font. If you encounter this problem you might try using
+the C<-lsp> option to give the font more height. If that doesn't work, you
+might be forced to use a different font.
+
+All of this is not a problem when using X11 core fonts, as their bounding
+box data is correct.
+
+=head3 How can I keep rxvt-unicode from using reverse video so much?
+
+First of all, make sure you are running with the right terminal settings
+(C<TERM=rxvt-unicode>), which will get rid of most of these effects. Then
+make sure you have specified colours for italic and bold, as otherwise
+rxvt-unicode might use reverse video to simulate the effect:
+
+   URxvt.colorBD:  white
+   URxvt.colorIT:  green
+
+=head3 Some programs assume totally weird colours (red instead of blue), how can I fix that?
+
+For some unexplainable reason, some rare programs assume a very weird
+colour palette when confronted with a terminal with more than the standard
+8 colours (rxvt-unicode supports 88). The right fix is, of course, to fix
+these programs not to assume non-ISO colours without very good reasons.
+
+In the meantime, you can either edit your C<rxvt-unicode> terminfo
+definition to only claim 8 colour support or use C<TERM=rxvt>, which will
+fix colours but keep you from using other rxvt-unicode features.
+
+=head3 Can I switch the fonts at runtime?
+
+Yes, using an escape sequence. Try something like this, which has the same
+effect as using the C<-fn> switch, and takes effect immediately:
+
+   printf '\e]50;%s\007' "9x15bold,xft:Kochi Gothic"
+
+This is useful if you e.g. work primarily with japanese (and prefer a
+japanese font), but you have to switch to chinese temporarily, where
+japanese fonts would only be in your way.
+
+You can think of this as a kind of manual ISO-2022 switching.
+
+=head3 Why do italic characters look as if clipped?
+
+Many fonts have difficulties with italic characters and hinting. For
+example, the otherwise very nicely hinted font C<xft:Bitstream Vera Sans
+Mono> completely fails in it's italic face. A workaround might be to
+enable freetype autohinting, i.e. like this:
+
+   URxvt.italicFont:        xft:Bitstream Vera Sans Mono:italic:autohint=true
+   URxvt.boldItalicFont:    xft:Bitstream Vera Sans Mono:bold:italic:autohint=true
+
+=head3 Can I speed up Xft rendering somehow?
+
+Yes, the most obvious way to speed it up is to avoid Xft entirely, as
+it is simply slow. If you still want Xft fonts you might try to disable
+antialiasing (by appending C<:antialias=false>), which saves lots of
+memory and also speeds up rendering considerably.
+
+=head3 Rxvt-unicode doesn't seem to anti-alias its fonts, what is wrong?
+
+Rxvt-unicode will use whatever you specify as a font. If it needs to
+fall back to it's default font search list it will prefer X11 core
+fonts, because they are small and fast, and then use Xft fonts. It has
+antialiasing disabled for most of them, because the author thinks they
+look best that way.
+
+If you want antialiasing, you have to specify the fonts manually.
+
+=head3 What's with this bold/blink stuff?
+
+If no bold colour is set via C<colorBD:>, bold will invert text using the
+standard foreground colour.
+
+For the standard background colour, blinking will actually make the
+text blink when compiled with C<--enable-blinking>. with standard
+colours. Without C<--enable-blinking>, the blink attribute will be
+ignored.
+
+On ANSI colours, bold/blink attributes are used to set high-intensity
+foreground/background colors.
+
+color0-7 are the low-intensity colors.
+
+color8-15 are the corresponding high-intensity colors.
+
+=head3 I don't like the screen colors.  How do I change them?
+
+You can change the screen colors at run-time using F<~/.Xdefaults>
+resources (or as long-options).
+
+Here are values that are supposed to resemble a VGA screen,
+including the murky brown that passes for low-intensity yellow:
+
+   URxvt.color0:   #000000
+   URxvt.color1:   #A80000
+   URxvt.color2:   #00A800
+   URxvt.color3:   #A8A800
+   URxvt.color4:   #0000A8
+   URxvt.color5:   #A800A8
+   URxvt.color6:   #00A8A8
+   URxvt.color7:   #A8A8A8
+
+   URxvt.color8:   #000054
+   URxvt.color9:   #FF0054
+   URxvt.color10:  #00FF54
+   URxvt.color11:  #FFFF54
+   URxvt.color12:  #0000FF
+   URxvt.color13:  #FF00FF
+   URxvt.color14:  #00FFFF
+   URxvt.color15:  #FFFFFF
+
+And here is a more complete set of non-standard colors.
+
+   URxvt.cursorColor:  #dc74d1
+   URxvt.pointerColor: #dc74d1
+   URxvt.background:   #0e0e0e
+   URxvt.foreground:   #4ad5e1
+   URxvt.color0:       #000000
+   URxvt.color8:       #8b8f93
+   URxvt.color1:       #dc74d1
+   URxvt.color9:       #dc74d1
+   URxvt.color2:       #0eb8c7
+   URxvt.color10:      #0eb8c7
+   URxvt.color3:       #dfe37e
+   URxvt.color11:      #dfe37e
+   URxvt.color5:       #9e88f0
+   URxvt.color13:      #9e88f0
+   URxvt.color6:       #73f7ff
+   URxvt.color14:      #73f7ff
+   URxvt.color7:       #e1dddd
+   URxvt.color15:      #e1dddd
+
+They have been described (not by me) as "pretty girly".
+
+=head3 Why do some characters look so much different than others?
+
+See next entry.
+
+=head3 How does rxvt-unicode choose fonts?
+
+Most fonts do not contain the full range of Unicode, which is
+fine. Chances are that the font you (or the admin/package maintainer of
+your system/os) have specified does not cover all the characters you want
+to display.
+
+B<rxvt-unicode> makes a best-effort try at finding a replacement
+font. Often the result is fine, but sometimes the chosen font looks
+bad/ugly/wrong. Some fonts have totally strange characters that don't
+resemble the correct glyph at all, and rxvt-unicode lacks the artificial
+intelligence to detect that a specific glyph is wrong: it has to believe
+the font that the characters it claims to contain indeed look correct.
+
+In that case, select a font of your taste and add it to the font list,
+e.g.:
+
+   @@URXVT_NAME@@ -fn basefont,font2,font3...
+
+When rxvt-unicode sees a character, it will first look at the base
+font. If the base font does not contain the character, it will go to the
+next font, and so on. Specifying your own fonts will also speed up this
+search and use less resources within rxvt-unicode and the X-server.
+
+The only limitation is that none of the fonts may be larger than the base
+font, as the base font defines the terminal character cell size, which
+must be the same due to the way terminals work.
+
+=head3 Why do some chinese characters look so different than others?
+
+This is because there is a difference between script and language --
+rxvt-unicode does not know which language the text that is output is,
+as it only knows the unicode character codes. If rxvt-unicode first
+sees a japanese/chinese character, it might choose a japanese font for
+display. Subsequent japanese characters will use that font. Now, many
+chinese characters aren't represented in japanese fonts, so when the first
+non-japanese character comes up, rxvt-unicode will look for a chinese font
+-- unfortunately at this point, it will still use the japanese font for
+chinese characters that are also in the japanese font.
+
+The workaround is easy: just tag a chinese font at the end of your font
+list (see the previous question). The key is to view the font list as
+a preference list: If you expect more japanese, list a japanese font
+first. If you expect more chinese, put a chinese font first.
+
+In the future it might be possible to switch language preferences at
+runtime (the internal data structure has no problem with using different
+fonts for the same character at the same time, but no interface for this
+has been designed yet).
+
+Until then, you might get away with switching fonts at runtime (see L<Can
+I switch the fonts at runtime?> later in this document).
+
+=head2 Keyboard, Mouse & User Interaction
+
+=head3 The new selection selects pieces that are too big, how can I select single words?
+
+If you want to select e.g. alphanumeric words, you can use the following
+setting:
+
+   URxvt.selection.pattern-0: ([[:word:]]+)
+
+If you click more than twice, the selection will be extended
+more and more.
+
+To get a selection that is very similar to the old code, try this pattern:
+
+   URxvt.selection.pattern-0: ([^"&'()*,;<=>?@[\\\\]^`{|})]+)
+
+Please also note that the I<LeftClick Shift-LeftClik> combination also
+selects words like the old code.
+
+=head3 I don't like the new selection/popups/hotkeys/perl, how do I change/disable it?
+
+You can disable the perl extension completely by setting the
+B<perl-ext-common> resource to the empty string, which also keeps
+rxvt-unicode from initialising perl, saving memory.
+
+If you only want to disable specific features, you first have to
+identify which perl extension is responsible. For this, read the section
+B<PREPACKAGED EXTENSIONS> in the @@URXVT_NAME@@perl(3) manpage. For
+example, to disable the B<selection-popup> and B<option-popup>, specify
+this B<perl-ext-common> resource:
+
+   URxvt.perl-ext-common: default,-selection-popup,-option-popup
+
+This will keep the default extensions, but disable the two popup
+extensions. Some extensions can also be configured, for example,
+scrollback search mode is triggered by B<M-s>. You can move it to any
+other combination either by setting the B<searchable-scrollback> resource:
+
+   URxvt.searchable-scrollback: CM-s
+
+=head3 The cursor moves when selecting text in the current input line, how do I switch this off?
+
+See next entry.
+
+=head3 During rlogin/ssh/telnet/etc. sessions, clicking near the cursor outputs strange escape sequences, how do I fix this?
+
+These are caused by the C<readline> perl extension. Under normal
+circumstances, it will move your cursor around when you click into the
+line that contains it. It tries hard not to do this at the wrong moment,
+but when running a program that doesn't parse cursor movements or in some
+cases during rlogin sessions, it fails to detect this properly.
+
+You can permamently switch this feature off by disabling the C<readline>
+extension:
+
+   URxvt.perl-ext-common: default,-readline
+
+=head3 My numerical keypad acts weird and generates differing output?
+
+Some Debian GNUL/Linux users seem to have this problem, although no
+specific details were reported so far. It is possible that this is caused
+by the wrong C<TERM> setting, although the details of wether and how
+this can happen are unknown, as C<TERM=rxvt> should offer a compatible
+keymap. See the answer to the previous question, and please report if that
+helped.
+
+=head3 My Compose (Multi_key) key is no longer working.
+
+The most common causes for this are that either your locale is not set
+correctly, or you specified a B<preeditStyle> that is not supported by
+your input method. For example, if you specified B<OverTheSpot> and
+your input method (e.g. the default input method handling Compose keys)
+does not support this (for instance because it is not visual), then
+rxvt-unicode will continue without an input method.
+
+In this case either do not specify a B<preeditStyle> or specify more than
+one pre-edit style, such as B<OverTheSpot,Root,None>.
+
+=head3 I cannot type C<Ctrl-Shift-2> to get an ASCII NUL character due to ISO 14755
+
+Either try C<Ctrl-2> alone (it often is mapped to ASCII NUL even on
+international keyboards) or simply use ISO 14755 support to your
+advantage, typing <Ctrl-Shift-0> to get a ASCII NUL. This works for other
+codes, too, such as C<Ctrl-Shift-1-d> to type the default telnet escape
+character and so on.
+
+=head3 Mouse cut/paste suddenly no longer works.
+
+Make sure that mouse reporting is actually turned off since killing
+some editors prematurely may leave the mouse in mouse report mode. I've
+heard that tcsh may use mouse reporting unless it otherwise specified. A
+quick check is to see if cut/paste works when the Alt or Shift keys are
+depressed.
+
+=head3 What's with the strange Backspace/Delete key behaviour?
+
+Assuming that the physical Backspace key corresponds to the
+BackSpace keysym (not likely for Linux ... see the following
+question) there are two standard values that can be used for
+Backspace: C<^H> and C<^?>.
+
+Historically, either value is correct, but rxvt-unicode adopts the debian
+policy of using C<^?> when unsure, because it's the one only only correct
+choice :).
+
+Rxvt-unicode tries to inherit the current stty settings and uses the value
+of `erase' to guess the value for backspace.  If rxvt-unicode wasn't
+started from a terminal (say, from a menu or by remote shell), then the
+system value of `erase', which corresponds to CERASE in <termios.h>, will
+be used (which may not be the same as your stty setting).
+
+For starting a new rxvt-unicode:
+
+   # use Backspace = ^H
+   $ stty erase ^H
+   $ @@URXVT_NAME@@
+
+   # use Backspace = ^?
+   $ stty erase ^?
+   $ @@URXVT_NAME@@
+
+Toggle with C<ESC [ 36 h> / C<ESC [ 36 l>.
+
+For an existing rxvt-unicode:
+
+   # use Backspace = ^H
+   $ stty erase ^H
+   $ echo -n "^[[36h"
+
+   # use Backspace = ^?
+   $ stty erase ^?
+   $ echo -n "^[[36l"
+
+This helps satisfy some of the Backspace discrepancies that occur, but
+if you use Backspace = C<^H>, make sure that the termcap/terminfo value
+properly reflects that.
+
+The Delete key is a another casualty of the ill-defined Backspace problem.
+To avoid confusion between the Backspace and Delete keys, the Delete
+key has been assigned an escape sequence to match the vt100 for Execute
+(C<ESC [ 3 ~>) and is in the supplied termcap/terminfo.
+
+Some other Backspace problems:
+
+some editors use termcap/terminfo, 
+some editors (vim I'm told) expect Backspace = ^H,
+GNU Emacs (and Emacs-like editors) use ^H for help.
+
+Perhaps someday this will all be resolved in a consistent manner.
+
+=head3 I don't like the key-bindings.  How do I change them?
+
+There are some compile-time selections available via configure. Unless
+you have run "configure" with the C<--disable-resources> option you can
+use the `keysym' resource to alter the keystrings associated with keysyms.
+
+Here's an example for a URxvt session started using C<@@URXVT_NAME@@ -name URxvt>
+
+   URxvt.keysym.Home:          \033[1~
+   URxvt.keysym.End:           \033[4~
+   URxvt.keysym.C-apostrophe:  \033<C-'>
+   URxvt.keysym.C-slash:       \033<C-/>
+   URxvt.keysym.C-semicolon:   \033<C-;>
+   URxvt.keysym.C-grave:       \033<C-`>
+   URxvt.keysym.C-comma:       \033<C-,>
+   URxvt.keysym.C-period:      \033<C-.>
+   URxvt.keysym.C-0x60:        \033<C-`>
+   URxvt.keysym.C-Tab:         \033<C-Tab>
+   URxvt.keysym.C-Return:      \033<C-Return>
+   URxvt.keysym.S-Return:      \033<S-Return>
+   URxvt.keysym.S-space:       \033<S-Space>
+   URxvt.keysym.M-Up:          \033<M-Up>
+   URxvt.keysym.M-Down:        \033<M-Down>
+   URxvt.keysym.M-Left:        \033<M-Left>
+   URxvt.keysym.M-Right:       \033<M-Right>
+   URxvt.keysym.M-C-0:         list \033<M-C- 0123456789 >
+   URxvt.keysym.M-C-a:         list \033<M-C- abcdefghijklmnopqrstuvwxyz >
+   URxvt.keysym.F12:           command:\033]701;zh_CN.GBK\007
+
+See some more examples in the documentation for the B<keysym> resource.
+
+=head3 I'm using keyboard model XXX that has extra Prior/Next/Insert keys. How do I make use of them? For example, the Sun Keyboard type 4 has the following map
+
+   KP_Insert == Insert
+   F22 == Print
+   F27 == Home
+   F29 == Prior
+   F33 == End
+   F35 == Next
+
+Rather than have rxvt-unicode try to accommodate all the various possible
+keyboard mappings, it is better to use `xmodmap' to remap the keys as
+required for your particular machine.
+
+
+
+=head2 Terminal Configuration
+
+=head3 Can I see a typical configuration?
+
+The default configuration tries to be xterm-like, which I don't like that
+much, but it's least surprise to regular users.
+
+As a rxvt or rxvt-unicode user, you are practically supposed to invest
+time into customising your terminal. To get you started, here is the
+author's .Xdefaults entries, with comments on what they do. It's certainly
+not I<typical>, but what's typical...
+
+   URxvt.cutchars: "()*,<>[]{}|'
+   URxvt.print-pipe: cat >/tmp/xxx
+
+These are just for testing stuff.
+
+   URxvt.imLocale: ja_JP.UTF-8
+   URxvt.preeditType: OnTheSpot,None
+
+This tells rxvt-unicode to use a special locale when communicating with
+the X Input Method, and also tells it to only use the OnTheSpot pre-edit
+type, which requires the C<xim-onthespot> perl extension but rewards me
+with correct-looking fonts.
+
+   URxvt.perl-lib: /root/lib/urxvt
+   URxvt.perl-ext-common: default,selection-autotransform,selection-pastebin,xim-onthespot,remote-clipboard
+   URxvt.selection.pattern-0: ( at .*? line \\d+)
+   URxvt.selection.pattern-1: ^(/[^:]+):\ 
+   URxvt.selection-autotransform.0: s/^([^:[:space:]]+):(\\d+):?$/:e \\Q$1\\E\\x0d:$2\\x0d/
+   URxvt.selection-autotransform.1: s/^ at (.*?) line (\\d+)$/:e \\Q$1\\E\\x0d:$2\\x0d/
+
+This is my perl configuration. The first two set the perl library
+directory and also tells urxvt to use a large number of extensions. I
+develop for myself mostly, so I actually use most of the extensions I
+write.
+
+The selection stuff mainly makes the selection perl-error-message aware
+and tells it to convert pelr error mssages into vi-commands to load the
+relevant file and go tot he error line number.
+
+   URxvt.scrollstyle:      plain
+   URxvt.secondaryScroll:  true
+
+As the documentation says: plain is the preferred scrollbar for the
+author. The C<secondaryScroll> confgiures urxvt to scroll in full-screen
+apps, like screen, so lines scorlled out of screen end up in urxvt's
+scrollback buffer.
+
+   URxvt.background:       #000000
+   URxvt.foreground:       gray90
+   URxvt.color7:           gray90
+   URxvt.colorBD:          #ffffff
+   URxvt.cursorColor:      #e0e080
+   URxvt.throughColor:     #8080f0
+   URxvt.highlightColor:   #f0f0f0
+
+Some colours. Not sure which ones are being used or even non-defaults, but
+these are in my .Xdefaults. Most notably, they set foreground/background
+to light gray/black, and also make sure that the colour 7 matches the
+default foreground colour.
+
+   URxvt.underlineColor:   yellow
+
+Another colour, makes underline lines look different. Sometimes hurts, but
+is mostly a nice effect.
+
+   URxvt.geometry:         154x36
+   URxvt.loginShell:       false
+   URxvt.meta:             ignore
+   URxvt.utmpInhibit:      true
+
+Uh, well, should be mostly self-explanatory. By specifying some defaults
+manually, I can quickly switch them for testing.
+
+   URxvt.saveLines:        8192
+
+A large scrollback buffer is essential. Really.
+
+   URxvt.mapAlert:         true
+
+The only case I use it is for my IRC window, which I like to keep
+iconified till people msg me (which beeps).
+
+   URxvt.visualBell:       true
+
+The audible bell is often annoying, especially when in a crowd.
+
+   URxvt.insecure:         true
+
+Please don't hack my mutt! Ooops...
+
+   URxvt.pastableTabs:     false
+
+I once thought this is a great idea.
+
+   urxvt.font:             9x15bold,\
+                           -misc-fixed-bold-r-normal--15-140-75-75-c-90-iso10646-1,\
+                           -misc-fixed-medium-r-normal--15-140-75-75-c-90-iso10646-1, \
+                           [codeset=JISX0208]xft:Kochi Gothic, \
+                           xft:Bitstream Vera Sans Mono:autohint=true, \
+                           xft:Code2000:antialias=false
+   urxvt.boldFont:         -xos4-terminus-bold-r-normal--14-140-72-72-c-80-iso8859-15
+   urxvt.italicFont:       xft:Bitstream Vera Sans Mono:italic:autohint=true
+   urxvt.boldItalicFont:   xft:Bitstream Vera Sans Mono:bold:italic:autohint=true
+
+I wrote rxvt-unicode to be able to specify fonts exactly. So don't be
+overwhelmed. A special note: the C<9x15bold> mentioend above is actually
+the version from XFree-3.3, as XFree-4 replaced it by a totally different
+font (different glyphs for C<;> and many other harmless characters),
+while the second font is actually the C<9x15bold> from XFree4/XOrg. The
+bold version has less chars than the medium version, so I use it for rare
+characters, too. Whene ditign sources with vim, I use italic for comments
+and other stuff, which looks quite good with Bitstream Vera anti-aliased.
+
+Terminus is a quite bad font (many very wrong glyphs), but for most of my
+purposes, it works, and gives a different look, as my normal (Non-bold)
+font is already bold, and I want to see a difference between bold and
+normal fonts.
+
+Please note that I used the C<urxvt> instance name and not the C<URxvt>
+class name. Thats because I use different configs for different purposes,
+for example, my IRC window is started with C<-name IRC>, and uses these
+defaults:
+
+   IRC*title:              IRC
+   IRC*geometry:           87x12+535+542
+   IRC*saveLines:          0
+   IRC*mapAlert:           true
+   IRC*font:               suxuseuro
+   IRC*boldFont:           suxuseuro
+   IRC*colorBD:            white
+   IRC*keysym.M-C-1:       command:\033]710;suxuseuro\007\033]711;suxuseuro\007
+   IRC*keysym.M-C-2:       command:\033]710;9x15bold\007\033]711;9x15bold\007
+
+C<Alt-Shift-1> and C<Alt-Shift-2> switch between two different font
+sizes. C<suxuseuro> allows me to keep an eye (and actually read)
+stuff while keeping a very small window. If somebody pastes something
+complicated (e.g. japanese), I temporarily switch to a larger font.
+
+The above is all in my C<.Xdefaults> (I don't use C<.Xresources> nor
+C<xrdb>). I also have some resources in a separate C<.Xdefaults-hostname>
+file for different hosts, for example, on ym main desktop, I use:
+
+   URxvt.keysym.C-M-q: command:\033[3;5;5t
+   URxvt.keysym.C-M-y: command:\033[3;5;606t
+   URxvt.keysym.C-M-e: command:\033[3;1605;5t
+   URxvt.keysym.C-M-c: command:\033[3;1605;606t
+   URxvt.keysym.C-M-p: perl:test
+
+The first for keysym definitions allow me to quickly bring some windows
+in the layout I like most. Ion users might start laughing but will stop
+immediately when I tell them that I use my own Fvwm2 module for much the
+same effect as Ion provides, and I only very rarely use the above key
+combinations :->
+
+=head3 Why doesn't rxvt-unicode read my resources?
+
+Well, why, indeed? It does, in a way very similar to other X
+applications. Most importantly, this means that if you or your OS loads
+resources into the X display (the right way to do it), rxvt-unicode will
+ignore any resource files in your home directory. It will only read
+F<$HOME/.Xdefaults> when no resources are attached to the display.
+
+If you have or use an F<$HOME/.Xresources> file, chances are that
+resources are loaded into your X-server. In this case, you have to
+re-login after every change (or run F<xrdb -merge $HOME/.Xresources>).
+
+Also consider the form resources have to use:
+
+  URxvt.resource: value
+
+If you want to use another form (there are lots of different ways of
+specifying resources), make sure you understand wether and why it
+works. If unsure, use the form above.
+
+=head3 When I log-in to another system it tells me about missing terminfo data?
 
 The terminal description used by rxvt-unicode is not as widely available
 as that for xterm, or even rxvt (for which the same problem often arises).
@@ -323,18 +860,18 @@ resource to set it:
    URxvt.termName: rxvt
 
 If you don't plan to use B<rxvt> (quite common...) you could also replace
-the rxvt terminfo file with the rxvt-unicode one.
+the rxvt terminfo file with the rxvt-unicode one and use C<TERM=rxvt>.
 
-=head2 C<tic> outputs some error when compiling the terminfo entry.
+=head3 C<tic> outputs some error when compiling the terminfo entry.
 
 Most likely it's the empty definition for C<enacs=>. Just replace it by
 C<enacs=\E[0@> and try again.
 
-=head2 C<bash>'s readline does not work correctly under @@RXVT_NAME@@.
+=head3 C<bash>'s readline does not work correctly under @@URXVT_NAME@@.
 
 See next entry.
 
-=head2 I need a termcap file entry.
+=head3 I need a termcap file entry.
 
 One reason you might want this is that some distributions or operating
 systems still compile some programs using the long-obsoleted termcap
@@ -370,7 +907,7 @@ Or you could use this termcap entry, generated by the command above:
            :us=\E[4m:vb=\E[?5h\E[?5l:ve=\E[?25h:vi=\E[?25l:\
            :vs=\E[?25h:
 
-=head2 Why does C<ls> no longer have coloured output?
+=head3 Why does C<ls> no longer have coloured output?
 
 The C<ls> in the GNU coreutils unfortunately doesn't use terminfo to
 decide wether a terminal has colour, but uses it's own configuration
@@ -385,15 +922,15 @@ to C</etc/DIR_COLORS> or simply add:
 
 to your C<.profile> or C<.bashrc>.
 
-=head2 Why doesn't vim/emacs etc. use the 88 colour mode?
+=head3 Why doesn't vim/emacs etc. use the 88 colour mode?
 
 See next entry.
 
-=head2 Why doesn't vim/emacs etc. make use of italic?
+=head3 Why doesn't vim/emacs etc. make use of italic?
 
 See next entry.
 
-=head2 Why are the secondary screen-related options not working properly?
+=head3 Why are the secondary screen-related options not working properly?
 
 Make sure you are using C<TERM=rxvt-unicode>. Some pre-packaged
 distributions (most notably Debian GNU/Linux) break rxvt-unicode
@@ -404,20 +941,14 @@ file, so you will need to install it on your own (See the question B<When
 I log-in to another system it tells me about missing terminfo data?> on
 how to do this).
 
-=head2 My numerical keypad acts weird and generates differing output?
 
-Some Debian GNUL/Linux users seem to have this problem, although no
-specific details were reported so far. It is possible that this is caused
-by the wrong C<TERM> setting, although the details of wether and how
-this can happen are unknown, as C<TERM=rxvt> should offer a compatible
-keymap. See the answer to the previous question, and please report if that
-helped.
+=head2 Encoding / Locale / Input Method Issues
 
-=head2 Rxvt-unicode does not seem to understand the selected encoding?
+=head3 Rxvt-unicode does not seem to understand the selected encoding?
 
 See next entry.
 
-=head2 Unicode does not seem to work?
+=head3 Unicode does not seem to work?
 
 If you encounter strange problems like typing an accented character but
 getting two unrelated other characters or similar, or if program output is
@@ -447,189 +978,11 @@ If nothing works and you are sure that everything is set correctly then
 you will need to remember a little known fact: Some programs just don't
 support locales :(
 
-=head2 Why do some characters look so much different than others?
+=head3 How does rxvt-unicode determine the encoding to use?
 
 See next entry.
 
-=head2 How does rxvt-unicode choose fonts?
-
-Most fonts do not contain the full range of Unicode, which is
-fine. Chances are that the font you (or the admin/package maintainer of
-your system/os) have specified does not cover all the characters you want
-to display.
-
-B<rxvt-unicode> makes a best-effort try at finding a replacement
-font. Often the result is fine, but sometimes the chosen font looks
-bad/ugly/wrong. Some fonts have totally strange characters that don't
-resemble the correct glyph at all, and rxvt-unicode lacks the artificial
-intelligence to detect that a specific glyph is wrong: it has to believe
-the font that the characters it claims to contain indeed look correct.
-
-In that case, select a font of your taste and add it to the font list,
-e.g.:
-
-   @@RXVT_NAME@@ -fn basefont,font2,font3...
-
-When rxvt-unicode sees a character, it will first look at the base
-font. If the base font does not contain the character, it will go to the
-next font, and so on. Specifying your own fonts will also speed up this
-search and use less resources within rxvt-unicode and the X-server.
-
-The only limitation is that none of the fonts may be larger than the base
-font, as the base font defines the terminal character cell size, which
-must be the same due to the way terminals work.
-
-=head2 Why do some chinese characters look so different than others?
-
-This is because there is a difference between script and language --
-rxvt-unicode does not know which language the text that is output is,
-as it only knows the unicode character codes. If rxvt-unicode first
-sees a japanese/chinese character, it might choose a japanese font for
-display. Subsequent japanese characters will use that font. Now, many
-chinese characters aren't represented in japanese fonts, so when the first
-non-japanese character comes up, rxvt-unicode will look for a chinese font
--- unfortunately at this point, it will still use the japanese font for
-chinese characters that are also in the japanese font.
-
-The workaround is easy: just tag a chinese font at the end of your font
-list (see the previous question). The key is to view the font list as
-a preference list: If you expect more japanese, list a japanese font
-first. If you expect more chinese, put a chinese font first.
-
-In the future it might be possible to switch language preferences at
-runtime (the internal data structure has no problem with using different
-fonts for the same character at the same time, but no interface for this
-has been designed yet).
-
-Until then, you might get away with switching fonts at runtime (see L<Can
-I switch the fonts at runtime?> later in this document).
-
-=head2 Why does rxvt-unicode sometimes leave pixel droppings?
-
-Most fonts were not designed for terminal use, which means that character
-size varies a lot. A font that is otherwise fine for terminal use might
-contain some characters that are simply too wide. Rxvt-unicode will avoid
-these characters. For characters that are just "a bit" too wide a special
-"careful" rendering mode is used that redraws adjacent characters.
-
-All of this requires that fonts do not lie about character sizes,
-however: Xft fonts often draw glyphs larger than their acclaimed bounding
-box, and rxvt-unicode has no way of detecting this (the correct way is to
-ask for the character bounding box, which unfortunately is wrong in these
-cases).
-
-It's not clear (to me at least), wether this is a bug in Xft, freetype,
-or the respective font. If you encounter this problem you might try using
-the C<-lsp> option to give the font more height. If that doesn't work, you
-might be forced to use a different font.
-
-All of this is not a problem when using X11 core fonts, as their bounding
-box data is correct.
-
-=head2 On Solaris 9, many line-drawing characters are too wide.
-
-Seems to be a known bug, read
-L<http://nixdoc.net/files/forum/about34198.html>. Some people use the
-following ugly workaround to get non-double-wide-characters working:
-
-   #define wcwidth(x) wcwidth(x) > 1 ? 1 : wcwidth(x)
-
-=head2 My Compose (Multi_key) key is no longer working.
-
-The most common causes for this are that either your locale is not set
-correctly, or you specified a B<preeditStyle> that is not supported by
-your input method. For example, if you specified B<OverTheSpot> and
-your input method (e.g. the default input method handling Compose keys)
-does not support this (for instance because it is not visual), then
-rxvt-unicode will continue without an input method.
-
-In this case either do not specify a B<preeditStyle> or specify more than
-one pre-edit style, such as B<OverTheSpot,Root,None>.
-
-=head2 I cannot type C<Ctrl-Shift-2> to get an ASCII NUL character due to ISO 14755
-
-Either try C<Ctrl-2> alone (it often is mapped to ASCII NUL even on
-international keyboards) or simply use ISO 14755 support to your
-advantage, typing <Ctrl-Shift-0> to get a ASCII NUL. This works for other
-codes, too, such as C<Ctrl-Shift-1-d> to type the default telnet escape
-character and so on.
-
-=head2 How can I keep rxvt-unicode from using reverse video so much?
-
-First of all, make sure you are running with the right terminal settings
-(C<TERM=rxvt-unicode>), which will get rid of most of these effects. Then
-make sure you have specified colours for italic and bold, as otherwise
-rxvt-unicode might use reverse video to simulate the effect:
-
-   URxvt.colorBD:  white
-   URxvt.colorIT:  green
-
-=head2 Some programs assume totally weird colours (red instead of blue), how can I fix that?
-
-For some unexplainable reason, some rare programs assume a very weird
-colour palette when confronted with a terminal with more than the standard
-8 colours (rxvt-unicode supports 88). The right fix is, of course, to fix
-these programs not to assume non-ISO colours without very good reasons.
-
-In the meantime, you can either edit your C<rxvt-unicode> terminfo
-definition to only claim 8 colour support or use C<TERM=rxvt>, which will
-fix colours but keep you from using other rxvt-unicode features.
-
-=head2 I am on FreeBSD and rxvt-unicode does not seem to work at all.
-
-Rxvt-unicode requires the symbol C<__STDC_ISO_10646__> to be defined
-in your compile environment, or an implementation that implements it,
-wether it defines the symbol or not. C<__STDC_ISO_10646__> requires that
-B<wchar_t> is represented as unicode.
-
-As you might have guessed, FreeBSD does neither define this symobl nor
-does it support it. Instead, it uses it's own internal representation of
-B<wchar_t>. This is, of course, completely fine with respect to standards.
-
-However, that means rxvt-unicode only works in C<POSIX>, C<ISO-8859-1> and
-C<UTF-8> locales under FreeBSD (which all use Unicode as B<wchar_t>.
-
-C<__STDC_ISO_10646__> is the only sane way to support multi-language
-apps in an OS, as using a locale-dependent (and non-standardized)
-representation of B<wchar_t> makes it impossible to convert between
-B<wchar_t> (as used by X11 and your applications) and any other encoding
-without implementing OS-specific-wrappers for each and every locale. There
-simply are no APIs to convert B<wchar_t> into anything except the current
-locale encoding.
-
-Some applications (such as the formidable B<mlterm>) work around this
-by carrying their own replacement functions for character set handling
-with them, and either implementing OS-dependent hacks or doing multiple
-conversions (which is slow and unreliable in case the OS implements
-encodings slightly different than the terminal emulator).
-
-The rxvt-unicode author insists that the right way to fix this is in the
-system libraries once and for all, instead of forcing every app to carry
-complete replacements for them :)
-
-=head2 I use Solaris 9 and it doesn't compile/work/etc.
-
-Try the diff in F<doc/solaris9.patch> as a base. It fixes the worst
-problems with C<wcwidth> and a compile problem.
-
-=head2 How can I use rxvt-unicode under cygwin?
-
-rxvt-unicode should compile and run out of the box on cygwin, using
-the X11 libraries that come with cygwin. libW11 emulation is no
-longer supported (and makes no sense, either, as it only supported a
-single font). I recommend starting the X-server in C<-multiwindow> or
-C<-rootless> mode instead, which will result in similar look&feel as the
-old libW11 emulation.
-
-At the time of this writing, cygwin didn't seem to support any multi-byte
-encodings (you might try C<LC_CTYPE=C-UTF-8>), so you are likely limited
-to 8-bit encodings.
-
-=head2 How does rxvt-unicode determine the encoding to use?
-
-See next entry.
-
-=head2 Is there an option to switch encodings?
+=head3 Is there an option to switch encodings?
 
 Unlike some other terminals, rxvt-unicode has no encoding switch, and no
 specific "utf-8" mode, such as xterm. In fact, it doesn't even know about
@@ -664,7 +1017,7 @@ rxvt-unicode.
 If you want to use a specific encoding you have to make sure you start
 rxvt-unicode with the correct C<LC_CTYPE> category.
 
-=head2 Can I switch locales at runtime?
+=head3 Can I switch locales at runtime?
 
 Yes, using an escape sequence. Try something like this, which sets
 rxvt-unicode's idea of C<LC_CTYPE>.
@@ -686,30 +1039,38 @@ You can also use xterm's C<luit> program, which usually works fine, except
 for some locales where character width differs between program- and
 rxvt-unicode-locales.
 
-=head2 Can I switch the fonts at runtime?
+=head3 I have problems getting my input method working.
 
-Yes, using an escape sequence. Try something like this, which has the same
-effect as using the C<-fn> switch, and takes effect immediately:
+Try a search engine, as this is slightly different for every input method server.
 
-   printf '\e]50;%s\007' "9x15bold,xft:Kochi Gothic"
+Here is a checklist:
 
-This is useful if you e.g. work primarily with japanese (and prefer a
-japanese font), but you have to switch to chinese temporarily, where
-japanese fonts would only be in your way.
+=over 4
 
-You can think of this as a kind of manual ISO-2022 switching.
+=item - Make sure your locale I<and> the imLocale are supported on your OS.
 
-=head2 Why do italic characters look as if clipped?
+Try C<locale -a> or check the documentation for your OS.
 
-Many fonts have difficulties with italic characters and hinting. For
-example, the otherwise very nicely hinted font C<xft:Bitstream Vera Sans
-Mono> completely fails in it's italic face. A workaround might be to
-enable freetype autohinting, i.e. like this:
+=item - Make sure your locale or imLocale matches a locale supported by your XIM.
 
-   URxvt.italicFont:        xft:Bitstream Vera Sans Mono:italic:autohint=true
-   URxvt.boldItalicFont:    xft:Bitstream Vera Sans Mono:bold:italic:autohint=true
+For example, B<kinput2> does not support UTF-8 locales, you should use
+C<ja_JP.EUC-JP> or equivalent.
 
-=head2 My input method wants <some encoding> but I want UTF-8, what can I do?
+=item - Make sure your XIM server is actually running.
+
+=item - Make sure the C<XMODIFIERS> environment variable is set correctly when I<starting> rxvt-unicode.
+
+When you want to use e.g. B<kinput2>, it must be set to
+C<@im=kinput2>. For B<scim>, use C<@im=SCIM>. Youc an see what input
+method servers are running with this command:
+
+   xprop -root XIM_SERVERS
+
+=item 
+
+=back
+
+=head3 My input method wants <some encoding> but I want UTF-8, what can I do?
 
 You can specify separate locales for the input method and the rest of the
 terminal, using the resource C<imlocale>:
@@ -717,11 +1078,11 @@ terminal, using the resource C<imlocale>:
    URxvt.imlocale: ja_JP.EUC-JP
 
 Now you can start your terminal with C<LC_CTYPE=ja_JP.UTF-8> and still
-use your input method. Please note, however, that you will not be able to
-input characters outside C<EUC-JP> in a normal way then, as your input
-method limits you.
+use your input method. Please note, however, that, depending on your Xlib
+version, you may not be able to input characters outside C<EUC-JP> in a
+normal way then, as your input method limits you.
 
-=head2 Rxvt-unicode crashes when the X Input Method changes or exits.
+=head3 Rxvt-unicode crashes when the X Input Method changes or exits.
 
 Unfortunately, this is unavoidable, as the XIM protocol is racy by
 design. Applications can avoid some crashes at the expense of memory
@@ -732,270 +1093,128 @@ crashes cannot be completely avoided even if both sides cooperate.
 
 So the only workaround is not to kill your Input Method Servers.
 
-=head2 Rxvt-unicode uses gobs of memory, how can I reduce that?
 
-Rxvt-unicode tries to obey the rule of not charging you for something you
-don't use. One thing you should try is to configure out all settings that
-you don't need, for example, Xft support is a resource hog by design,
-when used. Compiling it out ensures that no Xft font will be loaded
-accidentally when rxvt-unicode tries to find a font for your characters.
+=head2 Operating Systems / Package Maintaining
 
-Also, many people (me included) like large windows and even larger
-scrollback buffers: Without C<--enable-unicode3>, rxvt-unicode will use
-6 bytes per screen cell. For a 160x?? window this amounts to almost a
-kilobyte per line. A scrollback buffer of 10000 lines will then (if full)
-use 10 Megabytes of memory. With C<--enable-unicode3> it gets worse, as
-rxvt-unicode then uses 8 bytes per screen cell.
+=head3 I am using Debian GNU/Linux and have a problem...
 
-=head2 Can I speed up Xft rendering somehow?
+The Debian GNU/Linux package of rxvt-unicode in sarge contains large
+patches that considerably change the behaviour of rxvt-unicode (but
+unfortunately this notice has been removed). Before reporting a bug to
+the original rxvt-unicode author please download and install the genuine
+version (L<http://software.schmorp.de#rxvt-unicode>) and try to reproduce
+the problem. If you cannot, chances are that the problems are specific to
+Debian GNU/Linux, in which case it should be reported via the Debian Bug
+Tracking System (use C<reportbug> to report the bug).
 
-Yes, the most obvious way to speed it up is to avoid Xft entirely, as
-it is simply slow. If you still want Xft fonts you might try to disable
-antialiasing (by appending C<:antialias=false>), which saves lots of
-memory and also speeds up rendering considerably.
+For other problems that also affect the Debian package, you can and
+probably should use the Debian BTS, too, because, after all, it's also a
+bug in the Debian version and it serves as a reminder for other users that
+might encounter the same issue.
 
-=head2 Rxvt-unicode doesn't seem to anti-alias its fonts, what is wrong?
+=head3 I am maintaining rxvt-unicode for distribution/OS XXX, any recommendation?
 
-Rxvt-unicode will use whatever you specify as a font. If it needs to
-fall back to it's default font search list it will prefer X11 core
-fonts, because they are small and fast, and then use Xft fonts. It has
-antialiasing disabled for most of them, because the author thinks they
-look best that way.
+You should build one binary with the default options. F<configure>
+now enables most useful options, and the trend goes to making them
+runtime-switchable, too, so there is usually no drawback to enbaling them,
+except higher disk and possibly memory usage. The perl interpreter should
+be enabled, as important functionality (menus, selection, likely more in
+the future) depends on it.
 
-If you want antialiasing, you have to specify the fonts manually.
+You should not overwrite the C<perl-ext-common> snd C<perl-ext> resources
+system-wide (except maybe with C<defaults>). This will result in useful
+behaviour. If your distribution aims at low memory, add an empty
+C<perl-ext-common> resource to the app-defaults file. This will keep the
+perl interpreter disabled until the user enables it.
 
-=head2 Mouse cut/paste suddenly no longer works.
+If you can/want build more binaries, I recommend building a minimal
+one with C<--disable-everything> (very useful) and a maximal one with
+C<--enable-everything> (less useful, it will be very big due to a lot of
+encodings built-in that increase download times and are rarely used).
 
-Make sure that mouse reporting is actually turned off since killing
-some editors prematurely may leave the mouse in mouse report mode. I've
-heard that tcsh may use mouse reporting unless it otherwise specified. A
-quick check is to see if cut/paste works when the Alt or Shift keys are
-depressed.
+=head3 I need to make it setuid/setgid to support utmp/ptys on my OS, is this safe?
 
-=head2 What's with this bold/blink stuff?
+It should be, starting with release 7.1. You are encouraged to properly
+install urxvt with privileges necessary for your OS now.
 
-If no bold colour is set via C<colorBD:>, bold will invert text using the
-standard foreground colour.
+When rxvt-unicode detects that it runs setuid or setgid, it will fork
+into a helper process for privileged operations (pty handling on some
+systems, utmp/wtmp/lastlog handling on others) and drop privileges
+immediately. This is much safer than most other terminals that keep
+privileges while running (but is more relevant to urxvt, as it contains
+things as perl interpreters, which might be "helpful" to attackers).
 
-For the standard background colour, blinking will actually make the
-text blink when compiled with C<--enable-blinking>. with standard
-colours. Without C<--enable-blinking>, the blink attribute will be
-ignored.
+This forking is done as the very first within main(), which is very early
+and reduces possible bugs to initialisation code run before main(), or
+things like the dynamic loader of your system, which should result in very
+little risk.
 
-On ANSI colours, bold/blink attributes are used to set high-intensity
-foreground/background colors.
+=head3 On Solaris 9, many line-drawing characters are too wide.
 
-color0-7 are the low-intensity colors.
+Seems to be a known bug, read
+L<http://nixdoc.net/files/forum/about34198.html>. Some people use the
+following ugly workaround to get non-double-wide-characters working:
 
-color8-15 are the corresponding high-intensity colors.
+   #define wcwidth(x) wcwidth(x) > 1 ? 1 : wcwidth(x)
 
-=head2 I don't like the screen colors.  How do I change them?
+=head3 I am on FreeBSD and rxvt-unicode does not seem to work at all.
 
-You can change the screen colors at run-time using F<~/.Xdefaults>
-resources (or as long-options).
+Rxvt-unicode requires the symbol C<__STDC_ISO_10646__> to be defined
+in your compile environment, or an implementation that implements it,
+wether it defines the symbol or not. C<__STDC_ISO_10646__> requires that
+B<wchar_t> is represented as unicode.
 
-Here are values that are supposed to resemble a VGA screen,
-including the murky brown that passes for low-intensity yellow:
+As you might have guessed, FreeBSD does neither define this symobl nor
+does it support it. Instead, it uses it's own internal representation of
+B<wchar_t>. This is, of course, completely fine with respect to standards.
 
-   URxvt.color0:   #000000
-   URxvt.color1:   #A80000
-   URxvt.color2:   #00A800
-   URxvt.color3:   #A8A800
-   URxvt.color4:   #0000A8
-   URxvt.color5:   #A800A8
-   URxvt.color6:   #00A8A8
-   URxvt.color7:   #A8A8A8
+However, that means rxvt-unicode only works in C<POSIX>, C<ISO-8859-1> and
+C<UTF-8> locales under FreeBSD (which all use Unicode as B<wchar_t>.
 
-   URxvt.color8:   #000054
-   URxvt.color9:   #FF0054
-   URxvt.color10:  #00FF54
-   URxvt.color11:  #FFFF54
-   URxvt.color12:  #0000FF
-   URxvt.color13:  #FF00FF
-   URxvt.color14:  #00FFFF
-   URxvt.color15:  #FFFFFF
+C<__STDC_ISO_10646__> is the only sane way to support multi-language
+apps in an OS, as using a locale-dependent (and non-standardized)
+representation of B<wchar_t> makes it impossible to convert between
+B<wchar_t> (as used by X11 and your applications) and any other encoding
+without implementing OS-specific-wrappers for each and every locale. There
+simply are no APIs to convert B<wchar_t> into anything except the current
+locale encoding.
 
-And here is a more complete set of non-standard colors described (not by
-me) as "pretty girly".
+Some applications (such as the formidable B<mlterm>) work around this
+by carrying their own replacement functions for character set handling
+with them, and either implementing OS-dependent hacks or doing multiple
+conversions (which is slow and unreliable in case the OS implements
+encodings slightly different than the terminal emulator).
 
-   URxvt.cursorColor:  #dc74d1
-   URxvt.pointerColor: #dc74d1
-   URxvt.background:   #0e0e0e
-   URxvt.foreground:   #4ad5e1
-   URxvt.color0:       #000000
-   URxvt.color8:       #8b8f93
-   URxvt.color1:       #dc74d1
-   URxvt.color9:       #dc74d1
-   URxvt.color2:       #0eb8c7
-   URxvt.color10:      #0eb8c7
-   URxvt.color3:       #dfe37e
-   URxvt.color11:      #dfe37e
-   URxvt.color5:       #9e88f0
-   URxvt.color13:      #9e88f0
-   URxvt.color6:       #73f7ff
-   URxvt.color14:      #73f7ff
-   URxvt.color7:       #e1dddd
-   URxvt.color15:      #e1dddd
+The rxvt-unicode author insists that the right way to fix this is in the
+system libraries once and for all, instead of forcing every app to carry
+complete replacements for them :)
 
-=head2 How can I start @@RXVT_NAME@@d in a race-free way?
+=head3 I use Solaris 9 and it doesn't compile/work/etc.
 
-Try C<@@RXVT_NAME@@d -f -o>, which tells @@RXVT_NAME@@d to open the
-display, create the listening socket and then fork.
+Try the diff in F<doc/solaris9.patch> as a base. It fixes the worst
+problems with C<wcwidth> and a compile problem.
 
-=head2 What's with the strange Backspace/Delete key behaviour?
+=head3 How can I use rxvt-unicode under cygwin?
 
-Assuming that the physical Backspace key corresponds to the
-BackSpace keysym (not likely for Linux ... see the following
-question) there are two standard values that can be used for
-Backspace: C<^H> and C<^?>.
+rxvt-unicode should compile and run out of the box on cygwin, using
+the X11 libraries that come with cygwin. libW11 emulation is no
+longer supported (and makes no sense, either, as it only supported a
+single font). I recommend starting the X-server in C<-multiwindow> or
+C<-rootless> mode instead, which will result in similar look&feel as the
+old libW11 emulation.
 
-Historically, either value is correct, but rxvt-unicode adopts the debian
-policy of using C<^?> when unsure, because it's the one only only correct
-choice :).
+At the time of this writing, cygwin didn't seem to support any multi-byte
+encodings (you might try C<LC_CTYPE=C-UTF-8>), so you are likely limited
+to 8-bit encodings.
 
-Rxvt-unicode tries to inherit the current stty settings and uses the value
-of `erase' to guess the value for backspace.  If rxvt-unicode wasn't
-started from a terminal (say, from a menu or by remote shell), then the
-system value of `erase', which corresponds to CERASE in <termios.h>, will
-be used (which may not be the same as your stty setting).
-
-For starting a new rxvt-unicode:
-
-   # use Backspace = ^H
-   $ stty erase ^H
-   $ @@RXVT_NAME@@
-
-   # use Backspace = ^?
-   $ stty erase ^?
-   $ @@RXVT_NAME@@
-
-Toggle with C<ESC [ 36 h> / C<ESC [ 36 l>.
-
-For an existing rxvt-unicode:
-
-   # use Backspace = ^H
-   $ stty erase ^H
-   $ echo -n "^[[36h"
-
-   # use Backspace = ^?
-   $ stty erase ^?
-   $ echo -n "^[[36l"
-
-This helps satisfy some of the Backspace discrepancies that occur, but
-if you use Backspace = C<^H>, make sure that the termcap/terminfo value
-properly reflects that.
-
-The Delete key is a another casualty of the ill-defined Backspace problem.
-To avoid confusion between the Backspace and Delete keys, the Delete
-key has been assigned an escape sequence to match the vt100 for Execute
-(C<ESC [ 3 ~>) and is in the supplied termcap/terminfo.
-
-Some other Backspace problems:
-
-some editors use termcap/terminfo,
-some editors (vim I'm told) expect Backspace = ^H,
-GNU Emacs (and Emacs-like editors) use ^H for help.
-
-Perhaps someday this will all be resolved in a consistent manner.
-
-=head2 I don't like the key-bindings.  How do I change them?
-
-There are some compile-time selections available via configure. Unless
-you have run "configure" with the C<--disable-resources> option you can
-use the `keysym' resource to alter the keystrings associated with keysyms.
-
-Here's an example for a URxvt session started using C<@@RXVT_NAME@@ -name URxvt>
-
-   URxvt.keysym.Home:          \033[1~
-   URxvt.keysym.End:           \033[4~
-   URxvt.keysym.C-apostrophe:  \033<C-'>
-   URxvt.keysym.C-slash:       \033<C-/>
-   URxvt.keysym.C-semicolon:   \033<C-;>
-   URxvt.keysym.C-grave:       \033<C-`>
-   URxvt.keysym.C-comma:       \033<C-,>
-   URxvt.keysym.C-period:      \033<C-.>
-   URxvt.keysym.C-0x60:        \033<C-`>
-   URxvt.keysym.C-Tab:         \033<C-Tab>
-   URxvt.keysym.C-Return:      \033<C-Return>
-   URxvt.keysym.S-Return:      \033<S-Return>
-   URxvt.keysym.S-space:       \033<S-Space>
-   URxvt.keysym.M-Up:          \033<M-Up>
-   URxvt.keysym.M-Down:        \033<M-Down>
-   URxvt.keysym.M-Left:        \033<M-Left>
-   URxvt.keysym.M-Right:       \033<M-Right>
-   URxvt.keysym.M-C-0:         list \033<M-C- 0123456789 >
-   URxvt.keysym.M-C-a:         list \033<M-C- abcdefghijklmnopqrstuvwxyz >
-   URxvt.keysym.F12:           command:\033]701;zh_CN.GBK\007
-
-See some more examples in the documentation for the B<keysym> resource.
-
-=head2 I'm using keyboard model XXX that has extra Prior/Next/Insert keys. How do I make use of them? For example, the Sun Keyboard type 4 has the following mappings that rxvt-unicode doesn't recognize.
-
-   KP_Insert == Insert
-   F22 == Print
-   F27 == Home
-   F29 == Prior
-   F33 == End
-   F35 == Next
-
-Rather than have rxvt-unicode try to accommodate all the various possible
-keyboard mappings, it is better to use `xmodmap' to remap the keys as
-required for your particular machine.
-
-=head2 How do I distinguish wether I'm running rxvt-unicode or a regular xterm? I need this to decide about setting colors etc.
-
-rxvt and rxvt-unicode always export the variable "COLORTERM", so you can
-check and see if that is set. Note that several programs, JED, slrn,
-Midnight Commander automatically check this variable to decide whether or
-not to use color.
-
-=head2 How do I set the correct, full IP address for the DISPLAY variable?
-
-If you've compiled rxvt-unicode with DISPLAY_IS_IP and have enabled
-insecure mode then it is possible to use the following shell script
-snippets to correctly set the display. If your version of rxvt-unicode
-wasn't also compiled with ESCZ_ANSWER (as assumed in these snippets) then
-the COLORTERM variable can be used to distinguish rxvt-unicode from a
-regular xterm.
-
-Courtesy of Chuck Blake <cblake@BBN.COM> with the following shell script
-snippets:
-
-   # Bourne/Korn/POSIX family of shells:
-   [ ${TERM:-foo} = foo ] && TERM=xterm # assume an xterm if we don't know
-   if [ ${TERM:-foo} = xterm ]; then
-      stty -icanon -echo min 0 time 15 # see if enhanced rxvt or not
-      echo -n '^[Z'
-      read term_id
-      stty icanon echo
-      if [ ""${term_id} = '^[[?1;2C' -a ${DISPLAY:-foo} = foo ]; then
-         echo -n '^[[7n'     	# query the rxvt we are in for the DISPLAY string
-         read DISPLAY     	# set it in our local shell
-      fi
-   fi
-
-=head2 How do I compile the manual pages for myself?
-
-You need to have a recent version of perl installed as F</usr/bin/perl>,
-one that comes with F<pod2man>, F<pod2text> and F<pod2html>. Then go to
-the doc subdirectory and enter C<make alldoc>.
-
-=head2 My question isn't answered here, can I ask a human?
-
-Before sending me mail, you could go to IRC: C<irc.freenode.net>,
-channel C<#rxvt-unicode> has some rxvt-unicode enthusiasts that might be
-interested in learning about new and exciting problems (but not FAQs :).
-
-=head1 RXVT TECHNICAL REFERENCE
-
-=head1 DESCRIPTION
+=head1 RXVT-UNICODE TECHNICAL REFERENCE
 
 The rest of this document describes various technical aspects of
 B<rxvt-unicode>. First the description of supported command sequences,
 followed by pixmap support and last by a description of all features
 selectable at C<configure> time.
 
-=head1 Definitions
+=head2 Definitions
 
 =over 4
 
@@ -1023,7 +1242,7 @@ A text parameter composed of printable characters.
 
 =back
 
-=head1 Values
+=head2 Values
 
 =over 4
 
@@ -1076,7 +1295,7 @@ Space Character
 
 =back
 
-=head1 Escape Sequences
+=head2 Escape Sequences
 
 =over 4
 
@@ -1184,7 +1403,7 @@ Where B<< C<C> >> is one of:
 
 X<CSI>
 
-=head1 CSI (Command Sequence Introducer) Sequences
+=head2 CSI (Command Sequence Introducer) Sequences
 
 =over 4
 
@@ -1464,7 +1683,7 @@ Request Terminal Parameters (DECREQTPARM)
 
 X<PrivateModes>
 
-=head1 DEC Private Modes
+=head2 DEC Private Modes
 
 =over 4
 
@@ -1738,7 +1957,7 @@ X<Priv66>
 
 X<XTerm>
 
-=head1 XTerm Operating System Commands
+=head2 XTerm Operating System Commands
 
 =over 4
 
@@ -1785,8 +2004,6 @@ B<octet> can be escaped by prefixing it with SYN (0x16, ^V).
 =end table
 
 =back
-
-X<XPM>
 
 =head1 XPM
 
@@ -1894,7 +2111,7 @@ button was pressed and are added together (X11 mouse report only):
 	4	Shift
 	8	Meta
 	16	Control
-	32	Double Click I<(Rxvt extension)>
+	32	Double Click I<(rxvt extension)>
 
 =end table
 
@@ -2232,7 +2449,7 @@ Remove support for mouse selection style like that of xterm.
 =item --enable-dmalloc (default: off)
 
 Use Gray Watson's malloc - which is good for debugging See
-http://www.letters.com/dmalloc/ for details If you use either this or the
+L<http://www.letters.com/dmalloc/> for details If you use either this or the
 next option, you may need to edit src/Makefile after compiling to point
 DINCLUDE and DLIB to the right places.
 

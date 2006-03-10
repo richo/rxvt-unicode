@@ -1,8 +1,8 @@
 Source: rxvt-unicode
 Section: x11
 Priority: optional
-Maintainer: Debian QA Group <packages@qa.debian.org>
-Build-Depends: debhelper (>= 4.0.0), libxt-dev, libxrender-dev, libx11-dev, libxpm-dev, groff-base, autotools-dev, xutils, libxft-dev, dpatch, chrpath, libperl-dev
+Maintainer: Decklin Foster <decklin@red-bean.com>
+Build-Depends: debhelper (>= 4.0.0), libxt-dev, libxrender-dev, libx11-dev, libxpm-dev, groff-base, autotools-dev, xutils, libxft-dev, quilt, chrpath, libperl-dev
 Standards-Version: 3.6.2.1
 
 Package: rxvt-unicode
@@ -11,17 +11,16 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-b
 Provides: x-terminal-emulator
 Suggests: ttf-bitstream-vera
 Description: RXVT-like terminal emulator with Unicode support
- Rxvt-Unicode is a modern, Unicode-aware color xterm
- replacement that uses significantly less memory than a conventional
- xterm and many other Unicode supporting terminal emulators.
+ rxvt-unicode is a modern, Unicode-aware color xterm replacement that uses
+ significantly less memory than a conventional xterm and many other Unicode
+ supporting terminal emulators.
  .
- It also supports using multiple fonts at the same time, including Xft
- fonts, and client-server technology to reduce memory consumption when
- using multiple windows.
+ It supports using multiple fonts at the same time, including Xft fonts, and
+ client-server technology to reduce memory consumption when using multiple
+ windows.
  .
- This package contains the program version with mostly used features
- enabled, including transparency, (16-bit) Unicode and FreeType font
- support.
+ This package contains the program version with most commonly-used features
+ enabled, including transparency, (16-bit) Unicode and FreeType font support.
 
 Package: rxvt-unicode-ml
 Architecture: any
@@ -30,17 +29,17 @@ Provides: x-terminal-emulator, rxvt-unicode
 Suggests: ttf-bitstream-vera, ttf-kochi-gothic
 Conflicts: rxvt-unicode
 Description: multi-lingual terminal emulator with Unicode support for X11
- Rxvt-Unicode is a modern, Unicode-aware color xterm
- replacement that uses significantly less memory than a conventional
- xterm and many other Unicode supporting terminal emulators.
+ rxvt-unicode is a modern, Unicode-aware color xterm replacement that uses
+ significantly less memory than a conventional xterm and many other Unicode
+ supporting terminal emulators.
  .
- It also supports using multiple fonts at the same time, including Xft
- fonts, and client-server technology to reduce memory consumption when
- using multiple windows.
+ It supports using multiple fonts at the same time, including Xft fonts, and
+ client-server technology to reduce memory consumption when using multiple
+ windows.
  .
- This package is similar to the rxvt-unicode package but rxvt is
- configured with additional multi-language functions: direct support for
- Asian encodings and extended Unicode 3 support.
+ This package is configured with all additional features, including additional
+ multi-language functions (direct support for Asian encodings and extended
+ Unicode 3 support), and an embedded Perl interpreter.
 
 Package: rxvt-unicode-lite
 Architecture: any
@@ -48,12 +47,13 @@ Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-b
 Provides: x-terminal-emulator, rxvt-unicode
 Conflicts: rxvt-unicode
 Description: RXVT-like terminal emulator with basic Unicode support
- Rxvt-Unicode is a modern, Unicode-aware color xterm
- replacement that uses significantly less memory than a conventional
- xterm and many other Unicode supporting terminal emulators.
+ rxvt-unicode is a modern, Unicode-aware color xterm replacement that uses
+ significantly less memory than a conventional xterm and many other Unicode
+ supporting terminal emulators.
  .
- It also supports using multiple fonts at the same time, including Xft
- fonts, and client-server technology to reduce memory consumption when
- using multiple windows.
+ It supports using multiple fonts at the same time, including Xft fonts, and
+ client-server technology to reduce memory consumption when using multiple
+ windows.
  .
- This package contains the small version with only few extra features.
+ This package contains the small version with only a few extra features and
+ without Freetype support.

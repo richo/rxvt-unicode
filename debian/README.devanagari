@@ -1,4 +1,3 @@
-
 There are natural problems with Indic fonts like those with devanagari
 characters. You may need manual work to make them appear correctly, follow the
 documentation about font (lists).
@@ -97,12 +96,3 @@ If font technology within and outside of rxvt-unicode improves and
 rxvt-unicode is able to adequately render devanagari, rxvt-unicode's
 default config will doubtlessly improve, also. I'd be happy to hear if you
 find devanagari rendering adqeuate, of course.
-
--- 
-                The choice of a                              |
-      -----==-     _GNU_                                     |
-      ----==-- _       generation     Marc Lehmann         +--
-      ---==---(_)__  __ ____  __      pcg@goof.com         |e|
-      --==---/ / _ \/ // /\ \/ /      http://schmorp.de/   --+
-      -=====/_/_//_/\_,_/ /_/\_\      XX11-RIPE            |
-                                                           |

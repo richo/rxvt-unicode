@@ -96,6 +96,23 @@ Rot-13 the selection when activated. Used via keyboard trigger:
 Binds a popup menu to Ctrl-Button2 that lets you toggle (some) options at
 runtime.
 
+Other extensions can extend this popup menu by pushing a code reference
+onto C<@{ $term->{option_popup_hook} }>, which gets called whenever the
+popup is being displayed.
+
+It's sole argument is the popup menu, which can be modified.  It should
+either return nothing or a string, the initial boolean value and a code
+reference. The string will be used as button text and the code reference
+will be called when the toggle changes, with the new boolean value as
+first argument.
+
+The following will add an entry C<myoption> that changes
+C<$self->{myoption}>:
+
+   push @{ $self->{term}{option_popup_hook} }, sub {
+      ("my option" => $myoption, sub { $self->{myoption} = $_[0] })
+   };
+
 =item selection-popup (enabled by default)
 
 Binds a popup menu to Ctrl-Button3 that lets you convert the selection
@@ -103,8 +120,8 @@ text into various other formats/action (such as uri unescaping, perl
 evaluation, web-browser starting etc.), depending on content.
 
 Other extensions can extend this popup menu by pushing a code reference
-onto C<@{ $term->{selection_popup_hook} }>, that is called whenever the
-popup is displayed.
+onto C<@{ $term->{selection_popup_hook} }>, which gets called whenever the
+popup is being displayed.
 
 It's sole argument is the popup menu, which can be modified. The selection
 is in C<$_>, which can be used to decide wether to add something or not.
@@ -138,8 +155,8 @@ selection.
 
 =item readline (enabled by default)
 
-A support package that tries to make editing with readline easier. At the
-moment, it reacts to clicking with the left mouse button by trying to
+A support package that tries to make editing with readline easier. At
+the moment, it reacts to clicking shift-left mouse button by trying to
 move the text cursor to this position. It does so by generating as many
 cursor-left or cursor-right keypresses as required (the this only works
 for programs that correctly support wide characters).
@@ -206,6 +223,18 @@ button per tab.
 Clicking a button will activate that tab. Pressing B<Shift-Left> and
 B<Shift-Right> will switch to the tab left or right of the current one,
 while B<Shift-Down> creates a new tab.
+
+The tabbar itself can be configured similarly to a normal terminal, but
+with a resource class of C<URxvt.tabbed>. In addition, it supports the
+following four resources (shown with defaults):
+
+   URxvt.tabbed.tabbar-fg: <colour-index, default 3>
+   URxvt.tabbed.tabbar-bg: <colour-index, default 0>
+   URxvt.tabbed.tab-fg:    <colour-index, default 0>
+   URxvt.tabbed.tab-bg:    <colour-index, default 1>
+
+See I<COLOR AND GRAPHICS> in the @@RXVT_NAME@@(1) manpage for valid
+indices.
 
 =item mark-urls
 
@@ -526,6 +555,12 @@ resource in the @@RXVT_NAME@@(1) manpage).
 The event is simply the action string. This interface is assumed to change
 slightly in the future.
 
+=item on_resize_all_windows $tern, $new_width, $new_height
+
+Called just after the new window size has been calculcated, but before
+windows are actually being resized or hints are being set. If this hook
+returns TRUE, setting of the window hints is being skipped.
+
 =item on_x_event $term, $event
 
 Called on every X event received on the vt window (and possibly other
@@ -743,6 +778,8 @@ Return the foreground/background colour index, respectively.
 
 =item $rend = urxvt::SET_BGCOLOR $rend, $new_colour
 
+=item $rend = urxvt::SET_COLOR $rend, $new_fg, $new_bg
+
 Replace the foreground/background colour in the rendition mask with the
 specified one.
 
@@ -842,11 +879,11 @@ sub invoke {
          }
       }
 
-      while (my ($ext, $argv) = each %ext_arg) {
+      for my $ext (sort keys %ext_arg) {
          my @files = grep -f $_, map "$_/$ext", @dirs;
 
          if (@files) {
-            $TERM->register_package (extension_package $files[0], $argv);
+            $TERM->register_package (extension_package $files[0], $ext_arg{$ext});
          } else {
             warn "perl extension '$ext' not found in perl library search path\n";
          }
@@ -887,6 +924,10 @@ sub invoke {
    }
 
    $retval
+}
+
+sub SET_COLOR($$$) {
+   SET_BGCOLOR (SET_FGCOLOR ($_[0], $_[1]), $_[2])
 }
 
 # urxvt::term::extension
@@ -1386,6 +1427,16 @@ to receive pointer events all the times:
 
    $term->vt_emask_add (urxvt::PointerMotionMask);
 
+=item $term->focus_in
+
+=item $term->focus_out
+
+=item $term->key_press ($state, $keycode[, $time])
+
+=item $term->key_release ($state, $keycode[, $time])
+
+Deliver various fake events to to terminal.
+
 =item $window_width = $term->width
 
 =item $window_height = $term->height
@@ -1425,14 +1476,19 @@ Returns the LC_CTYPE category string used by this rxvt-unicode.
 Returns a copy of the environment in effect for the terminal as a hashref
 similar to C<\%ENV>.
 
+=item @envv = $term->envv
+
+Returns the environment as array of strings of the form C<VAR=VALUE>.
+
+=item @argv = $term->argv
+
+Return the argument vector as this terminal, similar to @ARGV, but
+includes the program name as first element.
+
 =cut
 
 sub env {
-   if (my $env = $_[0]->_env) {
-      +{ map /^([^=]+)(?:=(.*))?$/s && ($1 => $2), @$env }
-   } else {
-      +{ %ENV }
-   }
+   +{ map /^([^=]+)(?:=(.*))?$/s && ($1 => $2), $_[0]->envv }
 }
 
 =item $modifiermask = $term->ModLevel3Mask
@@ -1773,16 +1829,16 @@ sub add_button {
    $self->add_item ({ type => "button", text => $text, activate => $cb});
 }
 
-=item $popup->add_toggle ($text, $cb, $initial_value)
+=item $popup->add_toggle ($text, $initial_value, $cb)
 
-Adds a toggle/checkbox item to the popup. Teh callback gets called
-whenever it gets toggled, with a boolean indicating its value as its first
-argument.
+Adds a toggle/checkbox item to the popup. The callback gets called
+whenever it gets toggled, with a boolean indicating its new value as its
+first argument.
 
 =cut
 
 sub add_toggle {
-   my ($self, $text, $cb, $value) = @_;
+   my ($self, $text, $value, $cb) = @_;
 
    my $item; $item = {
       type => "button",

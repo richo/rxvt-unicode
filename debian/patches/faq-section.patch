@@ -1,0 +1,13 @@
+Index: rxvt-unicode-7.7/doc/Makefile.in
+===================================================================
+--- rxvt-unicode-7.7.orig/doc/Makefile.in	2006-03-13 19:15:12.000000000 -0500
++++ rxvt-unicode-7.7/doc/Makefile.in	2006-03-13 19:40:01.000000000 -0500
+@@ -69,7 +69,7 @@
+ 	podselect -section "CONFIGURE OPTIONS" <$< | pod2text >$@
+ 
+ README.FAQ.in: rxvt.7.tbl
+-	podselect -section "FREQUENTLY ASKED QUESTIONS" <$< | pod2text >$@
++	podselect -section "RXVT-UNICODE\/URXVT FREQUENTLY ASKED QUESTIONS" <$< | pod2text >$@
+ 
+ %.man: %.man.in
+ 	$(SED) $(SEDREPLACE) <$< >$@

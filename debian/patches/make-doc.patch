@@ -1,0 +1,85 @@
+Index: rxvt-unicode-7.7/doc/Makefile.in
+===================================================================
+--- rxvt-unicode-7.7.orig/doc/Makefile.in	2006-03-12 14:07:22.000000000 -0500
++++ rxvt-unicode-7.7/doc/Makefile.in	2006-03-12 14:08:10.000000000 -0500
+@@ -36,7 +36,7 @@
+ 
+ #-------------------------------------------------------------------------
+ 
+-all:
++all: alldoc
+ 
+ SEDREPLACE = -e 's%@@RXVT_VERSION@@%$(VERSION)%g;'	\
+ 	     -e 's%@@RXVT_NAME@@%$(RXVTNAME)%g;'	\
+@@ -50,14 +50,14 @@
+ %.tbl: %.pod
+ 	./podtbl <$< >$@
+ 
+-%.1.man.in: %.1.tbl
+-	pod2man -n rxvt -r"$(VERSION)" -q\" -s1 -c "RXVT-UNICODE" <$< >$@
++%.1.man: %.1.tbl
++	$(SED) $(SEDREPLACE) <$< | pod2man -n rxvt -r"$(VERSION)" -q\" -s1 -c "RXVT-UNICODE" >$@
+ 
+-%.3.man.in: %.3.tbl
+-	pod2man -n rxvt -r"$(VERSION)" -q\" -s3 -c "RXVT-UNICODE" <$< >$@
++%.3.man: %.3.tbl
++	$(SED) $(SEDREPLACE) <$< | pod2man -n rxvt -r"$(VERSION)" -q\" -s3 -c "RXVT-UNICODE" >$@
+ 
+-%.7.man.in: %.7.tbl
+-	pod2man -n rxvt -r"$(VERSION)" -q\" -s7 -c "RXVT-UNICODE" <$< >$@
++%.7.man: %.7.tbl
++	$(SED) $(SEDREPLACE) <$< | pod2man -n rxvt -r"$(VERSION)" -q\" -s7 -c "RXVT-UNICODE" >$@
+ 
+ %.html: %.tbl
+ 	$(SED) $(SEDREPLACE) <$< | pod2html >$@
+@@ -73,39 +73,34 @@
+ 
+ tags allbin:
+ 
+-alldoc:	rxvt.1.man.in rxvt.7.man.in rxvtc.1.man.in rxvtd.1.man.in rxvtperl.3.man.in \
+-	rxvt.1.txt    rxvt.7.txt    rxvtc.1.txt    rxvtd.1.txt    rxvtperl.3.txt \
+-	rxvt.1.html   rxvt.7.html   rxvtc.1.html   rxvtd.1.html   rxvtperl.3.html \
++alldoc:	rxvt.1.man  rxvt.7.man  rxvtc.1.man  rxvtd.1.man  rxvtperl.3.man \
++	rxvt.1.txt  rxvt.7.txt  rxvtc.1.txt  rxvtd.1.txt  rxvtperl.3.txt \
++	rxvt.1.html rxvt.7.html rxvtc.1.html rxvtd.1.html rxvtperl.3.html \
+ 	../README.configure ../README.FAQ
+ 	infocmp -C rxvt-unicode >etc/rxvt-unicode.termcap
+ 
+ clean:
+-	rm -f *~
++	rm -f pod*.tmp *~
+ 
+ realclean: clean
+-	rm -f tags ../README.configure ../README.FAQ
+-	rm -f rxvt.1.man.in rxvt.7.man.in rxvtc.1.man.in rxvtd.1.man.in
+-	rm -f rxvt.1.man    rxvt.7.man    rxvtc.1.man    rxvtd.1.man   
+-	rm -f rxvt.1.txt    rxvt.7.txt    rxvtc.1.txt    rxvtd.1.txt
+-	rm -f rxvt.1.html   rxvt.7.html   rxvtc.1.html   rxvtd.1.html
++	rm -f tags ../README.configure ../README.FAQ rxvtperl.3.pod
++	rm -f rxvt.1.tbl  rxvt.7.tbl  rxvtc.1.tbl  rxvtd.1.tbl  rxvtperl.3.tbl
++	rm -f rxvt.1.man  rxvt.7.man  rxvtc.1.man  rxvtd.1.man  rxvtperl.3.man
++	rm -f rxvt.1.txt  rxvt.7.txt  rxvtc.1.txt  rxvtd.1.txt  rxvtperl.3.txt
++	rm -f rxvt.1.html rxvt.7.html rxvtc.1.html rxvtd.1.html rxvtperl.3.html
+ 
+ cleandir: realclean
+ 
+-distclean:
++distclean: realclean
+ 
+-install:
++install: alldoc
+ 	$(INSTALL) -d $(DESTDIR)$(man1dir)
+-	$(SED) $(SEDREPLACE) < rxvt.1.man.in >rxvt.1.man
+ 	$(INSTALL_DATA) rxvt.1.man $(DESTDIR)$(man1dir)/$(RXVTNAME).$(man1ext)
+-	$(SED) $(SEDREPLACE) < rxvtc.1.man.in >rxvtc.1.man
+ 	$(INSTALL_DATA) rxvtc.1.man $(DESTDIR)$(man1dir)/$(RXVTNAME)c.$(man1ext)
+-	$(SED) $(SEDREPLACE) < rxvtd.1.man.in >rxvtd.1.man
+ 	$(INSTALL_DATA) rxvtd.1.man $(DESTDIR)$(man1dir)/$(RXVTNAME)d.$(man1ext)
+ 	$(INSTALL) -d $(DESTDIR)$(man7dir)
+-	$(SED) $(SEDREPLACE) < rxvt.7.man.in >rxvt.7.man
+ 	$(INSTALL_DATA) rxvt.7.man $(DESTDIR)$(man7dir)/$(RXVTNAME).$(man7ext)
+ @IF_PERL@	$(INSTALL) -d $(DESTDIR)$(man3dir)
+-@IF_PERL@	$(SED) $(SEDREPLACE) < rxvtperl.3.man.in >rxvtperl.3.man
+ @IF_PERL@	$(INSTALL_DATA) rxvtperl.3.man $(DESTDIR)$(man3dir)/$(RXVTNAME)perl.$(man3ext)
+ 	if test -x "@TIC@"; then if test -n "@TIC@"; then @TIC@ etc/rxvt-unicode.terminfo; fi; fi
+ 

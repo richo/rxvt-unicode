@@ -1,4 +1,4 @@
-/*--------------------------------*-C-*---------------------------------*
+/*----------------------------------------------------------------------*
  * File:	command.C
  *----------------------------------------------------------------------*
  *
@@ -51,16 +51,15 @@
 #include "version.h"
 #include "command.h"
 
-#if HAVE_SCHED_YIELD
-#undef HAVE_SCHED_YIELD // disabled for the time being
-//# include <sched.h>
-#endif
-
 #ifdef KEYSYM_RESOURCE
 # include "keyboard.h"
 #endif
 
 #include <csignal>
+
+#if LINUX_YIELD_HACK
+# include <ctime>
+#endif
 
 /*----------------------------------------------------------------------*/
 
@@ -301,15 +300,19 @@ rxvt_term::hex_keyval (XKeyEvent &ev)
 }
 #endif
 
-/*{{{ Convert the keypress event into a string */
 void
-rxvt_term::lookup_key (XKeyEvent &ev)
+rxvt_term::key_press (XKeyEvent &ev)
 {
   int ctrl, meta, shft, len;
   unsigned int newlen;
   KeySym keysym;
   int valid_keysym;
   char kbuf[KBUFSZ];
+
+#if ISO_14755
+  if (iso14755buf & ISO_14755_52)
+    return;
+#endif
 
   /*
    * use Num_Lock to toggle Keypad on/off.  If Num_Lock is off, allow an
@@ -910,7 +913,83 @@ rxvt_term::lookup_key (XKeyEvent &ev)
 
   tt_write (kbuf, (unsigned int)len);
 }
-/*}}} */
+
+void
+rxvt_term::key_release (XKeyEvent &ev)
+{
+#if (MOUSE_WHEEL && MOUSE_SLIP_WHEELING) || ISO_14755 || ENABLE_PERL
+  KeySym keysym;
+
+  keysym = XLookupKeysym (&ev, ev.state & ShiftMask ? 1 : 0); // sorry, only shift supported :/
+#endif
+
+#if ENABLE_FRILLS || ISO_14755
+  // ISO 14755 support
+  if (iso14755buf)
+    if (iso14755buf & ISO_14755_52)
+      {
+# if ENABLE_OVERLAY
+        scr_overlay_off ();
+# endif
+# if ISO_14755
+        // iso14755 part 5.2 handling: release time
+        // first: controls
+        if ((ev.state & ControlMask)
+             && ((keysym >= 0x40 && keysym <= 0x5f)
+                 || (keysym >= 0x61 && keysym <= 0x7f)))
+          {
+            iso14755buf = ISO_14755_51 | 0x2400 | (keysym & 0x1f);
+            commit_iso14755 ();
+
+            return;
+          }
+
+        for (unsigned short *i = iso14755_symtab; i[0]; i+= 2)
+          if (i[0] == keysym)
+            {
+              iso14755buf = ISO_14755_51 | i[1];
+              commit_iso14755 ();
+
+              return;
+            }
+
+        scr_bell ();
+# endif
+        iso14755buf = 0;
+
+        return;
+      }
+    else if ((ev.state & (ShiftMask | ControlMask)) != (ShiftMask | ControlMask))
+      {
+# if ENABLE_OVERLAY
+        scr_overlay_off ();
+# endif
+        if (iso14755buf & ISO_14755_51)
+          commit_iso14755 ();
+#if ISO_14755
+        else if (iso14755buf & ISO_14755_STARTED)
+          {
+            iso14755buf = ISO_14755_52; // iso14755 part 5.2: remember empty begin/end pair
+
+            scr_overlay_new (0, -1, sizeof ("KEYCAP PICTURE INSERT MODE") - 1, 1);
+            scr_overlay_set (0, 0, "KEYCAP PICTURE INSERT MODE");
+          }
+# endif
+        else
+          iso14755buf = 0;
+      }
+#endif
+
+  if (HOOK_INVOKE ((this, HOOK_KEY_RELEASE, DT_XEVENT, &ev, DT_INT, keysym, DT_END)))
+    return;
+
+#if defined(MOUSE_WHEEL) && defined(MOUSE_SLIP_WHEELING)
+  if (!(ev.state & ControlMask))
+    slip_wheel_ev.stop ();
+  else if (keysym == XK_Control_L || keysym == XK_Control_R)
+    mouse_slip_wheel_speed = 0;
+#endif
+}
 
 #if defined (KEYSYM_RESOURCE)
 unsigned int
@@ -1097,19 +1176,26 @@ rxvt_term::slip_wheel_cb (time_watcher &w)
 }
 #endif
 
-#if HAVE_SCHED_YIELD
+#if LINUX_YIELD_HACK
 static struct event_handler
 {
-  check_watcher cw_yield;
+  check_watcher yield_ev;
   
-  void yield (check_watcher &w)
+  void yield_cb (check_watcher &w)
   {
-    sched_yield ();
+    // this should really be sched_yield(), but the linux guys thought
+    // that giving a process calling sched_yield () less cpu time than
+    // ones with high nice levels is a useful thing to do. It surely is is
+    // allowed by the sus... as is returning ENOSYS.
+
+    struct timespec ts = { 0, 0 };
+    nanosleep (&ts, 0);
+
     w.stop ();
   }
 
   event_handler ()
-  : cw_yield (this, &event_handler::yield)
+  : yield_ev (this, &event_handler::yield_cb)
   {
   }
 } event_handler;
@@ -1139,9 +1225,9 @@ rxvt_term::pty_fill ()
     }
   else if (r < 0 && (errno == EAGAIN || errno == EINTR))
     {
-#if HAVE_SCHED_YIELD
+#if LINUX_YIELD_HACK
       if (display->is_local)
-        event_handler.cw_yield.start ();
+        event_handler.yield_ev.start ();
 #endif
     }
   else
@@ -1173,7 +1259,7 @@ rxvt_term::pty_cb (io_watcher &w, short revents)
 void
 rxvt_term::pointer_unblank ()
 {
-  XDefineCursor (xdisp, vt, TermWin_cursor);
+  XDefineCursor (dpy, vt, TermWin_cursor);
   recolour_cursor ();
 
 #ifdef POINTER_BLANK
@@ -1191,8 +1277,8 @@ rxvt_term::pointer_blank ()
   if (!OPTION (Opt_pointerBlank))
     return;
 
-  XDefineCursor (xdisp, vt, display->blank_cursor);
-  XFlush (xdisp);
+  XDefineCursor (dpy, vt, display->blank_cursor);
+  XFlush (dpy);
 
   hidden_pointer = 1;
 }
@@ -1281,7 +1367,7 @@ rxvt_term::x_cb (XEvent &ev)
 {
   make_current ();
 
-  dLocal (Display *, xdisp);
+  dLocal (Display *, dpy);
 
   if (ev.xany.window == vt
       && SHOULD_INVOKE (HOOK_X_EVENT)
@@ -1296,87 +1382,12 @@ rxvt_term::x_cb (XEvent &ev)
   switch (ev.type)
     {
       case KeyPress:
-#if ISO_14755
-        if (!(iso14755buf & ISO_14755_52))
-#endif
-          lookup_key (ev.xkey);
-
+        key_press (ev.xkey);
         break;
 
       case KeyRelease:
-        {
-#if (MOUSE_WHEEL && MOUSE_SLIP_WHEELING) || ISO_14755 || ENABLE_PERL
-          KeySym keysym;
-
-          keysym = XLookupKeysym (&ev.xkey, ev.xkey.state & ShiftMask ? 1 : 0); // sorry, only shift supported :/
-#endif
-
-#if ENABLE_FRILLS || ISO_14755
-          // ISO 14755 support
-          if (iso14755buf)
-            if (iso14755buf & ISO_14755_52)
-              {
-# if ENABLE_OVERLAY
-                scr_overlay_off ();
-# endif
-# if ISO_14755
-                // iso14755 part 5.2 handling: release time
-                // first: controls
-                if ((ev.xkey.state & ControlMask)
-                     && ((keysym >= 0x40 && keysym <= 0x5f)
-                         || (keysym >= 0x61 && keysym <= 0x7f)))
-                  {
-                    iso14755buf = ISO_14755_51 | 0x2400 | (keysym & 0x1f);
-                    commit_iso14755 ();
-                    goto skip_switch;
-                  }
-
-                for (unsigned short *i = iso14755_symtab; i[0]; i+= 2)
-                  if (i[0] == keysym)
-                    {
-                      iso14755buf = ISO_14755_51 | i[1];
-                      commit_iso14755 ();
-                      goto skip_switch;
-                    }
-
-                scr_bell ();
-# endif
-                iso14755buf = 0;
-                break;
-              }
-            else if ((ev.xkey.state & (ShiftMask | ControlMask)) != (ShiftMask | ControlMask))
-              {
-# if ENABLE_OVERLAY
-                scr_overlay_off ();
-# endif
-                if (iso14755buf & ISO_14755_51)
-                  commit_iso14755 ();
-#if ISO_14755
-                else if (iso14755buf & ISO_14755_STARTED)
-                  {
-                    iso14755buf = ISO_14755_52; // iso14755 part 5.2: remember empty begin/end pair
-
-                    scr_overlay_new (0, -1, sizeof ("KEYCAP PICTURE INSERT MODE") - 1, 1);
-                    scr_overlay_set (0, 0, "KEYCAP PICTURE INSERT MODE");
-                  }
-# endif
-                else
-                  iso14755buf = 0;
-              }
-#endif
-
-          if (ev.xany.window == vt
-              && HOOK_INVOKE ((this, HOOK_KEY_RELEASE, DT_XEVENT, &ev, DT_INT, keysym, DT_END)))
-            break;
-
-#if defined(MOUSE_WHEEL) && defined(MOUSE_SLIP_WHEELING)
-          if (!(ev.xkey.state & ControlMask))
-            slip_wheel_ev.stop ();
-          else if (keysym == XK_Control_L || keysym == XK_Control_R)
-            mouse_slip_wheel_speed = 0;
-#endif
-          break;
-        }
+        key_release (ev.xkey);
+        break;
 
       case ButtonPress:
         button_press (ev.xbutton);
@@ -1401,7 +1412,7 @@ rxvt_term::x_cb (XEvent &ev)
                       }
 #if ENABLE_EWMH
                     else if (ev.xclient.data.l[0] == xa[XA_NET_WM_PING])
-                      XSendEvent (xdisp, ev.xclient.window = display->root,
+                      XSendEvent (dpy, ev.xclient.window = display->root,
                                   False, SubstructureRedirectMask | SubstructureNotifyMask,
                                   &ev);
 #endif
@@ -1459,7 +1470,7 @@ rxvt_term::x_cb (XEvent &ev)
       case ConfigureNotify:
         if (ev.xconfigure.window == parent[0])
           {
-            while (XCheckTypedWindowEvent (xdisp, ev.xconfigure.window, ConfigureNotify, &ev))
+            while (XCheckTypedWindowEvent (dpy, ev.xconfigure.window, ConfigureNotify, &ev))
               ;
 
             if (szHint.width != ev.xconfigure.width || szHint.height != ev.xconfigure.height)
@@ -1527,11 +1538,11 @@ rxvt_term::x_cb (XEvent &ev)
             do
               scr_expose (ev.xexpose.x, ev.xexpose.y,
                           ev.xexpose.width, ev.xexpose.height, False);
-            while (XCheckTypedWindowEvent (xdisp, vt, ev.xany.type, &ev));
+            while (XCheckTypedWindowEvent (dpy, vt, ev.xany.type, &ev));
 
             ev.xany.type = ev.xany.type == Expose ? GraphicsExpose : Expose;
 
-            while (XCheckTypedWindowEvent (xdisp, vt, ev.xany.type, &ev))
+            while (XCheckTypedWindowEvent (dpy, vt, ev.xany.type, &ev))
               scr_expose (ev.xexpose.x, ev.xexpose.y,
                           ev.xexpose.width, ev.xexpose.height, False);
 
@@ -1541,9 +1552,9 @@ rxvt_term::x_cb (XEvent &ev)
           {
             XEvent unused_event;
 
-            while (XCheckTypedWindowEvent (xdisp, ev.xany.window, Expose, &unused_event))
+            while (XCheckTypedWindowEvent (dpy, ev.xany.window, Expose, &unused_event))
               ;
-            while (XCheckTypedWindowEvent (xdisp, ev.xany.window, GraphicsExpose, &unused_event))
+            while (XCheckTypedWindowEvent (dpy, ev.xany.window, GraphicsExpose, &unused_event))
               ;
 
             if (isScrollbarWindow (ev.xany.window))
@@ -1554,7 +1565,7 @@ rxvt_term::x_cb (XEvent &ev)
 
 #ifdef TRANSPARENT
             if (am_transparent && ev.xany.window == parent[0])
-              XClearWindow (xdisp, ev.xany.window);
+              XClearWindow (dpy, ev.xany.window);
 #endif
           }
         break;
@@ -1574,10 +1585,10 @@ rxvt_term::x_cb (XEvent &ev)
               ; // nop
             else if (ev.xbutton.state & (Button1Mask | Button3Mask))
               {
-                while (XCheckTypedWindowEvent (xdisp, vt, MotionNotify, &ev))
+                while (XCheckTypedWindowEvent (dpy, vt, MotionNotify, &ev))
                   ;
 
-                XQueryPointer (xdisp, vt,
+                XQueryPointer (dpy, vt,
                                &unused_root, &unused_child,
                                &unused_root_x, &unused_root_y,
                                &ev.xbutton.x, &ev.xbutton.y,
@@ -1651,11 +1662,11 @@ rxvt_term::x_cb (XEvent &ev)
           }
         else if (isScrollbarWindow (ev.xany.window) && scrollbar_isMotion ())
           {
-            while (XCheckTypedWindowEvent (xdisp, scrollBar.win,
+            while (XCheckTypedWindowEvent (dpy, scrollBar.win,
                                            MotionNotify, &ev))
               ;
 
-            XQueryPointer (xdisp, scrollBar.win,
+            XQueryPointer (dpy, scrollBar.win,
                           &unused_root, &unused_child,
                           &unused_root_x, &unused_root_y,
                           &ev.xbutton.x, &ev.xbutton.y,
@@ -1668,8 +1679,6 @@ rxvt_term::x_cb (XEvent &ev)
           }
         break;
     }
-
-skip_switch: ;
 
 #if defined(CURSOR_BLINK)
   if (OPTION (Opt_cursorBlink) && ev.type == KeyPress)
@@ -1707,12 +1716,12 @@ rxvt_term::focus_in ()
       focus = 1;
       want_refresh = 1;
 
-      HOOK_INVOKE ((this, HOOK_FOCUS_OUT, DT_END));
+      HOOK_INVOKE ((this, HOOK_FOCUS_IN, DT_END));
 
 #if USE_XIM
       if (Input_Context != NULL)
         {
-          IMSetStatusPosition ();
+          IMSetPosition ();
           XSetICFocus (Input_Context);
         }
 #endif
@@ -2426,17 +2435,17 @@ rxvt_term::check_our_parents ()
   if (!OPTION (Opt_transparent))
     return pchanged;	/* Don't try any more */
 
-  XGetWindowAttributes (xdisp, display->root, &wrootattr);
+  XGetWindowAttributes (dpy, display->root, &wrootattr);
   rootdepth = wrootattr.depth;
 
-  XGetWindowAttributes (xdisp, parent[0], &wattr);
+  XGetWindowAttributes (dpy, parent[0], &wattr);
 
   if (rootdepth != wattr.depth)
     {
       if (am_transparent)
         {
           pchanged = 1;
-          XSetWindowBackground (xdisp, vt, pix_colors_focused[Color_bg]);
+          XSetWindowBackground (dpy, vt, pix_colors_focused[Color_bg]);
           am_transparent = am_pixmap_trans = 0;
         }
 
@@ -2444,7 +2453,7 @@ rxvt_term::check_our_parents ()
     }
 
   /* Get all X ops out of the queue so that our information is up-to-date. */
-  XSync (xdisp, False);
+  XSync (dpy, False);
 
   /*
    * Make the frame window set by the window manager have
@@ -2452,19 +2461,19 @@ rxvt_term::check_our_parents ()
    * windows for each client, so we have to take care about that.
    */
   i = (xa[XA_XROOTPMAP_ID]
-       && XGetWindowProperty (xdisp, display->root, xa[XA_XROOTPMAP_ID],
+       && XGetWindowProperty (dpy, display->root, xa[XA_XROOTPMAP_ID],
                               0L, 1L, False, XA_PIXMAP, &atype, &aformat,
                               &nitems, &bytes_after, &prop) == Success);
 
   if (!i || prop == NULL)
      i = (xa[XA_ESETROOT_PMAP_ID]
-          && XGetWindowProperty (xdisp, display->root, xa[XA_ESETROOT_PMAP_ID],
+          && XGetWindowProperty (dpy, display->root, xa[XA_ESETROOT_PMAP_ID],
                                  0L, 1L, False, XA_PIXMAP, &atype, &aformat,
                                  &nitems, &bytes_after, &prop) == Success);
 
   if (!i || prop == NULL
 #if TINTING
-      || !rs[Rs_color + Color_tint]
+      || !ISSET_PIXCOLOR (Color_tint)
 #endif
       )
     have_pixmap = 0;
@@ -2487,7 +2496,7 @@ rxvt_term::check_our_parents ()
       GC gc;
       XGCValues gcvalue;
 
-      XTranslateCoordinates (xdisp, parent[0], display->root,
+      XTranslateCoordinates (dpy, parent[0], display->root,
                              0, 0, &sx, &sy, &cr);
       nw = (unsigned int)szHint.width;
       nh = (unsigned int)szHint.height;
@@ -2510,9 +2519,9 @@ rxvt_term::check_our_parents ()
       min_it (nw, (unsigned int) (wrootattr.width - sx));
       min_it (nh, (unsigned int) (wrootattr.height - sy));
 
-      XSync (xdisp, False);
+      XSync (dpy, False);
       allowedxerror = -1;
-      image = XGetImage (xdisp, rootpixmap, sx, sy, nw, nh, AllPlanes, ZPixmap);
+      image = XGetImage (dpy, rootpixmap, sx, sy, nw, nh, AllPlanes, ZPixmap);
 
       /* XXX: handle BadMatch - usually because we're outside the pixmap */
       /* XXX: may need a delay here? */
@@ -2525,7 +2534,7 @@ rxvt_term::check_our_parents ()
               pchanged = 1;
               if (pixmap != None)
                 {
-                  XFreePixmap (xdisp, pixmap);
+                  XFreePixmap (dpy, pixmap);
                   pixmap = None;
                 }
             }
@@ -2535,28 +2544,28 @@ rxvt_term::check_our_parents ()
       else
         {
           if (pixmap != None)
-            XFreePixmap (xdisp, pixmap);
+            XFreePixmap (dpy, pixmap);
 
 #if TINTING
           if (ISSET_PIXCOLOR (Color_tint))
             {
               int shade = rs[Rs_shade] ? atoi (rs[Rs_shade]) : 100;
 
-              rxvt_rgba c;
-              pix_colors_focused [Color_tint].get (this, c);
+              rgba c;
+              pix_colors_focused [Color_tint].get (c);
 
               ShadeXImage (this, image, shade, c.r, c.g, c.b);
             }
 #endif
 
-          pixmap = XCreatePixmap (xdisp, vt, szHint.width, szHint.height, image->depth);
-          gc = XCreateGC (xdisp, vt, 0UL, &gcvalue);
-          XPutImage (xdisp, pixmap, gc, image, 0, 0,
+          pixmap = XCreatePixmap (dpy, vt, szHint.width, szHint.height, image->depth);
+          gc = XCreateGC (dpy, vt, 0UL, &gcvalue);
+          XPutImage (dpy, pixmap, gc, image, 0, 0,
                      nx, ny, image->width, image->height);
-          XFreeGC (xdisp, gc);
+          XFreeGC (dpy, gc);
           XDestroyImage (image);
-          XSetWindowBackgroundPixmap (xdisp, parent[0], pixmap);
-          XClearWindow (xdisp, parent[0]);
+          XSetWindowBackgroundPixmap (dpy, parent[0], pixmap);
+          XClearWindow (dpy, parent[0]);
 
           if (!am_transparent || !am_pixmap_trans)
             pchanged = 1;
@@ -2566,7 +2575,7 @@ rxvt_term::check_our_parents ()
     }
 
   if (am_pixmap_trans)
-    XSetWindowBackgroundPixmap (xdisp, vt, ParentRelative);
+    XSetWindowBackgroundPixmap (dpy, vt, ParentRelative);
   else
     {
       unsigned int n;
@@ -2576,8 +2585,7 @@ rxvt_term::check_our_parents ()
       for (i = 1; i < (int) (sizeof (parent) / sizeof (Window)); i++)
         {
           oldp = parent[i];
-          XQueryTree (xdisp, parent[i - 1], &root,
-                      &parent[i], &list, &n);
+          XQueryTree (dpy, parent[i - 1], &root, &parent[i], &list, &n);
           XFree (list);
 
           if (parent[i] == display->root)
@@ -2595,22 +2603,21 @@ rxvt_term::check_our_parents ()
       n = 0;
 
       if (pchanged)
-        {
-          for (; n < (unsigned int)i; n++)
-            {
-              XGetWindowAttributes (xdisp, parent[n], &wattr);
-              if (wattr.depth != rootdepth || wattr.c_class == InputOnly)
-                {
-                  n = (int) (sizeof (parent) / sizeof (Window)) + 1;
-                  break;
-                }
-            }
-        }
+        for (; n < (unsigned int)i; n++)
+          {
+            XGetWindowAttributes (dpy, parent[n], &wattr);
 
-      if (n > (int) (sizeof (parent) / sizeof (parent[0])))
+            if (wattr.depth != rootdepth || wattr.c_class == InputOnly)
+              {
+                n = (int) (sizeof (parent) / sizeof (Window)) + 1;
+                break;
+              }
+          }
+
+      if (n > (sizeof (parent) / sizeof (parent[0])))
         {
-          XSetWindowBackground (xdisp, parent[0], pix_colors_focused[Color_border]);
-          XSetWindowBackground (xdisp, vt, pix_colors_focused[Color_bg]);
+          XSetWindowBackground (dpy, parent[0], pix_colors_focused[Color_border]);
+          XSetWindowBackground (dpy, vt, pix_colors_focused[Color_bg]);
           am_transparent = 0;
           /* XXX: also turn off Opt_transparent? */
         }
@@ -2618,11 +2625,11 @@ rxvt_term::check_our_parents ()
         {
           for (n = 0; n < (unsigned int)i; n++)
             {
-              XSetWindowBackgroundPixmap (xdisp, parent[n], ParentRelative);
-              XClearWindow (xdisp, parent[n]);
+              XSetWindowBackgroundPixmap (dpy, parent[n], ParentRelative);
+              XClearWindow (dpy, parent[n]);
             }
 
-          XSetWindowBackgroundPixmap (xdisp, vt, ParentRelative);
+          XSetWindowBackgroundPixmap (dpy, vt, ParentRelative);
           am_transparent = 1;
         }
 
@@ -2632,7 +2639,7 @@ rxvt_term::check_our_parents ()
 
   if (scrollBar.win)
     {
-      XSetWindowBackgroundPixmap (xdisp, scrollBar.win, ParentRelative);
+      XSetWindowBackgroundPixmap (dpy, scrollBar.win, ParentRelative);
       scrollBar.setIdle ();
       scrollbar_show (0);
     }
@@ -3533,7 +3540,7 @@ rxvt_term::process_window_ops (const int *args, unsigned int nargs)
   XWindowAttributes wattr;
   Window wdummy;
 
-  dLocal (Display *, xdisp);
+  dLocal (Display *, dpy);
 
   if (nargs == 0)
     return;
@@ -3544,22 +3551,22 @@ rxvt_term::process_window_ops (const int *args, unsigned int nargs)
        * commands
        */
       case 1:			/* deiconify window */
-        XMapWindow (xdisp, parent[0]);
+        XMapWindow (dpy, parent[0]);
         break;
       case 2:			/* iconify window */
-        XIconifyWindow (xdisp, parent[0], display->screen);
+        XIconifyWindow (dpy, parent[0], display->screen);
         break;
       case 3:			/* set position (pixels) */
-        XMoveWindow (xdisp, parent[0], args[1], args[2]);
+        XMoveWindow (dpy, parent[0], args[1], args[2]);
         break;
       case 4:			/* set size (pixels) */
         set_widthheight ((unsigned int)args[2], (unsigned int)args[1]);
         break;
       case 5:			/* raise window */
-        XRaiseWindow (xdisp, parent[0]);
+        XRaiseWindow (dpy, parent[0]);
         break;
       case 6:			/* lower window */
-        XLowerWindow (xdisp, parent[0]);
+        XLowerWindow (dpy, parent[0]);
         break;
       case 7:			/* refresh window */
         scr_touch (true);
@@ -3576,23 +3583,22 @@ rxvt_term::process_window_ops (const int *args, unsigned int nargs)
                            (unsigned int) (args[1] * fheight));
         break;
 
-
       /*
        * reports - some output format copied from XTerm
        */
       case 11:			/* report window state */
-        XGetWindowAttributes (xdisp, parent[0], &wattr);
+        XGetWindowAttributes (dpy, parent[0], &wattr);
         tt_printf ("\033[%dt", wattr.map_state == IsViewable ? 1 : 2);
         break;
       case 13:			/* report window position */
-        XGetWindowAttributes (xdisp, parent[0], &wattr);
-        XTranslateCoordinates (xdisp, parent[0], wattr.root,
+        XGetWindowAttributes (dpy, parent[0], &wattr);
+        XTranslateCoordinates (dpy, parent[0], wattr.root,
                                -wattr.border_width, -wattr.border_width,
                                &x, &y, &wdummy);
         tt_printf ("\033[3;%d;%dt", x, y);
         break;
       case 14:			/* report window size (pixels) */
-        XGetWindowAttributes (xdisp, parent[0], &wattr);
+        XGetWindowAttributes (dpy, parent[0], &wattr);
         tt_printf ("\033[4;%d;%dt", wattr.height, wattr.width);
         break;
       case 18:			/* report text area size (chars) */
@@ -3604,7 +3610,7 @@ rxvt_term::process_window_ops (const int *args, unsigned int nargs)
       case 20:			/* report icon label */
         {
           char *s;
-          XGetIconName (xdisp, parent[0], &s);
+          XGetIconName (dpy, parent[0], &s);
           tt_printf ("\033]L%-.250s\234", OPTION (Opt_insecure) && s ? s : "");	/* 8bit ST */
           XFree (s);
         }
@@ -3612,7 +3618,7 @@ rxvt_term::process_window_ops (const int *args, unsigned int nargs)
       case 21:			/* report window title */
         {
           char *s;
-          XFetchName (xdisp, parent[0], &s);
+          XFetchName (dpy, parent[0], &s);
           tt_printf ("\033]l%-.250s\234", OPTION (Opt_insecure) && s ? s : "");	/* 8bit ST */
           XFree (s);
         }
@@ -3723,11 +3729,11 @@ rxvt_term::process_color_seq (int report, int color, const char *str, char resp)
 {
   if (str[0] == '?' && !str[1])
     {
-      rxvt_rgba c;
-      pix_colors_focused[color].get (this, c);
+      rgba c;
+      pix_colors_focused[color].get (c);
 
 #if XFT
-      if (c.a != rxvt_rgba::MAX_CC)
+      if (c.a != rgba::MAX_CC)
         tt_printf ("\033]%d;rgba:%04x/%04x/%04x/%04x%c", report, c.a, c.r, c.g, c.b, resp);
       else
 #endif
@@ -3748,7 +3754,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
   bool query = str[0] == '?' && !str[1];
   int saveop = op;
 
-  dLocal (Display *, xdisp);
+  dLocal (Display *, dpy);
 
   assert (str != NULL);
   switch (op)
@@ -3774,7 +3780,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
             const char *str = "";
 
             if (prop
-                && XGetWindowProperty (xdisp, parent[0],
+                && XGetWindowProperty (dpy, parent[0],
                                        prop, 0, 1<<16, 0, AnyPropertyType,
                                        &actual_type, &actual_format,
                                        &nitems, &bytes_after, &value) == Success
@@ -3796,7 +3802,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
                 set_utf8_property (display->atom (str), eq + 1);
               }
             else
-              XDeleteProperty (xdisp, parent[0],
+              XDeleteProperty (dpy, parent[0],
                                display->atom (str));
           }
         break;
@@ -3855,9 +3861,12 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
 #if TRANSPARENT && TINTING
       case URxvt_Color_tint:
         process_color_seq (op, Color_tint, str, resp);
+
         check_our_parents ();
+
         if (am_transparent)
           want_full_refresh = want_refresh = 1;
+
         break;
 #endif
 

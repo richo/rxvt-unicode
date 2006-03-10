@@ -1,3 +1,39 @@
+rxvt-unicode (7.7-1) unstable; urgency=low
+
+  * (XXX CECI N'EST PAS UNE CHANGELOG)
+  * Adopting package. (Closes: #348719)
+  * The following bugs have been fixed in previous Debian revisions:
+    - An x-terminal-emulator alternative is provided (Closes: #314977)
+    - /dev/tty is now readable by default (this was actually a bug in makedev
+      which was not reassigned for some reason.) (Closes: #246059)
+  * New upstream release:
+    - Cleans up eaves zombie shell processes in urxvtd (Closes: #339833)
+    - Handling of bold "special" characters fixed (Closes: #294582)
+    - Setting/pasting of PRIMARY selection fixed (Closes: #328965, #291587)
+    - #284257, should no longer happen, but I don't have a PPC.
+  * Rebuild against new Xft (Closes: #352168, #351371)
+  * Enable Perl support in rxvt-unicode-ml.
+  * Switch from dpatch to quilt.
+  * Fix documentation of utmp/wtmp permissions (Closes: #342738)
+  * Add FSF address to debian/copyright.
+  * Remove -D from install call (breaks with Ubuntu's coreutils).
+  * Set resource class to URxvt and fallback class to Rxvt for all flavors.
+    (Closes: #263123, #270160)
+  * Document the fact that $TERM defaults to rxvt-unicode (not rxvt), and how
+    to change this with X resources. Users do not (and should not) have to
+    compile terminfo entries, so remove these from examples; ncurses-base
+    provides a proper one already. (Closes: #351872)
+  * Install alternative for rxvt.1.gz. (Closes: #355069)
+  * Specify default fontset in app-defaults. (Closes: #348666)
+  * Removed debian/urxvtc.1 (superseded by upstream).
+  * Run pod2man using the name (i.e page heading) "urxvt" rather than "rxvt".
+    (Closes: #354904)
+  * Added urxvtcd script to automatically start urxvtd if necessary and run
+    urxvtc. (Closes: #347434)
+  * Added watch file.
+
+ -- Decklin Foster <decklin@red-bean.com>  Fri, 10 Mar 2006 16:41:50 -0500
+
 rxvt-unicode (7.5-1) unstable; urgency=low
 
   * Orphaning the package, maintainer changed to QA

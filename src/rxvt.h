@@ -590,9 +590,6 @@ enum colour_list {
 
 #define Color_Bits      7 // 0 .. maxTermCOLOR
 
-#define NPIXCLR_SETS    ((TOTAL_COLORS + 31) / 32)
-#define NPIXCLR_BITS    32
-
 /*
  * Resource list
  */
@@ -733,8 +730,8 @@ enum {
 
 #define RS_SAME(a,b)		(!(((a) ^ (b)) & ~RS_Careful))
 
-#define SET_PIXCOLOR(x)         (pixcolor_set[(x) / NPIXCLR_BITS] |= (1 << ((x) % NPIXCLR_BITS)))
-#define ISSET_PIXCOLOR(x)       (pixcolor_set[(x) / NPIXCLR_BITS] &  (1 << ((x) % NPIXCLR_BITS)))
+#define PIXCOLOR_NAME(idx)      rs[Rs_color + (idx)]
+#define ISSET_PIXCOLOR(idx)     (!!rs[Rs_color + (idx)])
 
 #if ENABLE_STYLES
 # define FONTSET(style) fontset[GET_STYLE (style)]
@@ -893,11 +890,17 @@ extern class rxvt_composite_vec rxvt_composite;
 /****************************************************************************/
 
 #ifdef KEYSYM_RESOURCE
-  class keyboard_manager;
+class keyboard_manager;
 #endif
 
 struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
-  log_callback   *log_hook;               // log error messages through this hook, if != 0
+
+  // special markers with magic addresses
+  static const char resval_undef [];    // options specifically unset
+  static const char resval_on [];       // boolean options switched on
+  static const char resval_off [];      // or off
+  
+  log_callback   *log_hook;             // log error messages through this hook, if != 0
   getfd_callback *getfd_hook;           // convert remote to local fd, if != 0
 #if ENABLE_PERL
   rxvt_perl_term  perl;
@@ -946,8 +949,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
                   prev_nrow;            /* screen: previous number of rows */
 /* ---------- */
   rend_t          rstyle;
-/* ---------- */
-  uint32_t        pixcolor_set[NPIXCLR_SETS];
 /* ---------- */
 #ifdef SELECTION_SCROLLING
   int             scroll_selection_lines;
@@ -1096,7 +1097,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 
   void vt_select_input () const NOTHROW
   {
-    XSelectInput (xdisp, vt, vt_emask | vt_emask_perl | vt_emask_xim);
+    XSelectInput (dpy, vt, vt_emask | vt_emask_perl | vt_emask_xim);
   }
 
 #if TRANSPARENT
@@ -1207,13 +1208,14 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   bool IMisRunning ();
   void IMSendSpot ();
   bool IM_get_IC (const char *modifiers);
-  void IMSetStatusPosition ();
+  void IMSetPosition ();
 #endif
 
   void resize_scrollbar ();
 
   // command.C
-  void lookup_key (XKeyEvent &ev);
+  void key_press (XKeyEvent &ev);
+  void key_release (XKeyEvent &ev);
   unsigned int cmd_write (const char *str, unsigned int count);
 
   wchar_t next_char () NOTHROW;
@@ -1259,6 +1261,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void set_window_color (int idx, const char *color);
   void set_colorfgbg ();
   bool set_color (rxvt_color &color, const char *name);
+  void alias_color (int dst, int src);
   void set_widthheight (unsigned int newwidth, unsigned int newheight);
 
   // screen.C
