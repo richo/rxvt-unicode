@@ -1,18 +1,8 @@
-Important Warnings:
-===================
+rxvt-unicode for Debian
+=======================
 
-In this package, a default non-Xft font is specified in the system-wide
-configuration; this is not set in an ordinary installation. If you want
-to use Xft, see below.
-
-Unlike xterm, rxvt-unicode does not by default write to wtmp/utmp. This
-can easily be changed; see the FAQ section.
-
-General Information:
-====================
-
-rxvt-unicode is a real drop-in replacement for rxvt - if no other rxvt
-package is installed, you can start rxvt-unicode with the rxvt command
+rxvt-unicode is a real drop-in replacement for rxvt; if no other rxvt
+package is installed, you can start rxvt-unicode with the "rxvt" command
 and the same arguments. The update-alternatives utility can be used to
 choose which rxvt variant is to be executed as "rxvt".
 
@@ -25,6 +15,24 @@ The package is provided in three different flavors:
  - A big version (-ml), including the Perl interpreter and all other
    extra features.
 
+utmp/wtmp
+=========
+
+For security reasons, rxvt-unicode is not installed setuid. If you would
+like all your urxvt windows to show up in "w" and "last", you can change
+this with the following commands:
+
+   dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvt
+   dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvtd
+
+And to undo it:
+
+   dpkg-statoverride --update --remove /usr/bin/urxvt
+   dpkg-statoverride --update --remove /usr/bin/urxvtd
+
+Terminfo
+========
+
 rxvt-unicode uses its own terminfo entry instead of rxvt's since it
 provides more features and may fix minor problems with the default rxvt
 terminfo data. However, as with every non-xterm terminal program, users
@@ -34,8 +42,16 @@ rxvt-unicode terminfo data. If you want $TERM to default to rxvt
 instead, set the URxvt.termName resource in /etc/X11/app-defaults/URxvt
 or ~/.Xresources.
 
-Known Problems:
-===============
+Differences from the upstream package
+=====================================
+
+- If no XAPPLRESDIR is set, urxvt will read system-wide resources from
+  /etc/X11/app-defaults.
+
+- These resources set a default non-Xft font.
+
+Known Problems
+==============
 
  - Transparency mode may have problems with icewmbg; other applications
    mostly work.
@@ -51,64 +67,34 @@ Known Problems:
    Sans Mono:pixelsize=12,xft:Lucida Console:pixelsize=12" but they do
    not always look good together.
 
-FAQ:
-====
+FAQ
+===
 
-Q: "w" and "last" do not show urxvt sessions; how do I enable this?
-
-A: A terminal needs to register itself in the utmp/wtmp files to be
-   displayed by these programs. However, its binary needs to be sgid
-   utmp to do this. urxvt is compiled with utmp/wtmp features enabled;
-   however, for security reasons, it is not installed sgid by default.
-   This will change in a future version.
-
-   For now, if you are sure that you are in a trusted environment, you
-   can change the applicable permissions by running:
-
-   dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvt
-   dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvtd
-
-   To undo this, run:
-
-   dpkg-statoverride --update --remove /usr/bin/urxvt
-   dpkg-statoverride --update --remove /usr/bin/urxvtd
-
-Q: How do I change settings? Why are *rxvt*foobar: resources ignored?
+Q: How do I change settings? Why are rxvt*foobar: resources ignored?
 
 A: Some rxvt-unicode settings are incompatible or will become
    incompatible with standard rxvt in future versions, so rxvt-unicode
-   uses the resource class URxvt (which will not be matched by the above
-   wildcard). However, resources for the class Rxvt will be used if
-   no corresponding resource is defined for URxvt, so shared resources
-   may be defined using that class. For example, in ~/.Xresources:
+   uses the resource class URxvt and the resource name urxvt. If no
+   URxvt*foobar resource is found, rxvt-unicode will fall back to
+   Rxvt*foobar, so that some resources can be shared between
+   different rxvts. However, it will not attempt to use the resource
+   name rxvt. For example, in ~/.Xresources:
 
    Rxvt.background: black
    Rxvt.foreground: white
    Rxvt.font: fixed
    URxvt.font: xft:Mono:size=10
 
-   This will give a white-on-black terminal in each case but allow
-   different fonts to be specified.
+   This will give a white-on-black terminal in each case, but specify
+   fonts differently since using an Xft font spec is not compatible with
+   standard rxvt. If you want to override Debian's default font, you
+   must use URxvt or urxvt.
 
-   [XXX: explain situation with (instance, not class) names.]
+Q: How do I choose different colors?
 
-Q: rxvt-unicode apparently does not read the .Xdefaults file; why?
+A: Upstream author writes:
 
-A: Reading .Xdefaults directly was a "special feature" of rxvt which has
-   been disabled in rxvt-unicode in favor of the more flexible XGetDefault
-   method; this allows for better performance and the use of an
-   app-defaults file to provide a basic set of default resources.
-   Debian's default Xsession will load the contents of ~/.Xresources
-   into the server for this purpose; they can be changed later on with
-   xrdb. See /etc/X11/Xsession.d/30xfree86-common_xresources for
-   details.
-
-Q: How do I choose arbitrary colors?
-
-A: Upstream author speaks:
-
-   | It's not necessary to modify rgb.txt, all standard ways of specifying
-   | colours work with rxvt-unicode:
+   | All standard ways of specifying colours work with rxvt-unicode:
    |
    |    rxvt -fg CIELab:0.9/0.5/0.5 -bg rgb:ffff/0000/0000
    |
@@ -170,5 +156,3 @@ A: "shading" in urxvt works similarly, but it is applied to the color
    -tint green -sh 30" to get a "Matrix" look). If you simply wish to
    make the background image darker, you may just use "tinting" with
    dark values (gray tinting), e.g. -tint gray30 (gray40, gray70, etc.).
-
- -- Updated by: Decklin Foster, Tue, 14 Mar 2006 22:00:04 -0500

@@ -1,0 +1,25 @@
+Index: rxvt-unicode-7.7/src/rxvttoolkit.C
+===================================================================
+--- rxvt-unicode-7.7.orig/src/rxvttoolkit.C	2006-03-24 03:05:56.000000000 -0500
++++ rxvt-unicode-7.7/src/rxvttoolkit.C	2006-03-24 03:12:33.000000000 -0500
+@@ -321,13 +321,15 @@
+   // 6. System wide per application default file.
+ 
+   /* Add in $XAPPLRESDIR/Rxvt only; not bothering with XUSERFILESEARCHPATH */
+-  if ((xe = (char *)getenv ("XAPPLRESDIR")))
++  if (!(xe = (char *)getenv ("XAPPLRESDIR")))
+     {
+-      snprintf (fname, sizeof (fname), "%s/%s", xe, RESCLASS);
+-
+-      if ((rdb1 = XrmGetFileDatabase (fname)))
+-        XrmMergeDatabases (rdb1, &database);
++      // Debian-specific; see #348697 and Policy
++      xe = "/etc/X11/app-defaults";
+     }
++  snprintf (fname, sizeof (fname), "%s/%s", xe, RESCLASS);
++
++  if ((rdb1 = XrmGetFileDatabase (fname)))
++    XrmMergeDatabases (rdb1, &database);
+ 
+   // 5. User's per application default file.
+   // none

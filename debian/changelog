@@ -1,3 +1,11 @@
+rxvt-unicode (7.7-2) unstable; urgency=low
+
+  * Re-rebuild against Xft NMU. (Closes: #351371, #358710)
+  * Enable checking of app-defaults resources by default (Closes: #348697)
+  * Updated and edited FAQ a bit more.
+
+ -- Decklin Foster <decklin@red-bean.com>  Fri, 24 Mar 2006 02:33:06 -0500
+
 rxvt-unicode (7.7-1) unstable; urgency=low
 
   * (XXX CECI N'EST PAS UNE CHANGELOG)
