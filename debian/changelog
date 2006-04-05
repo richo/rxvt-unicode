@@ -1,3 +1,11 @@
+rxvt-unicode (7.7-3) unstable; urgency=low
+
+  * Add >= -5.1 to Xft build-dep (Closes: #360961)
+  * Explicitly enable Perl in default flavor. Death of -ml imminent.
+    (Closes: #360053)
+
+ -- Decklin Foster <decklin@red-bean.com>  Wed,  5 Apr 2006 14:48:34 -0400
+
 rxvt-unicode (7.7-2) unstable; urgency=low
 
   * Re-rebuild against Xft NMU. (Closes: #351371, #358710)
@@ -8,7 +16,6 @@ rxvt-unicode (7.7-2) unstable; urgency=low
 
 rxvt-unicode (7.7-1) unstable; urgency=low
 
-  * (XXX CECI N'EST PAS UNE CHANGELOG)
   * Adopting package. (Closes: #348719)
   * The following bugs have been fixed in previous Debian revisions:
     - An x-terminal-emulator alternative is provided (Closes: #314977)

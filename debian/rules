@@ -33,7 +33,7 @@ conf-unicode-lite:
 	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) --disable-xft --disable-perl
 
 conf-unicode:
-	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) --enable-rxvt-scroll --enable-next-scroll --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-transparency --enable-xpm-background --enable-fading --enable-linespace --enable-xft --enable-tinting --disable-perl
+	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) --enable-rxvt-scroll --enable-next-scroll --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-transparency --enable-xpm-background --enable-fading --enable-linespace --enable-xft --enable-tinting --enable-perl
 
 conf-unicode-ml:
 	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) --enable-everything --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-unicode3 --enable-transparency --enable-xpm-background --enable-fading --enable-linespace --enable-combining --enable-tinting --enable-frills --enable-perl
