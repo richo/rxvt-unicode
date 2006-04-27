@@ -1,3 +1,10 @@
+rxvt-unicode (7.7-4) unstable; urgency=low
+
+  * Changed several uses of "it's" to "its" in man pages. (Closes: #365036)
+  * Added urxvtcd man page.
+
+ -- Decklin Foster <decklin@red-bean.com>  Thu, 27 Apr 2006 10:03:50 -0400
+
 rxvt-unicode (7.7-3) unstable; urgency=low
 
   * Add >= -5.1 to Xft build-dep (Closes: #360961)

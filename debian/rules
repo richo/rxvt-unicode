@@ -70,6 +70,8 @@ build-stamp: patch-stamp config.status
 		chrpath -d $$y/usr/bin/*; \
 		install -m644 debian/*.xpm $$y/usr/share/pixmaps; \
 		install -m755 debian/urxvtcd $$y/usr/bin; \
+		install -m644 debian/urxvtcd.1 $$y/usr/share/man/man1; \
+		gzip -9 $$y/usr/share/man/man1/urxvtcd.1; \
 		ln -sf urxvt.xpm $$y/usr/share/pixmaps/urxvt_32x32.xpm; \
 		cp debian/app-defaults $$y/etc/X11/app-defaults/URxvt; \
 	done
@@ -84,7 +86,7 @@ clean: unpatch
 	# Add here commands to clean up after the build process.
 	-$(MAKE) distclean
 	-$(MAKE) -C doc realclean
-	rm -f config.guess config.sub
+	rm -f config.guess config.sub config.log
 	# these will be fixed shortly
 	rm -f src/rxvtlib.h
 	rm -f doc/Makefile
