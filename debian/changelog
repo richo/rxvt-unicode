@@ -1,3 +1,14 @@
+rxvt-unicode (7.8-1) unstable; urgency=low
+
+  * New upstream release. Updated patches:
+    - Merged upstream: grammar.patch, faq-section.patch
+    - Updated: generate-docs.patch
+    - Obsolete: make-docs.patch, man-title.patch
+  * Check for exit status of 2 in urxvtcd, and use -q (Closes: #379201)
+  * Update Standards-Version to 3.7.2.
+
+ -- Decklin Foster <decklin@red-bean.com>  Sun, 23 Jul 2006 11:21:09 -0400
+
 rxvt-unicode (7.7-4) unstable; urgency=low
 
   * Changed several uses of "it's" to "its" in man pages. (Closes: #365036)

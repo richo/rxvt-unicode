@@ -1,8 +1,8 @@
-Index: rxvt-unicode-7.7/src/rxvttoolkit.C
+Index: rxvt-unicode-7.8/src/rxvttoolkit.C
 ===================================================================
---- rxvt-unicode-7.7.orig/src/rxvttoolkit.C	2006-03-24 03:05:56.000000000 -0500
-+++ rxvt-unicode-7.7/src/rxvttoolkit.C	2006-03-24 03:12:33.000000000 -0500
-@@ -321,13 +321,15 @@
+--- rxvt-unicode-7.8.orig/src/rxvttoolkit.C	2006-07-24 14:01:30.000000000 -0400
++++ rxvt-unicode-7.8/src/rxvttoolkit.C	2006-07-24 14:01:34.000000000 -0400
+@@ -320,13 +320,15 @@
    // 6. System wide per application default file.
  
    /* Add in $XAPPLRESDIR/Rxvt only; not bothering with XUSERFILESEARCHPATH */

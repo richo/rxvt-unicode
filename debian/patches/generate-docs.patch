@@ -1,7 +1,7 @@
-Index: rxvt-unicode-7.7/doc/Makefile.in
+Index: rxvt-unicode-7.8/doc/Makefile.in
 ===================================================================
---- rxvt-unicode-7.7.orig/doc/Makefile.in	2006-03-13 18:56:30.000000000 -0500
-+++ rxvt-unicode-7.7/doc/Makefile.in	2006-03-13 19:06:32.000000000 -0500
+--- rxvt-unicode-7.8.orig/doc/Makefile.in	2006-07-24 14:13:38.000000000 -0400
++++ rxvt-unicode-7.8/doc/Makefile.in	2006-07-24 14:14:29.000000000 -0400
 @@ -36,7 +36,7 @@
  
  #-------------------------------------------------------------------------
@@ -11,29 +11,9 @@ Index: rxvt-unicode-7.7/doc/Makefile.in
  
  SEDREPLACE = -e 's%@@RXVT_VERSION@@%$(VERSION)%g;'	\
  	     -e 's%@@RXVT_NAME@@%$(RXVTNAME)%g;'	\
-@@ -44,68 +44,83 @@
- 	     -e 's%@@RXVT_LIBDIR@@%$(libdir)%g;'	\
- 	     -e 's%@@URXVT_NAME@@%urxvt%g;'
- 
--rxvtperl.3.pod: ../src/urxvt.pm
--	$(CP) $< $@
-+rxvtperl.3.tbl: ../src/urxvt.pm
-+	./podtbl <$< >$@
- 
- %.tbl: %.pod
- 	./podtbl <$< >$@
- 
- %.1.man.in: %.1.tbl
--	pod2man -n rxvt -r"$(VERSION)" -q\" -s1 -c "RXVT-UNICODE" <$< >$@
-+	pod2man -n "@@RXVT_NAME@@" -r"$(VERSION)" -q\" -s1 -c "RXVT-UNICODE" <$< >$@
- 
- %.3.man.in: %.3.tbl
--	pod2man -n rxvt -r"$(VERSION)" -q\" -s3 -c "RXVT-UNICODE" <$< >$@
-+	pod2man -n "@@RXVT_NAME@@" -r"$(VERSION)" -q\" -s3 -c "RXVT-UNICODE" <$< >$@
- 
+@@ -59,53 +59,68 @@
  %.7.man.in: %.7.tbl
--	pod2man -n rxvt -r"$(VERSION)" -q\" -s7 -c "RXVT-UNICODE" <$< >$@
-+	pod2man -n "@@RXVT_NAME@@" -r"$(VERSION)" -q\" -s7 -c "RXVT-UNICODE" <$< >$@
+ 	pod2man -n @@RXVT_NAME@@ -r"$(VERSION)" -q\" -s7 -c "RXVT-UNICODE" <$< >$@
  
 -%.html: %.tbl
 -	$(SED) $(SEDREPLACE) <$< | pod2html >$@
@@ -49,9 +29,11 @@ Index: rxvt-unicode-7.7/doc/Makefile.in
 -	$(SED) $(SEDREPLACE) <$< | podselect -section "CONFIGURE OPTIONS" | pod2text >$@
 +README.configure.in: rxvt.7.tbl
 +	podselect -section "CONFIGURE OPTIONS" <$< | pod2text >$@
-+
+ 
+-../README.FAQ: rxvt.7.tbl
+-	$(SED) $(SEDREPLACE) <$< | podselect -section "RXVT-UNICODE\/URXVT FREQUENTLY ASKED QUESTIONS" | pod2text >$@
 +README.FAQ.in: rxvt.7.tbl
-+	podselect -section "FREQUENTLY ASKED QUESTIONS" <$< | pod2text >$@
++	podselect -section "RXVT-UNICODE\/URXVT FREQUENTLY ASKED QUESTIONS" <$< | pod2text >$@
 +
 +%.man: %.man.in
 +	$(SED) $(SEDREPLACE) <$< >$@
@@ -63,9 +45,7 @@ Index: rxvt-unicode-7.7/doc/Makefile.in
 +	$(SED) $(SEDREPLACE) <$< >$@
 +../README.FAQ: README.FAQ.in
 +	$(SED) $(SEDREPLACE) <$< >$@
- 
--../README.FAQ: rxvt.7.tbl
--	$(SED) $(SEDREPLACE) <$< | podselect -section "FREQUENTLY ASKED QUESTIONS" | pod2text >$@
++
 +etc/rxvt-unicode.termcap:
 +	infocmp -C rxvt-unicode >$@
  

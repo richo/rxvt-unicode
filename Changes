@@ -2,6 +2,7 @@ rxvt-unicode changelog <= google-friendly title
 
 TODO: xcopyarea pass broken, fix and improve
 TODO: event mechanism that replaces on_keyboard_command with something more scalable.
+TODO: slipwheeling needs a keyboard grab to get key release events.
 TODO: overlays collide with the way the out-of-focus cursor is being drawn
 TODO: split perl documentation and urxvt.pm into separate files
 TODO: harmonize --disable-options into position-dependent options.
@@ -9,10 +10,61 @@ TODO: "slow" rendering mode for bidi and scripts, pango!
 TODO: read property sequence is broken with respect to utf-8 etc.
 TODO: slow drag selection on remote display - other things seem fast (rxvt illness, motion hints?)
 TODO: default selection should handle = better
+TODO: kick out xpm.C, replace by pixbuf
+TODO: investigate -pe tabbed -g 80x25 being 23 not 24 or 25 lines
+      => when setting the constraints, the wm might (correctly)
+         resize the outer window, which might result in a smaller window overall.
+         or something like that. guys, send me a patch.
+TODO: zero scorllback buffer should free memory
+TODO: debian integration
+WISH: skipscroll option
+WISH: selection-color-pair instead of reverse video
+WISH: load system-wide config file even if we don't have one
 WISH: look into XAddConnectionWatch, does anybody need that?
 WISH: anyevent mouse notification / manage MotionMask better.
 WISH: http://www120.pair.com/mccarthy/nextstep/intro.htmld/Workspace.html is the correct nextstep look.
 DUMB: support tex fonts
+
+7.8  Mon Jul 17 21:00:46 CEST 2006
+	- INCOMPATIBLE CHANGE: this version will always read ~/.Xdefaults,
+          earlier versions only read it if display-resources (usually from
+          .Xresources) are not set. This avoids the #1 FAQ ("why isn't my
+          resource used") and seems to be logical behaviour, too. .Xdefaults
+          resources have a lower priority than display-specific resources.
+        - add "kuake" perl extension that does a similar thing to the kuake
+          terminal emulator (see man urxtvperl).
+        - use less "correct" color scaling that is compatible with libX11 and
+          Xft (avoids off-by-one colors resulting in striped backgrounds).
+        - the "depth" resource is now respected.
+        - preset the searchable-scrollback pattern with "(?i)" to default search
+          to case-insensitivity. Will automatically be cleared when typing an
+          uppercase character.
+	- add FORCE_UNBUFFERED_XFT define to features.h.
+        - re-enabled highlightcolor support with --enable-frills, based on
+          a patch by Martin Stubenschrott.
+        - double-buffered xft drawing did suffer from pixel offset issues
+          when pixmap transparency was enabled.
+        - strategically add # to the url-match regexes, as we really want to
+          match common URIs not common URLs. Reported by Aaron Griffin.
+	- moved on_osc_seq to on_osc_seq_perl and added a more
+          generic osc_seq.
+        - fix a bug causing double callback invocations when perl hooks
+          were invoked recursively.
+        - the automove-background extension now properly works when the
+          pixmap gets reset with an osc sequence (sqweek).
+        - selection-pastebin did not work properly with non-latin1-characters.
+        - apply colorUL only when the text colour is the default fg
+          (patch by Wu Fengguang).
+        - removed rxvtlib.h from the tarball, it had no reason to be there
+          (spotted by Decklin Foster).
+        - fix compiling with TRANSPARENT but !XPM_BACKGROUND, as reported 
+          by omatunto_.
+        - slap in a using namespace std, might help on platforms that don't
+          follow C++ closely enough.
+        - fix mailto url regex, spotted within milliseconds by Jost Krieger.
+        - applied fade_color_update_func.patch by WU Fengguang.
+        - fix a bug where (due to an optimisation in av_delete), hiding the
+          bottom-most overlay would hide two overlays.
 
 7.7  Tue Feb 21 12:32:49 CET 2006
 	- use double-buffered drawing (xft fonts only). On many driver/hardware
@@ -31,7 +83,7 @@ DUMB: support tex fonts
           to correctly position their preedit window.
         - un-optimise the line clearing on newly scrolled-in lines a bit: the
           former reasoning was that any fg colour on default bg looks the same
-          in empts spaces, but thats not true when reversing (e.g. selection),
+          in empty spaces, but thats not true when reversing (e.g. selection),
           so also check for matching fg colours. This fixes the problem where
           selecting newly scrolled-in lines would exhibit wrong colours.
         - fix a bug in the perl interface causing focus in events to generate
@@ -109,6 +161,10 @@ DUMB: support tex fonts
         - added the OSC sequence 702 to detect the urxvt version number.
         - small configure updates.
         - further RTT optimisations.
+        - backported clean-up patches for makefiles and documentation from
+          the debian package.
+        - updated doc/rxvt-unicode.spec file. It's still not maintained here,
+          but much newer than the old one.
 
 7.4  Sat Jan 28 15:26:27 CET 2006
 	- screen background wasn't always erased properly when scrolling,

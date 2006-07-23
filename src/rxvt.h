@@ -10,15 +10,16 @@
 #endif
 
 #if ENABLE_PERL
-# define ENABLE_FRILLS 1
+# define ENABLE_FRILLS    1
 # define ENABLE_COMBINING 1
 #endif
 
 #if ENABLE_FRILLS
-# define ENABLE_XEMBED 1
-# define ENABLE_EWMH   1
+# define ENABLE_XEMBED        1
+# define ENABLE_EWMH          1
 # define ENABLE_XIM_ONTHESPOT 1
-# define CURSOR_BLINK  1
+# define CURSOR_BLINK         1
+# define OPTION_HC            1
 #else
 # define ENABLE_MINIMAL 1
 #endif
@@ -775,8 +776,8 @@ enum {
 # define XPMClearArea(a, b, c, d, e, f, g)
 #endif
 
-typedef callback1<void, const char *> log_callback;
-typedef callback1<int, int> getfd_callback;
+typedef callback<void (const char *)> log_callback;
+typedef callback<int (int)> getfd_callback;
 
 #define SET_LOCALE(locale) rxvt_set_locale (locale)
 extern bool rxvt_set_locale (const char *locale) NOTHROW;
@@ -1100,7 +1101,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
     XSelectInput (dpy, vt, vt_emask | vt_emask_perl | vt_emask_xim);
   }
 
-#if TRANSPARENT
+#if TRANSPARENT || ENABLE_PERL
   void rootwin_cb (XEvent &xev);
   xevent_watcher rootwin_ev;
 #endif
@@ -1229,6 +1230,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void button_release (XButtonEvent &ev);
   void focus_in ();
   void focus_out ();
+  void update_fade_color (unsigned int idx);
   int check_our_parents ();
 #ifdef PRINTPIPE
   FILE *popen_printer ();

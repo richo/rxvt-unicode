@@ -302,14 +302,13 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   // using a local pointer decreases code size a lot
   xa = display->xa;
 
+  set (display);
+  extract_resources ();
+
 #if XFT
   if (rs[Rs_depth])
-    set (display, strtol (rs[Rs_depth], 0, 0));
-  else
+    select_visual (strtol (rs[Rs_depth], 0, 0));
 #endif
-    set (display);
-
-  extract_resources ();
 
   free (r_argv);
 
@@ -751,13 +750,8 @@ rxvt_term::Get_Colours ()
 #endif                          /* KEEP_SCROLLCOLOR */
 
 #ifdef OFF_FOCUS_FADING
-  if (rs[Rs_fade])
-    for (i = 0; i < (depth <= 2 ? 2 : NRS_COLORS); i++)
-      {
-        rgba c;
-        pix_colors [Color_fade].get (c);
-        pix_colors_focused [i].fade (this, atoi (rs[Rs_fade]), pix_colors_unfocused[i],c);
-      }
+  for (i = 0; i < (depth <= 2 ? 2 : NRS_COLORS); i++)
+    update_fade_color (i);
 #endif
 }
 

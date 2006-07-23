@@ -1777,12 +1777,30 @@ rxvt_term::focus_out ()
     }
 }
 
-#if TRANSPARENT
+void
+rxvt_term::update_fade_color (unsigned int idx)
+{
+#if OFF_FOCUS_FADING
+  if (rs[Rs_fade])
+    {
+      rgba c;
+      pix_colors [Color_fade].get (c);
+      pix_colors_focused [idx].fade (this, atoi (rs[Rs_fade]), pix_colors_unfocused [idx], c);
+    }
+#endif
+}
+
+#if TRANSPARENT || ENABLE_PERL
 void
 rxvt_term::rootwin_cb (XEvent &ev)
 {
   make_current ();
 
+  if (SHOULD_INVOKE (HOOK_ROOT_EVENT)
+      && HOOK_INVOKE ((this, HOOK_ROOT_EVENT, DT_XEVENT, &ev, DT_END)))
+    return;
+
+# if TRANSPARENT
   switch (ev.type)
     {
       case PropertyNotify:
@@ -1800,6 +1818,7 @@ rxvt_term::rootwin_cb (XEvent &ev)
           want_refresh = want_full_refresh = 1;
         break;
     }
+# endif
 }
 #endif
 
@@ -2767,6 +2786,7 @@ rxvt_term::cmd_parse ()
               else
                 {
                   flag = true;
+                  //TODO: due to popular request, implement "skipscroll" option here
                   scr_refresh ();
                   want_refresh = 1;
                 }
@@ -3757,6 +3777,10 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
   dLocal (Display *, dpy);
 
   assert (str != NULL);
+  
+  if (HOOK_INVOKE ((this, HOOK_OSC_SEQ, DT_INT, op, DT_STR, str, DT_END)))
+    return;
+
   switch (op)
     {
       case XTerm_name:
@@ -3983,7 +4007,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
 
 #if ENABLE_PERL
       case URxvt_perl:
-        if (HOOK_INVOKE ((this, HOOK_OSC_SEQ, DT_STR, str, DT_END)))
+        if (HOOK_INVOKE ((this, HOOK_OSC_SEQ_PERL, DT_STR, str, DT_END)))
           ; // no responses yet
         break;
 #endif
