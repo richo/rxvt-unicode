@@ -1,7 +1,7 @@
 Index: rxvt-unicode-7.8/doc/Makefile.in
 ===================================================================
---- rxvt-unicode-7.8.orig/doc/Makefile.in	2006-07-24 14:13:38.000000000 -0400
-+++ rxvt-unicode-7.8/doc/Makefile.in	2006-07-24 14:14:29.000000000 -0400
+--- rxvt-unicode-7.8.orig/doc/Makefile.in	2006-07-28 03:24:53.000000000 -0400
++++ rxvt-unicode-7.8/doc/Makefile.in	2006-07-28 03:24:55.000000000 -0400
 @@ -36,7 +36,7 @@
  
  #-------------------------------------------------------------------------
@@ -11,6 +11,17 @@ Index: rxvt-unicode-7.8/doc/Makefile.in
  
  SEDREPLACE = -e 's%@@RXVT_VERSION@@%$(VERSION)%g;'	\
  	     -e 's%@@RXVT_NAME@@%$(RXVTNAME)%g;'	\
+@@ -44,8 +44,8 @@
+ 	     -e 's%@@RXVT_LIBDIR@@%$(libdir)%g;'	\
+ 	     -e 's%@@URXVT_NAME@@%urxvt%g;'
+ 
+-rxvtperl.3.pod: ../src/urxvt.pm
+-	$(CP) $< $@
++rxvtperl.3.tbl: ../src/urxvt.pm
++	./podtbl $< $@
+ 
+ %.tbl: %.pod
+ 	./podtbl <$< >$@
 @@ -59,53 +59,68 @@
  %.7.man.in: %.7.tbl
  	pod2man -n @@RXVT_NAME@@ -r"$(VERSION)" -q\" -s7 -c "RXVT-UNICODE" <$< >$@

@@ -1,3 +1,12 @@
+rxvt-unicode (7.8-2) unstable; urgency=low
+
+  * Added select-quoted.patch, to set default cutchars for the Perl selection
+    extension and fix double-click selection of words. (Closes: #377194)
+  * Don't generate intermediate .pod file in doc/Makefile, since we would have
+    to explicitly clean it before generating the .diff.gz anyway.
+
+ -- Decklin Foster <decklin@red-bean.com>  Fri, 28 Jul 2006 02:35:21 -0400
+
 rxvt-unicode (7.8-1) unstable; urgency=low
 
   * New upstream release. Updated patches:

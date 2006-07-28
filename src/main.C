@@ -69,14 +69,16 @@ rxvt_set_locale (const char *locale) NOTHROW
 void
 rxvt_push_locale (const char *locale) NOTHROW
 {
-  strcpy (savelocale, curlocale);
-  rxvt_set_locale (locale);
+  strncpy (savelocale, curlocale, 128);
+  strncpy (curlocale, locale, 128);
+  rxvt_set_locale (curlocale);
 }
 
 void
 rxvt_pop_locale () NOTHROW
 {
-  rxvt_set_locale (savelocale);
+  strncpy (curlocale, savelocale, 128);
+  rxvt_set_locale (curlocale);
 }
 
 #if ENABLE_COMBINING

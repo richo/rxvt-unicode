@@ -1,0 +1,20 @@
+Index: rxvt-unicode-7.8/src/perl/selection
+===================================================================
+--- rxvt-unicode-7.8.orig/src/perl/selection	2006-07-27 14:34:36.000000000 -0400
++++ rxvt-unicode-7.8/src/perl/selection	2006-07-28 02:34:07.000000000 -0400
+@@ -12,11 +12,13 @@
+ sub on_init {
+    my ($self) = @_;
+ 
++   my $cutchars = '\\‘"’&()*,;<=>?@[]{|}';
+    if (defined (my $res = $self->resource ("cutchars"))) {
+-      $res = $self->locale_decode ($res);
+-      push @{ $self->{patterns} }, qr{\G [\Q$res\E[:space:]]* ([^\Q$res\E[:space:]]+) }x;
++      $cutchars = $self->locale_decode ($res);
+    }
+ 
++   push @{ $self->{patterns} }, qr{\G [\Q$cutchars\E[:space:]]* ([^\Q$cutchars\E[:space:]]+) }x;
++
+    for (my $idx = 0; defined (my $res = $self->x_resource ("selection.pattern-$idx")); $idx++) {
+       $res = $self->locale_decode ($res);
+       utf8::encode $res;
