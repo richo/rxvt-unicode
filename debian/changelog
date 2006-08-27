@@ -1,3 +1,10 @@
+rxvt-unicode (7.9-1) unstable; urgency=low
+
+  * New upstream release
+    - Fixes environment-corruption bug (Closes: #380348)
+
+ -- Decklin Foster <decklin@red-bean.com>  Sun, 27 Aug 2006 12:57:01 -0400
+
 rxvt-unicode (7.8-2) unstable; urgency=low
 
   * Added select-quoted.patch, to set default cutchars for the Perl selection

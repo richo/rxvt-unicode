@@ -58,10 +58,15 @@ static char curlocale[128], savelocale[128];
 bool
 rxvt_set_locale (const char *locale) NOTHROW
 {
-  if (!locale || !strncmp (locale, curlocale, 128))
+  int size = strlen (locale) + 1;
+
+  if (size > sizeof (curlocale))
+    rxvt_fatal ("locale string too long, aborting.\n");
+
+  if (!locale || !memcmp (locale, curlocale, size))
     return false;
 
-  strncpy (curlocale, locale, 128);
+  memcpy (curlocale, locale, size);
   setlocale (LC_CTYPE, curlocale);
   return true;
 }
@@ -69,15 +74,13 @@ rxvt_set_locale (const char *locale) NOTHROW
 void
 rxvt_push_locale (const char *locale) NOTHROW
 {
-  strncpy (savelocale, curlocale, 128);
-  strncpy (curlocale, locale, 128);
+  strcpy (savelocale, curlocale);
   rxvt_set_locale (curlocale);
 }
 
 void
 rxvt_pop_locale () NOTHROW
 {
-  strncpy (curlocale, savelocale, 128);
   rxvt_set_locale (curlocale);
 }
 
