@@ -1,18 +1,15 @@
-! Debian-specific rxvt-unicode defaults. To override any if the settings
-! below, use the file /etc/X11/app-defaults/URxvt-local.
+! System-wide defaults for rxvt-unicode
+!
+! PLEASE NOTE: URxvt.* resources set here will override users' Rxvt.*
+! resources. Edit with care.
 
-URxvt.saveLines: 512
-
-! A sane non-Xft font, in case autoselection fails
-
-URxvt.font: -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
-
-! Uncomment to change the terminfo entry used
+! Uncomment to use the historical terminfo entry
 
 !URxvt.termName: rxvt
 
-! Color/font settings like in Debian's uxterm
+! Uncomment for color/font settings like in Debian's uxterm
 
+!URxvt.font: -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
 !URxvt.color0: black
 !URxvt.color1: red3
 !URxvt.color2: green3
@@ -46,7 +43,3 @@ URxvt.font: -misc-fixed-medium-r-semicondensed--13-120-75-75-c-60-iso10646-1
 !URxvt.keysym.KP_Multiply: *
 !URxvt.keysym.KP_Divide: /
 !URxvt.keysym.KP_Enter: ^M
-
-! Some settings by the local admin which should override the above ones
-
-#include "URxvt-local"

@@ -15,80 +15,52 @@ The package is provided in three different flavors:
  - A big version (-ml), including the Perl interpreter and all other
    extra features.
 
-utmp/wtmp
-=========
-
-For security reasons, rxvt-unicode is not installed setuid. If you would
-like all your urxvt windows to show up in "w" and "last", you can change
-this with the following commands:
-
-   dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvt
-   dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvtd
-
-And to undo it:
-
-   dpkg-statoverride --update --remove /usr/bin/urxvt
-   dpkg-statoverride --update --remove /usr/bin/urxvtd
-
-Terminfo
-========
-
-rxvt-unicode uses its own terminfo entry instead of rxvt's since it
-provides more features and may fix minor problems with the default rxvt
-terminfo data. However, as with every non-xterm terminal program, users
-get trouble with various programs and remote shell environments (e.g.
-via ssh to non-Debian systems) since they usually do not have the
-rxvt-unicode terminfo data. If you want $TERM to default to rxvt
-instead, set the URxvt.termName resource in /etc/X11/app-defaults/URxvt
-or ~/.Xresources.
-
-Differences from the upstream package
-=====================================
-
-- If no XAPPLRESDIR is set, urxvt will read system-wide resources from
-  /etc/X11/app-defaults.
-
-- These resources set a default non-Xft font.
-
-Known Problems
-==============
-
- - Transparency mode may have problems with icewmbg; other applications
-   mostly work.
-
- - The automatic font chooser is limited to the list of the configured
-   fonts and a small internal fallback list. This is done for
-   performance reasons (see man page). You may need some experimenting
-   with the fonts, e.g. "xft:Lucida Console" has good consistent
-   Cyrillic support but no bold chars. "xft:Courier New" has both,
-   Cyrillic and bold chars but its look is a matter of taste. For Latin
-   environment, Bitstream Vera Sans Mono looks good (Package:
-   ttf-bitstream-vera). Mixtures are possible, e.g. "xft:Bitstream Vera
-   Sans Mono:pixelsize=12,xft:Lucida Console:pixelsize=12" but they do
-   not always look good together.
-
 FAQ
 ===
 
-Q: How do I change settings? Why are rxvt*foobar: resources ignored?
+Q: How do I change settings? Why are rxvt.foobar: resources ignored?
 
-A: Some rxvt-unicode settings are incompatible or will become
-   incompatible with standard rxvt in future versions, so rxvt-unicode
-   uses the resource class URxvt and the resource name urxvt. If no
-   URxvt*foobar resource is found, rxvt-unicode will fall back to
-   Rxvt*foobar, so that some resources can be shared between
-   different rxvts. However, it will not attempt to use the resource
-   name rxvt. For example, in ~/.Xresources:
+A: rxvt-unicode uses the resource class URxvt and the resource name
+   urxvt. If neither of these resources are defined, urxvt will fall
+   back to the resource class Rxvt (but not the resource name rxvt).
+
+   This may be exploited to share resources between different rxvts. For
+   example, in ~/.Xresources:
 
    Rxvt.background: black
    Rxvt.foreground: white
    Rxvt.font: fixed
    URxvt.font: xft:Mono:size=10
 
-   This will give a white-on-black terminal in each case, but specify
-   fonts differently since using an Xft font spec is not compatible with
-   standard rxvt. If you want to override Debian's default font, you
-   must use URxvt or urxvt.
+   If no XAPPLRESDIR is set, urxvt will read system-wide resources from
+   /etc/X11/app-defaults. These defaults will override any Rxvt.foobar
+   settings, since some settings are incompatible or will become
+   incompatible with standard rxvt in future versions.
+
+Q: Why is my $TERM not set to "rxvt"?
+
+A: rxvt-unicode uses its own terminfo entry instead of rxvt's since it
+   provides more features and may fix minor problems with the default
+   rxvt terminfo data. However, as with every non-xterm terminal
+   program, users get trouble with various programs and remote shell
+   environments (e.g. via ssh to non-Debian systems) since they usually
+   do not have the rxvt-unicode terminfo data. If you want $TERM to
+   default to rxvt instead, set the URxvt.termName resource in
+   /etc/X11/app-defaults/URxvt or ~/.Xresources.
+
+Q: Why do my open urxvts not show up as logins?
+
+A: For security reasons, rxvt-unicode is not installed setuid. If you would
+   like all your urxvt windows to show up in "w" and "last", you can change
+   this with the following commands:
+   
+      dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvt
+      dpkg-statoverride --force --update --add root utmp 2755 /usr/bin/urxvtd
+   
+   And to undo it:
+   
+      dpkg-statoverride --update --remove /usr/bin/urxvt
+      dpkg-statoverride --update --remove /usr/bin/urxvtd
 
 Q: How do I choose different colors?
 
@@ -156,3 +128,20 @@ A: "shading" in urxvt works similarly, but it is applied to the color
    -tint green -sh 30" to get a "Matrix" look). If you simply wish to
    make the background image darker, you may just use "tinting" with
    dark values (gray tinting), e.g. -tint gray30 (gray40, gray70, etc.).
+
+Known Problems
+==============
+
+ - Transparency mode may have problems with icewmbg; other applications
+   mostly work.
+
+ - The automatic font chooser is limited to the list of the configured
+   fonts and a small internal fallback list. This is done for
+   performance reasons (see man page). You may need some experimenting
+   with the fonts, e.g. "xft:Lucida Console" has good consistent
+   Cyrillic support but no bold chars. "xft:Courier New" has both,
+   Cyrillic and bold chars but its look is a matter of taste. For Latin
+   environment, Bitstream Vera Sans Mono looks good (Package:
+   ttf-bitstream-vera). Mixtures are possible, e.g. "xft:Bitstream Vera
+   Sans Mono:pixelsize=12,xft:Lucida Console:pixelsize=12" but they do
+   not always look good together.

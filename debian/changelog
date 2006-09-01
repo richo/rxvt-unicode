@@ -1,3 +1,13 @@
+rxvt-unicode (7.9-2) unstable; urgency=low
+
+  * Edit the comments in the app-defaults file, and disable all settings by
+    default. If font autoselection fails, I would prefer to open a new bug
+    specifically for that. (Closes: #385481)
+  * Reorganize and edit README.Debian, pushing as much as possible into FAQ
+    format (with resource setting issues first).
+
+ -- Decklin Foster <decklin@red-bean.com>  Fri,  1 Sep 2006 14:44:58 -0400
+
 rxvt-unicode (7.9-1) unstable; urgency=low
 
   * New upstream release
