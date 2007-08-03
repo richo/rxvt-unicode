@@ -6,7 +6,7 @@
 
 #ifdef __cplusplus
 
-// c++ api
+// C++ API
 
 struct ptytty {
   int pty; // pty file descriptor; connected to rxvt
@@ -23,6 +23,7 @@ struct ptytty {
   bool make_controlling_tty ();
   void set_utf8_mode (bool on);
 
+  static void sanitise_stdfd ();
   static void init ();
   static ptytty *create (); // create a new pty object
 
@@ -42,7 +43,7 @@ protected:
 
 #else
 
-// c api
+// C API
 
 typedef void *PTYTTY;
 
@@ -56,6 +57,7 @@ void ptytty_close_tty (PTYTTY ptytty);
 int ptytty_make_controlling_tty (PTYTTY ptytty);
 void ptytty_set_utf8_mode (PTYTTY ptytty, int on);
 
+void ptytty_sanitise_stdfd ();
 void ptytty_init ();
 PTYTTY ptytty_create ();
 

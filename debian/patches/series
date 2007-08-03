@@ -1,4 +1,7 @@
+sarge-warnings.patch
+man-typos.patch
 generate-docs.patch
-old-debian-nonsense.patch
 app-defaults.patch
 select-quoted.patch
+popup-https.patch
+sensible-browser.patch

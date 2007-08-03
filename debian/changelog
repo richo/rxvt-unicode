@@ -1,3 +1,14 @@
+rxvt-unicode (8.3-1) unstable; urgency=low
+
+  * New upstream release (Closes: #433004)
+    - Rolled with autoconf 2.61 (Closes: #422540)
+  * Match https URLs in selection-popup (Closes: #428659)
+  * Fix typos in urxvtperl(3) (Closes: #411074, #415848)
+  * Use sensible-browser instead of x-www-browser directly (Closes: #415846)
+  * Added urxvtcd as alternative (Closes: #381967)
+
+ -- Decklin Foster <decklin@red-bean.com>  Fri, 03 Aug 2007 12:44:44 -0400
+
 rxvt-unicode (7.9-2) unstable; urgency=low
 
   * Edit the comments in the app-defaults file, and disable all settings by

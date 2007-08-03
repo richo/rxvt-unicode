@@ -71,6 +71,14 @@ struct unix_listener {
 unix_listener::unix_listener (const char *sockname)
 : accept_ev (this, &unix_listener::accept_cb)
 {
+  sockaddr_un sa;
+  
+  if (strlen (sockname) >= sizeof(sa.sun_path))
+    {
+      fputs ("socket name too long, aborting.\n", stderr);
+      exit (EXIT_FAILURE);
+    }
+
   if ((fd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0)
     {
       perror ("unable to create listening socket");
@@ -78,8 +86,6 @@ unix_listener::unix_listener (const char *sockname)
     }
 
   fcntl (fd, F_SETFD, FD_CLOEXEC);
-
-  sockaddr_un sa;
 
   sa.sun_family = AF_UNIX;
   strcpy (sa.sun_path, sockname);
@@ -139,10 +145,10 @@ void server::err (const char *format, ...)
       vsnprintf (err, 1024, format, ap);
       va_end (ap);
 
-      send ("MSG"), send (err);
+      log_msg (err);
     }
 
-  send ("END", 0);
+  send ("END"), send (0);
   close (fd);
   delete this;
 }
@@ -157,7 +163,7 @@ void server::read_cb (io_watcher &w, short revents)
         {
           stringvec *argv = new stringvec;
           stringvec *envv = new stringvec;
-            
+           
           for (;;)
             {
               if (!recv (tok))
@@ -170,13 +176,17 @@ void server::read_cb (io_watcher &w, short revents)
               else if (!strcmp (tok, "CWD") && recv (tok))
                 {
                   if (chdir (tok))
-                    err ("unable to change to working directory to '%s': %s",
-                         (char *)tok, strerror (errno));
+                    {
+                      delete envv;
+                      delete argv;
+                      return err ("unable to change to working directory to '%s', aborting: %s.\n",
+                                  (char *)tok, strerror (errno));
+                    }
                 }
               else if (!strcmp (tok, "ARG") && recv (tok))
                 argv->push_back (strdup (tok));
               else
-                return err ("protocol error: unexpected NEW token");
+                return err ("protocol error: unexpected NEW token.\n");
             }
 
           envv->push_back (0);
@@ -209,7 +219,7 @@ void server::read_cb (io_watcher &w, short revents)
           }
         }
       else
-        return err ("protocol error: request '%s' unsupported.", (char *)tok);
+        return err ("protocol error: request '%s' unsupported.\n", (char *)tok);
     }
   else
     return err ();

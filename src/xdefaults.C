@@ -32,9 +32,9 @@
 #endif
 
 /* place holders used for parsing command-line options */
-#define Optflag_Reverse              0x40000000UL
-#define Optflag_Boolean              0x80000000UL
-#define Optflag_mask                 0x3fffffffUL
+#define Optflag_Reverse              1
+#define Optflag_Boolean              2
+#define Optflag_Switch               4
 
 /* monolithic option/resource structure: */
 /*
@@ -45,23 +45,23 @@
 
 /* INFO () - descriptive information only */
 #define INFO(opt, arg, desc)					\
-    {0, -1, NULL, (opt), (arg), (desc)}
+    {0, 0, -1, NULL, (opt), (arg), (desc)}
 
 /* STRG () - command-line option, with/without resource */
 #define STRG(rsp, kw, opt, arg, desc)				\
-    {0, (rsp), (kw), (opt), (arg), (desc)}
+    {0, 0, (rsp), (kw), (opt), (arg), (desc)}
 
 /* RSTRG () - resource/long-option */
 #define RSTRG(rsp, kw, arg)					\
-    {0, (rsp), (kw), NULL, (arg), NULL}
+    {0, 0, (rsp), (kw), NULL, (arg), NULL}
 
 /* BOOL () - regular boolean `-/+' flag */
-#define BOOL(rsp, kw, opt, flag, desc)				\
-    { (Optflag_Boolean | (flag)), (rsp), (kw), (opt), NULL, (desc)}
+#define BOOL(rsp, kw, opt, option, flag, desc)			\
+    { (option), (Optflag_Boolean | (flag)), (rsp), (kw), (opt), NULL, (desc)}
 
 /* SWCH () - `-' flag */
-#define SWCH(opt, flag, desc)					\
-    { (flag), -1, NULL, (opt), NULL, (desc)}
+#define SWCH(opt, option, flag, desc)				\
+    { (option), (Optflag_Switch | (flag)), -1, NULL, (opt), NULL, (desc)}
 
 /* convenient macros */
 #define optList_strlen(i)						\
@@ -75,8 +75,9 @@
 
 static const struct
   {
-    const unsigned long flag;	/* Option flag */
-    const int       doff;	/* data offset */
+    const uint8_t   index;      /* Option index */
+    const uint8_t   flag;	/* Option flag */
+    const int16_t   doff;	/* resource value index or -1 */
     const char     *kw;		/* keyword */
     const char     *opt;	/* option */
     const char     *arg;	/* argument */
@@ -88,28 +89,29 @@ optList[] = {
               STRG (Rs_term_name, "termName", "tn", "string", "value of the TERM environment variable"),
               STRG (Rs_geometry, NULL, "g", NULL, NULL),	/* short form */
               STRG (Rs_geometry, "geometry", "geometry", "geometry", "size (in characters) and position"),
-              SWCH ("C", Opt_console, "intercept console messages"),
-              SWCH ("iconic", Opt_iconic, "start iconic"),
-              SWCH ("ic", Opt_iconic, NULL),	/* short form */
-              BOOL (Rs_reverseVideo, "reverseVideo", "rv", Opt_reverseVideo, "reverse video"),
-              BOOL (Rs_loginShell, "loginShell", "ls", Opt_loginShell, "login shell"),
-              BOOL (Rs_jumpScroll, "jumpScroll", "j", Opt_jumpScroll, "jump scrolling"),
-              BOOL (Rs_pastableTabs, "pastableTabs", "ptab", Opt_pastableTabs, "tab characters are pastable"),
+              SWCH ("C", Opt_console, 0, "intercept console messages"),
+              SWCH ("iconic", Opt_iconic, 0, "start iconic"),
+              SWCH ("ic", Opt_iconic, 0, NULL),	/* short form */
+              BOOL (Rs_reverseVideo, "reverseVideo", "rv", Opt_reverseVideo, 0, "reverse video"),
+              BOOL (Rs_loginShell, "loginShell", "ls", Opt_loginShell, 0, "login shell"),
+              BOOL (Rs_jumpScroll, "jumpScroll", "j", Opt_jumpScroll, 0, "jump scrolling"),
+              BOOL (Rs_skipScroll, "skipScroll", "ss", Opt_skipScroll, 0, "skip scrolling"),
+              BOOL (Rs_pastableTabs, "pastableTabs", "ptab", Opt_pastableTabs, 0, "tab characters are pastable"),
 #if HAVE_SCROLLBARS
               RSTRG (Rs_scrollstyle, "scrollstyle", "mode"),
-              BOOL (Rs_scrollBar, "scrollBar", "sb", Opt_scrollBar, "scrollbar"),
-              BOOL (Rs_scrollBar_right, "scrollBar_right", "sr", Opt_scrollBar_right, "scrollbar right"),
-              BOOL (Rs_scrollBar_floating, "scrollBar_floating", "st", Opt_scrollBar_floating, "scrollbar without a trough"),
+              BOOL (Rs_scrollBar, "scrollBar", "sb", Opt_scrollBar, 0, "scrollbar"),
+              BOOL (Rs_scrollBar_right, "scrollBar_right", "sr", Opt_scrollBar_right, 0, "scrollbar right"),
+              BOOL (Rs_scrollBar_floating, "scrollBar_floating", "st", Opt_scrollBar_floating, 0, "scrollbar without a trough"),
               RSTRG (Rs_scrollBar_align, "scrollBar_align", "mode"),
               STRG (Rs_scrollBar_thickness, "thickness", "sbt", "number", "scrollbar thickness/width in pixels"),
 #endif
-              BOOL (Rs_scrollTtyOutput, "scrollTtyOutput", NULL, Opt_scrollTtyOutput, NULL),
-              BOOL (Rs_scrollTtyOutput, NULL, "si", Optflag_Reverse | Opt_scrollTtyOutput, "scroll-on-tty-output inhibit"),
-              BOOL (Rs_scrollTtyKeypress, "scrollTtyKeypress", "sk", Opt_scrollTtyKeypress, "scroll-on-keypress"),
-              BOOL (Rs_scrollWithBuffer, "scrollWithBuffer", "sw", Opt_scrollWithBuffer, "scroll-with-buffer"),
-#if TRANSPARENT
-              BOOL (Rs_transparent, "inheritPixmap", "ip", Opt_transparent, "inherit parent pixmap"),
-              SWCH ("tr", Opt_transparent, NULL),
+              BOOL (Rs_scrollTtyOutput, "scrollTtyOutput", NULL, Opt_scrollTtyOutput, 0, NULL),
+              BOOL (Rs_scrollTtyOutput, NULL, "si",  Opt_scrollTtyOutput, Optflag_Reverse, "scroll-on-tty-output inhibit"),
+              BOOL (Rs_scrollTtyKeypress, "scrollTtyKeypress", "sk", Opt_scrollTtyKeypress, 0, "scroll-on-keypress"),
+              BOOL (Rs_scrollWithBuffer, "scrollWithBuffer", "sw", Opt_scrollWithBuffer, 0, "scroll-with-buffer"),
+#if ENABLE_TRANSPARENCY
+              BOOL (Rs_transparent, "inheritPixmap", "ip", Opt_transparent, 0, "inherit parent pixmap"),
+              SWCH ("tr", Opt_transparent, 0, NULL),
 # if TINTING
               STRG (Rs_color + Color_tint, "tintColor", "tint", "color", "tint color"),
 # endif
@@ -119,31 +121,34 @@ optList[] = {
               STRG (Rs_color + Color_fade, "fadeColor", "fadecolor", "color", "target color for off-focus fading"),
 #endif
 #if TINTING
-              STRG (Rs_shade, "shading", "sh", "%", "shade background by x% when tinting."),
+              STRG (Rs_shade, "shading", "sh", "%", "shade background by x % when tinting."),
 #endif
-              BOOL (Rs_utmpInhibit, "utmpInhibit", "ut", Opt_utmpInhibit, "utmp inhibit"),
+              BOOL (Rs_utmpInhibit, "utmpInhibit", "ut", Opt_utmpInhibit, 0, "utmp inhibit"),
 #ifndef NO_BELL
-              BOOL (Rs_visualBell, "visualBell", "vb", Opt_visualBell, "visual bell"),
+# if ENABLE_FRILLS
+              BOOL (Rs_urgentOnBell, "urgentOnBell", NULL, Opt_urgentOnBell, 0, NULL),
+# endif
+              BOOL (Rs_visualBell, "visualBell", "vb", Opt_visualBell, 0, "visual bell"),
 # if ! defined(NO_MAPALERT) && defined(MAPALERT_OPTION)
-              BOOL (Rs_mapAlert, "mapAlert", NULL, Opt_mapAlert, NULL),
+              BOOL (Rs_mapAlert, "mapAlert", NULL, Opt_mapAlert, 0, NULL),
 # endif
 #endif
 #ifdef META8_OPTION
-              BOOL (Rs_meta8, "meta8", NULL, Opt_meta8, NULL),
+              BOOL (Rs_meta8, "meta8", NULL, Opt_meta8, 0, NULL),
 #endif
 #ifdef MOUSE_WHEEL
-              BOOL (Rs_mouseWheelScrollPage, "mouseWheelScrollPage", NULL, Opt_mouseWheelScrollPage, NULL),
+              BOOL (Rs_mouseWheelScrollPage, "mouseWheelScrollPage", NULL, Opt_mouseWheelScrollPage, 0, NULL),
 #endif
 #if ENABLE_FRILLS
-              BOOL (Rs_tripleclickwords, "tripleclickwords", "tcw", Opt_tripleclickwords, "triple click word selection"),
-              BOOL (Rs_insecure, "insecure", "insecure", Opt_insecure, "enable possibly insecure escape sequences"),
-              BOOL (Rs_cursorUnderline, "cursorUnderline", "uc", Opt_cursorUnderline, "underline cursor"),
+              BOOL (Rs_tripleclickwords, "tripleclickwords", "tcw", Opt_tripleclickwords, 0, "triple click word selection"),
+              BOOL (Rs_insecure, "insecure", "insecure", Opt_insecure, 0, "enable possibly insecure escape sequences"),
+              BOOL (Rs_cursorUnderline, "cursorUnderline", "uc", Opt_cursorUnderline, 0, "underline cursor"),
 #endif
 #if CURSOR_BLINK
-              BOOL (Rs_cursorBlink, "cursorBlink", "bc", Opt_cursorBlink, "blinking cursor"),
+              BOOL (Rs_cursorBlink, "cursorBlink", "bc", Opt_cursorBlink, 0, "blinking cursor"),
 #endif
 #ifdef POINTER_BLANK
-              BOOL (Rs_pointerBlank, "pointerBlank", "pb", Opt_pointerBlank, "switch off pointer after delay"),
+              BOOL (Rs_pointerBlank, "pointerBlank", "pb", Opt_pointerBlank, 0, "switch off pointer after delay"),
 #endif
               STRG (Rs_color + Color_bg, "background", "bg", "color", "background color"),
               STRG (Rs_color + Color_fg, "foreground", "fg", "color", "foreground color"),
@@ -197,7 +202,7 @@ optList[] = {
               STRG (Rs_boldFont, "boldFont", "fb", "fontname", "bold font"),
               STRG (Rs_italicFont, "italicFont", "fi", "fontname", "italic font"),
               STRG (Rs_boldItalicFont, "boldItalicFont", "fbi", "fontname", "bold italic font"),
-              BOOL (Rs_intensityStyles, "intensityStyles", "is", Opt_intensityStyles, "font styles imply intensity changes"),
+              BOOL (Rs_intensityStyles, "intensityStyles", "is", Opt_intensityStyles, 0, "font styles imply intensity changes"),
 #endif
 #ifdef USE_XIM
               STRG (Rs_inputMethod, "inputMethod", "im", "name", "name of input method"),
@@ -218,15 +223,15 @@ optList[] = {
 #endif
 #if ENABLE_FRILLS
               RSTRG (Rs_transient_for, "transient-for", "windowid"),
-              BOOL (Rs_override_redirect, "override-redirect", "override-redirect", Opt_override_redirect, "set override-redirect on the terminal window"),
+              BOOL (Rs_override_redirect, "override-redirect", "override-redirect", Opt_override_redirect, 0, "set override-redirect on the terminal window"),
               STRG (Rs_pty_fd, NULL, "pty-fd", "fileno", "file descriptor of pty to use"),
-              BOOL (Rs_hold, "hold", "hold", Opt_hold, "retain window after shell exit"),
+              BOOL (Rs_hold, "hold", "hold", Opt_hold, 0, "retain window after shell exit"),
               STRG (Rs_ext_bwidth, "externalBorder", "w", "number", "external border in pixels"),
               STRG (Rs_ext_bwidth, NULL, "bw", NULL, NULL),
               STRG (Rs_ext_bwidth, NULL, "borderwidth", NULL, NULL),
               STRG (Rs_int_bwidth, "internalBorder", "b", "number", "internal border in pixels"),
-              BOOL (Rs_borderLess, "borderLess", "bl", Opt_borderLess, "borderless window"),
-              BOOL (Rs_skipBuiltinGlyphs, "skipBuiltinGlyphs", "sbg", Opt_skipBuiltinGlyphs, "do not use internal glyphs"),
+              BOOL (Rs_borderLess, "borderLess", "bl", Opt_borderLess, 0, "borderless window"),
+              BOOL (Rs_skipBuiltinGlyphs, "skipBuiltinGlyphs", "sbg", Opt_skipBuiltinGlyphs, 0, "do not use internal glyphs"),
               STRG (Rs_lineSpace, "lineSpace", "lsp", "number", "number of extra pixels between rows"),
 #endif
 #ifdef POINTER_BLANK
@@ -248,14 +253,21 @@ optList[] = {
 #endif				/* CUTCHAR_RESOURCE */
               RSTRG (Rs_answerbackstring, "answerbackString", "string"),
 #ifndef NO_SECONDARY_SCREEN
-              BOOL (Rs_secondaryScreen, "secondaryScreen", "ssc", Opt_secondaryScreen, "enable secondary screen"),
-              BOOL (Rs_secondaryScroll, "secondaryScroll", "ssr", Opt_secondaryScroll, "enable secondary screen scroll"),
+              BOOL (Rs_secondaryScreen, "secondaryScreen", "ssc", Opt_secondaryScreen, 0, "enable secondary screen"),
+              BOOL (Rs_secondaryScroll, "secondaryScroll", "ssr", Opt_secondaryScroll, 0, "enable secondary screen scroll"),
 #endif
 #if ENABLE_PERL
               RSTRG (Rs_perl_lib, "perl-lib", "string"), //, "colon-separated directories with extension scripts"),TODO
               RSTRG (Rs_perl_eval, "perl-eval", "perl-eval"), // "string", "code to be evaluated after all extensions have been loaded"),TODO
               RSTRG (Rs_perl_ext_1, "perl-ext-common", "string"), //, "colon-separated list of perl extensions to enable"),TODO
               STRG (Rs_perl_ext_2, "perl-ext", "pe", "string", "colon-separated list of perl extensions to enable for this instance"),
+#endif
+#if ISO_14755
+              BOOL (Rs_iso14755_52, "iso14755_52", NULL, Opt_iso14755_52, 0, NULL),
+#endif
+#ifdef HAVE_AFTERIMAGE
+              STRG (Rs_blendtype, "blendType", "blt", "string", "background image blending type - alpha, tint, etc..."),
+              STRG (Rs_blurradius, "blurRadius", "blr", "HxV", "Gaussian Blur radii to apply to the root background"),
 #endif
 #ifndef NO_RESOURCES
               INFO ("xrm", "string", "X resource"),
@@ -315,8 +327,11 @@ static const char optionsstring[] = "options: "
 #if defined(XPM_BACKGROUND)
                                     "XPM,"
 #endif
-#if defined(TRANSPARENT)
+#if defined(ENABLE_TRANSPARENCY)
                                     "transparent,"
+#endif
+#if HAVE_AFTERIMAGE
+                                    "afterimage,"
 #endif
 #if TINTING
                                     "tint,"
@@ -551,7 +566,7 @@ rxvt_term::get_options (int argc, const char *const *argv)
             }
           else
             {		/* boolean value */
-              set_option (optList[entry].flag & Optflag_mask, flag == resval_on);
+              set_option (optList[entry].index, flag == resval_on);
 
               if (optList[entry].doff != -1)
                 rs[optList[entry].doff] = flag;
@@ -829,7 +844,7 @@ rxvt_term::extract_resources ()
               if (optList_isReverse (entry))
                 s = !s;
 
-              set_option (optList[entry].flag & Optflag_mask, s);
+              set_option (optList[entry].index, s);
             }
         }
     }

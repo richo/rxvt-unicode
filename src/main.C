@@ -75,13 +75,13 @@ void
 rxvt_push_locale (const char *locale) NOTHROW
 {
   strcpy (savelocale, curlocale);
-  rxvt_set_locale (curlocale);
+  rxvt_set_locale (locale);
 }
 
 void
 rxvt_pop_locale () NOTHROW
 {
-  rxvt_set_locale (curlocale);
+  rxvt_set_locale (savelocale);
 }
 
 #if ENABLE_COMBINING
@@ -150,8 +150,11 @@ int rxvt_composite_vec::expand (unicode_t c, wchar_t *r)
 
 rxvt_term::rxvt_term ()
     :
-#if TRANSPARENT || ENABLE_PERL
+#if ENABLE_TRANSPARENCY || ENABLE_PERL
     rootwin_ev (this, &rxvt_term::rootwin_cb),
+#endif
+#if ENABLE_TRANSPARENCY
+    check_our_parents_ev(this, &rxvt_term::check_our_parents_cb),
 #endif
 #ifdef HAVE_SCROLLBARS
     scrollbar_ev (this, &rxvt_term::x_cb),
@@ -272,9 +275,9 @@ rxvt_term::~rxvt_term ()
       clear ();
     }
 
-  delete pix_colors_focused;
+  delete [] pix_colors_focused;
 #if OFF_FOCUS_FADING
-  delete pix_colors_unfocused;
+  delete [] pix_colors_unfocused;
 #endif
 
   displays.put (display);
@@ -309,7 +312,7 @@ rxvt_term::child_cb (child_watcher &w, int status)
 
   cmd_pid = 0;
 
-  if (!OPTION (Opt_hold))
+  if (!option (Opt_hold))
     destroy ();
 }
 
@@ -333,7 +336,7 @@ rxvt_term::destroy ()
 #if HAVE_SCROLLBARS
       scrollbar_ev.stop (display);
 #endif
-#if TRANSPARENT || ENABLE_PERL
+#if ENABLE_TRANSPARENCY || ENABLE_PERL
       rootwin_ev.stop (display);
 #endif
       incr_ev.stop ();
@@ -483,7 +486,7 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 #endif
 
 #ifdef HAVE_SCROLLBARS
-  if (OPTION (Opt_scrollBar))
+  if (option (Opt_scrollBar))
     scrollBar.setIdle ();    /* set existence for size calculations */
 #endif
 
@@ -500,11 +503,11 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 #endif
 
 #ifdef HAVE_SCROLLBARS
-  if (OPTION (Opt_scrollBar))
+  if (option (Opt_scrollBar))
     resize_scrollbar ();      /* create and map scrollbar */
 #endif
-#ifdef TRANSPARENT
-  if (OPTION (Opt_transparent))
+#ifdef ENABLE_TRANSPARENCY
+  if (option (Opt_transparent))
     {
       XSelectInput (dpy, display->root, PropertyChangeMask);
       check_our_parents ();
@@ -629,7 +632,7 @@ rxvt_realloc (void *ptr, size_t size)
 
 /*----------------------------------------------------------------------*/
 /*
- * window size/position calculcations for XSizeHint and other storage.
+ * window size/position calculations for XSizeHint and other storage.
  * if width/height are non-zero then override calculated width/height
  */
 void
@@ -711,7 +714,7 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
       sb_w = scrollbar_TotalWidth ();
       szHint.base_width += sb_w;
 
-      if (!OPTION (Opt_scrollBar_right))
+      if (!option (Opt_scrollBar_right))
         window_vt_x += sb_w;
     }
 
@@ -742,7 +745,7 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
       szHint.height = szHint.base_height + height;
     }
 
-  if (scrollBar.state && OPTION (Opt_scrollBar_right))
+  if (scrollBar.state && option (Opt_scrollBar_right))
     window_sb_x = szHint.width - sb_w;
 
   if (recalc_x)
@@ -814,7 +817,8 @@ rxvt_term::set_fonts ()
 
   prop = (*fs)[1]->properties ();
   prop.height += lineSpace;
-  fs->set_prop (prop);
+
+  fs->set_prop (prop, false);
 
   fwidth  = prop.width;
   fheight = prop.height;
@@ -833,17 +837,20 @@ rxvt_term::set_fonts ()
           rxvt_fontprop prop2 = prop;
 
           if (res)
-            prop2.weight = prop2.slant = rxvt_fontprop::unset;
+            {
+              fs->populate (res);
+              fs->set_prop (prop2, false);
+            }
           else
             {
-              res = fontset[0]->fontdesc;
+              fs->populate (fontset[0]->fontdesc);
 
               if (SET_STYLE (0, style) & RS_Bold)   prop2.weight = rxvt_fontprop::bold;
               if (SET_STYLE (0, style) & RS_Italic) prop2.slant  = rxvt_fontprop::italic;
+
+              fs->set_prop (prop2, true);
             }
 
-          fs->populate (res);
-          fs->set_prop (prop2);
         }
 #else
       fontset[style] = fontset[0];

@@ -19,7 +19,7 @@ a significant advantage on a machine serving many X sessions.
 See @@RXVT_NAME@@(7) (try C<man 7 @@RXVT_NAME@@>) for a list of
 frequently asked questions and answer to them and some common
 problems. That document is also accessible on the World-Wide-Web at
-L<http://cvs.schmorp.de/browse/*checkout*/rxvt-unicode/doc/rxvt.7.html>.
+L<http://cvs.schmorp.de/browse/rxvt-unicode/doc/rxvt.7.html>.
 
 =head1 RXVT-UNICODE VS. RXVT
 
@@ -110,7 +110,11 @@ Turn on/off simulated reverse video; resource B<reverseVideo>.
 
 =item B<-j>|B<+j>
 
-Turn on/off jump scrolling; resource B<jumpScroll>.
+Turn on/off jump scrolling (allow multiple lines per refresh); resource B<jumpScroll>.
+
+=item B<-ss>|B<+ss>
+
+Turn on/off skip scrolling (allow multiple screens per refresh); resource B<skipScroll>.
 
 =item B<-ip>|B<+ip> | B<-tr>|B<+tr>
 
@@ -137,16 +141,37 @@ is opaque black. resource B<fadeColor>.
 Tint the transparent background pixmap with the given colour when
 transparency is enabled with B<-tr> or B<-ip>. This only works for
 non-tiled backgrounds, currently. See also the B<-sh> option that can be
-used to brighten or darken the image in addition to tinting it; resource
+used to brighten or darken the image in addition to tinting it.
+Please note that certain tint colours can be applied on the server-side,
+thus yielding performance gain of two orders of magnitude. These colours are:
+blue, red, green, cyan, magenta, yellow, and those close to them; resource
 I<tintColor>. Example:
 
    @@RXVT_NAME@@ -tr -tint blue -sh 40
 
-=item B<-sh>
+=item B<-sh> I<number>
 
-I<number> Darken (0 .. 100) or lighten (-1 .. -100) the transparent
-background image in addition to tinting it (i.e. B<-tint> must be
-specified, too, e.g. C<-tint white>).
+Darken (0 .. 100) or lighten (-1 .. -100) the transparent
+background image in addition to (or instead of) tinting it;
+resource I<shading>.
+
+=item B<-blt> I<string>
+
+Specify background blending type. If background pixmap is specified
+at the same time as transparency - such pixmap will be blended over
+transparency image, using method specified. Supported values are :
+B<add>, B<alphablend>, B<allanon> - color values averaging, B<colorize>,
+B<darken>, B<diff>, B<dissipate>, B<hue>, B<lighten>, B<overlay>,
+B<saturate>, B<screen>, B<sub>, B<tint>, B<value>. The default is
+alpha-blending; resource I<blendType>.
+
+=item B<-blr> I<HxV>
+
+Apply Gaussian Blur with the specified radii to the transparent
+background image. If single number is specified - both vertical and
+horizontal radii are considered to be the same. Setting one of the
+radii to 1 and another to a large number creates interesting effects
+on some backgrounds. Maximum radius value is 128; resource I<blurRadius>.
 
 =item B<-bg> I<colour>
 
@@ -158,10 +183,10 @@ Window foreground colour; resource B<foreground>.
 
 =item B<-pixmap> I<file[;geom]>
 
-Compile I<XPM>: Specify XPM file for the background and also optionally
-specify its scaling with a geometry string. Note you may need to
+Compile I<afterimage>: Specify image file for the background and also 
+optionally specify its scaling with a geometry string. Note you may need to
 add quotes to avoid special shell interpretation of the C<;> in the
-command-line; resource B<backgroundPixmap>.
+command-line; for more details see resource B<backgroundPixmap>.
 
 =item B<-cr> I<colour>
 
@@ -388,7 +413,8 @@ for more info.
 =item B<-tcw>
 
 Change the meaning of triple-click selection with the left mouse
-button. Instead of selecting a full line it will extend the selection the
+button. Only effective when the original (non-perl) selection code is
+in-use. Instead of selecting a full line it will extend the selection the
 end of the logical line only. resource B<tripleclickwords>.
 
 =item B<-insecure>
@@ -566,8 +592,8 @@ foreground colour is the default.
 
 =item B<colorRV:> I<colour>
 
-Use the specified colour as the background for reverse video
-characters.
+Use the specified colour as the background for reverse video characters
+when OPTION_HC is disabled (--disable-frills).
 
 =item B<underlineColor:> I<colour>
 
@@ -593,9 +619,25 @@ B<+rv>. See note in B<COLORS AND GRAPHICS> section.
 
 =item B<jumpScroll:> I<boolean>
 
-B<True>: specify that jump scrolling should be used. When scrolling
-quickly, fewer screen updates are performed [default]; option B<-j>.
-B<False>: specify that smooth scrolling should be used; option B<+j>.
+B<True>: specify that jump scrolling should be used. When receiving lots
+of lines, @@RXVT_NAME@@ will only scroll once a whole screen height of lines
+has been read, resulting in fewer updates while still displaying every
+received line; option B<-j>.
+
+B<False>: specify that smooth scrolling should be used. @@RXVT_NAME@@ will
+force a screen refresh on each new line it received; option B<+j>.
+
+=item B<skipScroll:> I<boolean>
+
+B<True>: (the default) specify that skip scrolling should be used. When
+receiving lots of lines, @@RXVT_NAME@@ will only scroll once in a while
+(around 60 times per second), resulting in far fewer updates. This can
+result in @@RXVT_NAME@@ not ever displaying some of the lines it receives;
+option B<-ss>.
+
+B<False>: specify that everything is to be displayed, even
+if the refresh is too fast for the human eye to read anything (or the
+monitor to display anything); option B<+ss>.
 
 =item B<inheritPixmap:> I<boolean>
 
@@ -622,8 +664,17 @@ B<-tint>.
 
 =item B<shading:> I<number>
 
-Darken (0 .. 100) or lighten (-1 .. -100) the transparent background
-image in addition to tinting it.
+Darken (0 .. 100) or lighten (-1 .. -100) the transparent background image
+in addition to tinting it; option B<-sh>.
+
+=item B<blendType:> I<string>
+
+Specify background blending type; option B<-blt>.
+
+=item B<blurRadius:> I<number>
+
+Apply Gaussian Blurr with the specified radius to the transparent 
+background image; option B<-blr>.
 
 =item B<scrollColor:> I<colour>
 
@@ -641,15 +692,20 @@ and the text.
 
 =item B<backgroundPixmap:> I<file[;geom]>
 
-Use the specified XPM file (note the `.xpm' extension is optional) for
-the background and also optionally specify its scaling with a geometry
-string B<WxH+X+Y>, in which B<"W" / "H"> specify the
-horizontal/vertical scale (percent) and B<"X" / "Y"> locate the image
-centre (percent). A scale of 0 displays the image with tiling. A scale
-of 1 displays the image without any scaling. A scale of 2 to 9
-specifies an integer number of images in that direction. No image will
-be magnified beyond 10 times its original size. The maximum permitted
-scale is 1000. [default 0x0+50+50]
+Use the specified image file for the background and also optionally 
+specify its scaling with a geometry string B<WxH+X+Y>, 
+in which B<"W" / "H"> specify the horizontal/vertical scale (percent), 
+and B<"X" / "Y"> locate the image centre (percent). 
+A scale of 0 displays the image with tiling. A scale of 1 displays the 
+image without any scaling. A scale of 2 to 9 specifies an integer 
+number of images in that direction. No image will be magnified beyond 
+10 times its original size. The maximum permitted scale is 1000. 
+Special string of B<"auto"> used as a geometry will cause image to be 
+automatically scaled to match window size.
+If used in conjunction with B<-tr> option - specified pixmap will be 
+blended over transparency image using either alpha-blending, or any 
+other blending type, specified with B<-blt "type"> option.
+[default 0x0+50+50]
 
 =item B<path:> I<path>
 
@@ -727,9 +783,10 @@ reachable.
 
 =item B<selectstyle:> I<mode>
 
-Set mouse selection style to B<old> which is 2.20, B<oldword> which is
-xterm style with 2.20 old word selection, or anything else which gives
-xterm style selection.
+Set mouse selection style to B<old> which is 2.20, B<oldword> which
+is xterm style with 2.20 old word selection, or anything else which
+gives xterm style selection. Only effective when the original (non-perl)
+selection code is in use.
 
 =item B<scrollstyle:> I<mode>
 
@@ -752,6 +809,11 @@ set; option B<-n>.
 
 B<True>: de-iconify (map) on receipt of a bell character. B<False>: no
 de-iconify (map) on receipt of a bell character [default].
+
+=item B<urgentOnBell:> I<boolean>
+
+B<True>: set the urgency hint for the wm on receipt of a bell character.
+B<False>: do not set the urgency hint [default].
 
 =item B<visualBell:> I<boolean>
 
@@ -918,10 +980,10 @@ with the B<Execute> key.
 The characters used as delimiters for double-click word selection
 (whitespace delimiting is added automatically if resource is given).
 
-When the selection extension is in use (the default if compiled in, see
-the @@RXVT_NAME@@perl(3) manpage), a suitable regex using these characters
-will be created (if the resource exists, otherwise, no regex will be
-created). In this mode, characters outside ISO-8859-1 can be used.
+When the perl selection extension is in use (the default if compiled
+in, see the @@RXVT_NAME@@perl(3) manpage), a suitable regex using these
+characters will be created (if the resource exists, otherwise, no regex
+will be created). In this mode, characters outside ISO-8859-1 can be used.
 
 When the selection extension is not used, only ISO-8859-1 characters can
 be used. If not specified, the built-in default is used:
@@ -990,7 +1052,7 @@ Turn on/off secondary screen (default enabled).
 
 =item B<secondaryScroll:> I<boolean>
 
-Turn on/off secondary screen scroll (default enabled). If the this
+Turn on/off secondary screen scroll (default enabled). If this
 option is enabled, scrolls on the secondary screen will change the
 scrollback buffer and switching to/from the secondary screen will
 instead scroll the screen up.
@@ -1028,7 +1090,8 @@ I<string> may contain escape values (C<\a>: bell, C<\b>: backspace,
 C<\e>, C<\E>: escape, C<\n>: newline, C<\r>: carriage return, C<\t>: tab,
 C<\000>: octal number) or verbatim control characters (C<^?>: delete,
 C<^@>: null, C<^A> ...) and may be enclosed with double quotes so that it
-can start or end with whitespace.
+can start or end with whitespace. B<This feature is deprecated and will
+be removed>.
 
 Please note that you need to double the C<\> in resource files, as
 Xlib itself does its own de-escaping (you can use C<\033> instead of
@@ -1156,7 +1219,7 @@ Sets the hotkey that starts the incremental scrollback buffer search
 =item B<urlLauncher>: I<string>
 
 Specifies the program to be started with a URL argument. Used by the
-C<selection-popup> and C<mark-urls> perl extensions.
+C<selection-popup> and C<matcher> perl extensions.
 
 =item B<transient-for>: I<windowid>
 
@@ -1166,6 +1229,10 @@ Compile I<frills>: Sets the WM_TRANSIENT_FOR property to the given window id.
 
 Compile I<frills>: Sets override-redirect for the terminal window, making
 it almost invisible to window managers; option B<-override-redirect>.
+
+=item B<iso14755_52:> I<boolean>
+
+Turn on/off ISO 14755 5.2 mode (default enabled).
 
 =back
 
@@ -1194,14 +1261,14 @@ application. Instead, pressing Button1 and Button3 sends B<ESC [ 6 ~>
 up and down arrows sends B<ESC [ A> (Up) and B<ESC [ B> (Down),
 respectively.
 
-=head1 TEXT SELECTION AND INSERTION
+=head1 THE SELECTION: SELECTING AND PASTING TEXT
 
-The behaviour of text selection and insertion mechanism is similar to
-I<xterm>(1).
+The behaviour of text selection and insertion/pasting mechanism is similar
+to I<xterm>(1).
 
 =over 4
 
-=item B<Selection>:
+=item B<Selecting>:
 
 Left click at the beginning of the region, drag to the end of the region
 and release; Right click to extend the marked region; Left double-click
@@ -1215,11 +1282,11 @@ normal one. In this mode, every selected row becomes its own line in the
 selection, and trailing whitespace is visually underlined and removed from
 the selection.
 
-=item B<Insertion>:
+=item B<Pasting>:
 
 Pressing and releasing the Middle mouse button in an B<@@RXVT_NAME@@>
 window causes the value of the PRIMARY selection (or CLIPBOARD with the
-Meta modifier) to be inserted as if it had been typed on the keyboard.
+B<Meta> modifier) to be inserted as if it had been typed on the keyboard.
 
 Pressing B<Shift-Insert> causes the value of the PRIMARY selection to be
 inserted too.
@@ -1246,7 +1313,7 @@ rxvt-unicode will automatically re-apply these fonts to the output so far.
 
 ISO 14755 is a standard for entering and viewing unicode characters
 and character codes using the keyboard. It consists of 4 parts. The
-first part is available rxvt-unicode has been compiled with
+first part is available if rxvt-unicode has been compiled with
 C<--enable-frills>, the rest is available when rxvt-unicode was compiled
 with C<--enable-iso14755>.
 
@@ -1379,8 +1446,10 @@ their act together, rxvt-unicode will support C<rgba:rrrr/gggg/bbbb/aaaa>
 (recommended, but B<MUST> have 4 digits/component) colour specifications,
 in addition to the ones provided by X, where the additional A component
 specifies opacity (alpha) values. The minimum value of C<0> is completely
-transparent). You can also prefix any color with C<[a]>, where C<a> is on
-to four hex digits specifiying the opacity value.
+transparent). You can also prefix any color with C<[percent]>, where
+C<percent> is a decimal percentage (0-100) that specifies the opacity of
+the color, where C<0> is completely transparent and C<100> is completelxy
+opaque.
 
 You probably need to specify B<"-depth 32">, too, and have the luck that
 your X-server uses ARGB pixel layout, as X is far from just supporting
@@ -1389,7 +1458,7 @@ ARGB visuals out of the box, and rxvt-unicode just fudges around.
 For example, the following selects an almost completely transparent red
 background, and an almost opaque pink foreground:
 
-   @@RXVT_NAME@@ -depth 32 -bg rgba:0000/0000/0000/2222 -fg "[e]pink"
+   @@RXVT_NAME@@ -depth 32 -bg rgba:0000/0000/0000/aaaa -fg "[80]pink"
 
 I<Please note that transparency of any kind if completely unsupported by
 the author. Don't bug him with installation questions!>

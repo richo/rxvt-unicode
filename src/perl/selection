@@ -46,8 +46,8 @@ my @mark_patterns = (
 
    # urls, just a heuristic
    qr{(
-      (?:https?://|ftp://|news://|mailto:|file://)[ab-zA-Z0-9\-\@;\/?:&=%\$_.+!*\x27(),~#]+
-      [ab-zA-Z0-9\-\@;\/?:&=%\$_+!*\x27()~]   # exclude some trailing characters (heuristic)
+      (?:https?://|ftp://|news://|mailto:|file://|\bwww\.)[ab-zA-Z0-9\-\@;\/?:&=%\$_.+!*\x27(),~#]+
+      [ab-zA-Z0-9\-\@;\/?:&=%\$_+*()~]   # exclude some trailing characters (heuristic)
    )}x,
 
    # shell-like argument quoting, basically always matches
@@ -83,7 +83,7 @@ sub on_sel_extend {
    my @matches;
 
    if ($markofs < $line->l) {
-      # convert markofs form character to UTF-8 offset space
+      # convert markofs from character to UTF-8 offset space
       {
          my $prefix = substr $text, 0, $markofs;
          utf8::encode $prefix;

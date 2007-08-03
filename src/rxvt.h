@@ -72,21 +72,14 @@
 typedef char *XPointer;
 #endif
 
-#ifdef HAVE_TERMIOS_H
-# include <termios.h>
+#include <termios.h>
 typedef struct termios ttymode_t;
-#else
-# include <sgtty.h>
-typedef struct {
-  struct sgttyb   sg;
-  struct tchars   tc;
-  struct ltchars  lc;
-  int             line;
-  int             local;
-} ttymode_t;
-#endif
 
-#ifdef XPM_BACKGROUND
+#ifdef HAVE_AFTERIMAGE
+#  include <afterimage.h>
+#undef min
+#undef max
+#elif defined(XPM_BACKGROUND)
 # ifdef XPM_INC_X11
 #  include <X11/xpm.h>
 # else
@@ -126,7 +119,6 @@ char *           rxvt_wcstombs                    (const wchar_t *str, int len =
 wchar_t *        rxvt_mbstowcs                    (const char *str, int len = -1);
 char *           rxvt_wcstoutf8                   (const wchar_t *str, int len = -1);
 wchar_t *        rxvt_utf8towcs                   (const char *str, int len = -1);
-char *           rxvt_strdup_cpp                  (const char *str);
 
 #define rxvt_strdup(s) ((s) ? strdup(s) : 0)
 
@@ -143,7 +135,6 @@ char           * rxvt_Str_trim                    (char *str) NOTHROW;
 int              rxvt_Str_escaped                 (char *str) NOTHROW;
 char          ** rxvt_splitcommastring            (const char *cs) NOTHROW;
 void             rxvt_freecommastring             (char **cs) NOTHROW;
-char           * rxvt_File_find                   (const char *file, const char *ext, const char *path) NOTHROW;
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -190,6 +181,7 @@ struct grwin_t;
 #ifdef XPM_BACKGROUND
 typedef struct {
   short w, h, x, y;
+  bool auto_resize ; 
   Pixmap pixmap;
 } bgPixmap_t;
 #endif
@@ -522,6 +514,8 @@ enum {
  */
 
 enum colour_list {
+  Color_none = -2,
+  Color_transparent = -1,
   Color_fg = 0,
   Color_bg,
   minCOLOR,                   /* 2 */
@@ -684,10 +678,9 @@ enum {
  */
 #define dLocal(type,name)       type const name = this->name
 
-// for speed reasons, we assume that all latin1 characters
-// are single-width (the first unicode combining character
-// is actually 0x300, but ascii is what matters most).
-#define WCWIDTH(c) ((c) & ~0xff ? wcwidth (c) : 1)
+// for speed reasons, we assume that all codepoints 32 to 126 are
+// single-width.
+#define WCWIDTH(c)		(IN_RANGE_INC (c, 0x20, 0x7e) ? 1 : wcwidth (c))
 
 /* convert pixel dimensions to row/column values.  Everything as int32_t */
 #define Pixel2Col(x)            Pixel2Width((int32_t)(x))
@@ -698,11 +691,6 @@ enum {
 #define Row2Pixel(row)          ((int32_t)Height2Pixel(row))
 #define Width2Pixel(n)          ((int32_t)(n) * (int32_t)fwidth)
 #define Height2Pixel(n)         ((int32_t)(n) * (int32_t)fheight)
-
-#define OPTION(opt)		(options & (opt))
-#define DEFAULT_OPTIONS		(Opt_scrollBar | Opt_scrollTtyOutput \
-				 | Opt_jumpScroll | Opt_secondaryScreen \
-				 | Opt_pastableTabs | Opt_intensityStyles)
 
 // for m >= -n, ensure remainder lies between 0..n-1
 #define MOD(m,n) (((m) + (n)) % (n))
@@ -789,6 +777,8 @@ extern void rxvt_pop_locale () NOTHROW;
 #define LINE_LONGER     0x0001 // line is continued on the next row
 #define LINE_FILTERED   0x0002 // line has been filtered
 #define LINE_COMPRESSED 0x0004 // line has been compressed (NYI)
+#define LINE_FILTER     0x0008 // line needs to be filtered before display (NYI)
+#define LINE_BIDI       0x0010 // line needs bidi (NYI)
 
 struct line_t {
    text_t *t; // terminal the text
@@ -909,10 +899,8 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   struct mbstate  mbstate;              // current input multibyte state
 
   unsigned char   want_refresh:1,
-#ifdef TRANSPARENT
+#ifdef ENABLE_TRANSPARENCY
                   want_full_refresh:1,	/* awaiting full screen refresh      */
-#endif
-#if defined(XPM_BACKGROUND) || defined(TRANSPARENT)
                   am_transparent:1,	/* is a transparent term             */
                   am_pixmap_trans:1, 	/* transparency w/known root pixmap  */
 #endif
@@ -965,7 +953,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
                   mouse_slip_wheel_speed,
 #endif
                   refresh_count,
-                  refresh_limit,
                   last_bot,   /* scrollbar last bottom position            */
                   last_top,   /* scrollbar last top position               */
                   last_state, /* scrollbar last state                      */
@@ -1033,7 +1020,14 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   row_col_t       oldcursor;
 #ifdef XPM_BACKGROUND
   bgPixmap_t      bgPixmap;
+#ifdef HAVE_AFTERIMAGE  
+  struct ASVisual  *asv;
+  ASImageManager *asimman;
+  ASImage        *original_asim;
+  struct { unsigned int width, height; } xpmAttr; /* all we need is width/height */
+#else
   XpmAttributes   xpmAttr;    /* originally loaded pixmap and its scaling */
+#endif  
 #endif
 
 #if ENABLE_OVERLAY
@@ -1101,9 +1095,14 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
     XSelectInput (dpy, vt, vt_emask | vt_emask_perl | vt_emask_xim);
   }
 
-#if TRANSPARENT || ENABLE_PERL
+#if ENABLE_TRANSPARENCY || ENABLE_PERL
   void rootwin_cb (XEvent &xev);
   xevent_watcher rootwin_ev;
+#endif
+#if ENABLE_TRANSPARENCY
+  int check_our_parents ();
+  void check_our_parents_cb (time_watcher &w);
+  time_watcher check_our_parents_ev;
 #endif
 
   void x_cb (XEvent &xev);
@@ -1231,7 +1230,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void focus_in ();
   void focus_out ();
   void update_fade_color (unsigned int idx);
-  int check_our_parents ();
 #ifdef PRINTPIPE
   FILE *popen_printer ();
   int pclose_printer (FILE *stream);
@@ -1302,7 +1300,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 #ifndef NO_BRIGHTCOLOR
     if (r & RS_Bold
 # if ENABLE_STYLES
-        && OPTION (Opt_intensityStyles)
+        && option (Opt_intensityStyles)
 # endif
         && IN_RANGE_INC (base, minCOLOR, minBrightCOLOR))
       base += minBrightCOLOR - minCOLOR;
@@ -1316,7 +1314,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 #ifndef NO_BRIGHTCOLOR
     if (r & RS_Blink
 # if ENABLE_STYLES
-        && OPTION (Opt_intensityStyles)
+        && option (Opt_intensityStyles)
 # endif
         && IN_RANGE_INC (base, minCOLOR, minBrightCOLOR))
       base += minBrightCOLOR - minCOLOR;
@@ -1324,17 +1322,17 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
     return base;
   }
 
-  bool option (uint32_t opt) const NOTHROW
+  bool option (uint8_t opt) const NOTHROW
   {
-    return OPTION (opt);
+    return options[opt >> 3] & (1 << (opt & 7));
   }
 
-  void set_option (uint32_t opt, bool set) NOTHROW
+  void set_option (uint8_t opt, bool set = true) NOTHROW
   {
     if (set)
-      options |= opt;
+      options[opt >> 3] |= (1 << (opt & 7));
     else
-      options &= ~opt;
+      options[opt >> 3] &= ~(1 << (opt & 7));
   }
 
   void scr_blank_line (line_t &l, unsigned int col, unsigned int width, rend_t efs) const NOTHROW;

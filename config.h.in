@@ -18,6 +18,9 @@
 /* Define if you want bold and italic support */
 #undef ENABLE_STYLES
 
+/* Define if you want your background to use the parent window background */
+#undef ENABLE_TRANSPARENCY
+
 /* Define if you want european extended codesets */
 #undef ENCODING_EU
 
@@ -38,6 +41,9 @@
 
 /* Define if you want extended chinese codesets */
 #undef ENCODING_ZH_EXT
+
+/* Define if you want to use libAfterImage for image processing */
+#undef HAVE_AFTERIMAGE
 
 /* Define to 1 if you have the <assert.h> header file. */
 #undef HAVE_ASSERT_H
@@ -223,9 +229,6 @@
 /* Define to 1 if you have the <X11/Xft/Xft.h> header file. */
 #undef HAVE_X11_XFT_XFT_H
 
-/* Define if Xlocale support works */
-#undef HAVE_XLOCALE
-
 /* Define if you have XPointer typedef */
 #undef HAVE_XPOINTER
 
@@ -329,16 +332,16 @@
    the screen */
 #undef SELECTION_SCROLLING
 
-/* The size of a `int', as computed by sizeof. */
+/* The size of `int', as computed by sizeof. */
 #undef SIZEOF_INT
 
-/* The size of a `int *', as computed by sizeof. */
+/* The size of `int *', as computed by sizeof. */
 #undef SIZEOF_INT_P
 
-/* The size of a `long long', as computed by sizeof. */
+/* The size of `long long', as computed by sizeof. */
 #undef SIZEOF_LONG_LONG
 
-/* The size of a `short', as computed by sizeof. */
+/* The size of `short', as computed by sizeof. */
 #undef SIZEOF_SHORT
 
 /* Define to use "smart" resize behavior */
@@ -358,9 +361,6 @@
 
 /* Define if you want your background to be tinted */
 #undef TINTING
-
-/* Define if you want your background to use the parent window background */
-#undef TRANSPARENT
 
 /* Define location of ttys/ttytab */
 #undef TTYTAB_FILENAME
@@ -405,7 +405,8 @@
 /* Define ONLY iff Xlib.h supports it */
 #undef XLIB_ILLEGAL_ACCESS
 
-/* Define if you want to have sexy-looking background pixmaps. Needs libXpm */
+/* Define if you want to have sexy-looking background pixmaps. Needs libXpm or
+   libAfterImage */
 #undef XPM_BACKGROUND
 
 /* Define if you include <X11/xpm.h> on a normal include path (be careful) */
@@ -429,12 +430,6 @@
 
 /* Needed to get declarations for msg_control and msg_controllen on Solaris */
 #undef _XOPEN_SOURCE
-
-/* Needed to get declarations for msg_control and msg_controllen on Solaris */
-#undef _XOPEN_SOURCE_EXTENDED
-
-/* Needed to get declarations for msg_control and msg_controllen on Solaris */
-#undef __EXTENSIONS__
 
 /* Define to empty if `const' does not conform to ANSI C. */
 #undef const

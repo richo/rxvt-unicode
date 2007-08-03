@@ -49,7 +49,7 @@ inline void fill_text (text_t *start, text_t value, int len)
  *             GENERAL SCREEN AND SELECTION UPDATE ROUTINES                  *
  * ------------------------------------------------------------------------- */
 #define ZERO_SCROLLBACK()                                              \
-    if (OPTION (Opt_scrollTtyOutput))                                  \
+    if (option (Opt_scrollTtyOutput))                                  \
         view_start = 0
 #define CLEAR_SELECTION()                                              \
     selection.beg.row = selection.beg.col                              \
@@ -411,7 +411,7 @@ rxvt_term::scr_reset ()
 
   tabs = (char *)rxvt_malloc (ncol * sizeof (char));
 
-  for (int col = ncol; col--; )
+  for (int col = ncol; --col; )
     tabs [col] = col % TABSIZE == 0;
 
   if (current_screen != PRIMARY)
@@ -512,7 +512,7 @@ rxvt_term::scr_cursor (cursor_mode mode) NOTHROW
 void
 rxvt_term::scr_swap_screen ()
 {
-  if (!OPTION (Opt_secondaryScreen))
+  if (!option (Opt_secondaryScreen))
     return;
 
   for (int i = prev_nrow; i--; )
@@ -544,7 +544,7 @@ rxvt_term::scr_change_screen (int scrn)
   int i = current_screen; current_screen = scrn; scrn = i;
 
 #if NSCREENS
-  if (OPTION (Opt_secondaryScreen))
+  if (option (Opt_secondaryScreen))
     {
       num_scr = 0;
 
@@ -557,7 +557,7 @@ rxvt_term::scr_change_screen (int scrn)
     }
   else
 #endif
-    if (OPTION (Opt_secondaryScroll))
+    if (option (Opt_secondaryScroll))
       scr_scroll_text (0, prev_nrow - 1, prev_nrow);
 }
 
@@ -626,7 +626,7 @@ rxvt_term::scr_scroll_text (int row1, int row2, int count) NOTHROW
 
   if (count > 0
       && row1 == 0
-      && (current_screen == PRIMARY || OPTION (Opt_secondaryScroll)))
+      && (current_screen == PRIMARY || option (Opt_secondaryScroll)))
     {
       top_row = max (top_row - count, -saveLines);
 
@@ -686,7 +686,7 @@ rxvt_term::scr_scroll_text (int row1, int row2, int count) NOTHROW
         }
 
       // finally move the view window, if desired
-      if (OPTION (Opt_scrollWithBuffer)
+      if (option (Opt_scrollWithBuffer)
           && view_start != 0
           && view_start != -saveLines)
         scr_page (UP, count);
@@ -1073,7 +1073,7 @@ rxvt_term::scr_tab (int count, bool ht) NOTHROW
 
       // store horizontal tab commands as characters inside the text
       // buffer so they can be selected and pasted.
-      if (ht && OPTION (Opt_pastableTabs))
+      if (ht && option (Opt_pastableTabs))
         {
           base_rend = SET_FONT (base_rend, 0);
 
@@ -1653,8 +1653,8 @@ rxvt_term::scr_rvideo_mode (bool on) NOTHROW
 #if XPM_BACKGROUND
       if (bgPixmap.pixmap == None)
 #endif
-#if TRANSPARENT
-        if (!OPTION (Opt_transparent) || am_transparent == 0)
+#if ENABLE_TRANSPARENCY
+        if (!option (Opt_transparent) || am_transparent == 0)
 #endif
           XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
 
@@ -1888,12 +1888,25 @@ rxvt_term::scr_bell () NOTHROW
 
 # ifndef NO_MAPALERT
 #  ifdef MAPALERT_OPTION
-  if (OPTION (Opt_mapAlert))
+  if (option (Opt_mapAlert))
 #  endif
     XMapWindow (dpy, parent[0]);
 # endif
+# if ENABLE_FRILLS
+  if (option (Opt_urgentOnBell))
+    {
+      XWMHints *h;
 
-  if (OPTION (Opt_visualBell))
+      h = XGetWMHints(dpy, parent[0]);
+      if (h != NULL)
+        {
+          h->flags |= XUrgencyHint;
+          XSetWMHints(dpy, parent[0], h);
+        }
+    }
+# endif
+
+  if (option (Opt_visualBell))
     {
       rvideo_bell = true;
       scr_rvideo_mode (rvideo_mode);
@@ -1980,6 +1993,8 @@ rxvt_term::scr_refresh () NOTHROW
   rend_t cc1;         /* store colours at cursor position (s)      */
 #endif
   rend_t *crp;        // cursor rendition pointer
+  rend_t ccol1,  /* Cursor colour       */
+         ccol2;  /* Cursor colour2      */
 
   want_refresh = 0;        /* screen is current */
 
@@ -1995,8 +2010,8 @@ rxvt_term::scr_refresh () NOTHROW
 #if XPM_BACKGROUND
   have_bg |= bgPixmap.pixmap != None;
 #endif
-#if TRANSPARENT
-  have_bg |= OPTION (Opt_transparent) && am_transparent;
+#if ENABLE_TRANSPARENCY
+  have_bg |= option (Opt_transparent) && am_transparent;
 #endif
   ocrow = oldcursor.row; /* is there an old outline cursor on screen? */
 
@@ -2010,8 +2025,6 @@ rxvt_term::scr_refresh () NOTHROW
    */
   {
     unsigned char setoldcursor;
-    rend_t ccol1,  /* Cursor colour       */
-           ccol2;  /* Cursor colour2      */
 
     showcursor = (screen.flags & Screen_VisibleCursor);
 #ifdef CURSOR_BLINK
@@ -2028,35 +2041,38 @@ rxvt_term::scr_refresh () NOTHROW
 
         crp = &ROW(screen.cur.row).r[col];
 
+#ifndef NO_CURSORCOLOR
+        cc1 = *crp & (RS_fgMask | RS_bgMask);
+        if (ISSET_PIXCOLOR (Color_cursor))
+          ccol1 = Color_cursor;
+        else
+#endif
+#ifdef CURSOR_COLOR_IS_RENDITION_COLOR
+          ccol1 = fgcolor_of (rstyle);
+#else
+          ccol1 = Color_fg;
+#endif
+
+#ifndef NO_CURSORCOLOR
+        if (ISSET_PIXCOLOR (Color_cursor2))
+          ccol2 = Color_cursor2;
+        else
+#endif
+#ifdef CURSOR_COLOR_IS_RENDITION_COLOR
+          ccol2 = bgcolor_of (rstyle);
+#else
+          ccol2 = Color_bg;
+#endif
+
         if (showcursor && focus)
           {
-            if (OPTION (Opt_cursorUnderline))
+            if (option (Opt_cursorUnderline))
               *crp ^= RS_Uline;
             else
               {
                 *crp ^= RS_RVid;
-
-#ifndef NO_CURSORCOLOR
-                cc1 = *crp & (RS_fgMask | RS_bgMask);
-                if (ISSET_PIXCOLOR (Color_cursor))
-                  ccol1 = Color_cursor;
-                else
-#ifdef CURSOR_COLOR_IS_RENDITION_COLOR
-                  ccol1 = fgcolor_of (rstyle);
-#else
-                  ccol1 = Color_fg;
-#endif
-                if (ISSET_PIXCOLOR (Color_cursor2))
-                  ccol2 = Color_cursor2;
-                else
-#ifdef CURSOR_COLOR_IS_RENDITION_COLOR
-                  ccol2 = bgcolor_of (rstyle);
-#else
-                  ccol2 = Color_bg;
-#endif
                 *crp = SET_FGCOLOR (*crp, ccol1);
                 *crp = SET_BGCOLOR (*crp, ccol2);
-#endif
               }
           }
       }
@@ -2348,16 +2364,14 @@ rxvt_term::scr_refresh () NOTHROW
            */
           rxvt_font *font = (*fontset[GET_STYLE (rend)])[GET_FONT (rend)];
 
-          if (back == fore)
-            font->clear_rect (*drawable, xpixel, ypixel, fwidth * count, fheight, back);
-          else if (back == Color_bg && have_bg)
+          if (have_bg && back == Color_bg)
             {
               // this is very ugly, maybe push it into ->draw?
 
               for (i = 0; i < count; i++) /* don't draw empty strings */
                 if (text[i] != ' ')
                   {
-                    font->draw (*drawable, xpixel, ypixel, text, count, fore, -1);
+                    font->draw (*drawable, xpixel, ypixel, text, count, fore, Color_transparent);
                     goto did_clear;
                   }
 
@@ -2395,7 +2409,7 @@ rxvt_term::scr_refresh () NOTHROW
     {
       if (focus)
         {
-          if (OPTION (Opt_cursorUnderline))
+          if (option (Opt_cursorUnderline))
             *crp ^= RS_Uline;
           else
             {
@@ -2420,7 +2434,9 @@ rxvt_term::scr_refresh () NOTHROW
 #ifndef NO_CURSORCOLOR
           if (ISSET_PIXCOLOR (Color_cursor))
             XSetForeground (dpy, gc, pix_colors[Color_cursor]);
+          else
 #endif
+            XSetForeground (dpy, gc, pix_colors[ccol1]);
 
           XDrawRectangle (dpy, drawBuffer, gc,
                           Col2Pixel (col),
@@ -2468,7 +2484,7 @@ void
 rxvt_term::scr_recolour () NOTHROW
 {
   if (1
-#if TRANSPARENT
+#if ENABLE_TRANSPARENCY
       && !am_transparent
 #endif
 #if XPM_BACKGROUND
@@ -3413,7 +3429,7 @@ rxvt_term::selection_extend_colrow (int32_t col, int32_t row, int button3, int b
   else if (selection.clicks == 3)
     {
 #if ENABLE_FRILLS
-      if (OPTION (Opt_tripleclickwords))
+      if (option (Opt_tripleclickwords))
         {
           selection_delimit_word (UP, &selection.beg, &selection.beg);
 
