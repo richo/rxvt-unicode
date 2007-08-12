@@ -1,3 +1,10 @@
+rxvt-unicode (8.3-2) unstable; urgency=low
+
+  * Fix sed and podselect invocations so that docs are generated correctly
+    (Closes: #437364)
+
+ -- Decklin Foster <decklin@red-bean.com>  Sun, 12 Aug 2007 02:24:21 -0400
+
 rxvt-unicode (8.3-1) unstable; urgency=low
 
   * New upstream release (Closes: #433004)
