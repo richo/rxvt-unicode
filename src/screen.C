@@ -28,13 +28,11 @@
 #include "rxvt.h"               /* NECESSARY */
 #include "rxvtperl.h"           /* NECESSARY */
 
-#include <X11/Xmd.h>            /* get the typedef for CARD32 */
-
 #include <inttypes.h>
 
 #include "salloc.C" // HACK, should be a seperate compile!
 
-inline void fill_text (text_t *start, text_t value, int len)
+static inline void fill_text (text_t *start, text_t value, int len)
 {
   while (len--)
     *start++ = value;
@@ -163,6 +161,7 @@ rxvt_term::scr_reset ()
   scr_overlay_off ();
 #endif
 
+  rvideo_mode = false;
   view_start = 0;
   num_scr = 0;
 
@@ -239,7 +238,6 @@ rxvt_term::scr_reset ()
       selection.op = SELECTION_CLEAR;
       selection.screen = PRIMARY;
       selection.clicks = 0;
-      rvideo_state = rvideo_mode = false;
     }
   else
     {
@@ -409,7 +407,7 @@ rxvt_term::scr_reset ()
   prev_nrow = nrow;
   prev_ncol = ncol;
 
-  tabs = (char *)rxvt_malloc (ncol * sizeof (char));
+  tabs = (char *)rxvt_malloc (ncol);
 
   for (int col = ncol; --col; )
     tabs [col] = col % TABSIZE == 0;
@@ -1625,7 +1623,7 @@ void
 rxvt_term::scr_set_tab (int mode) NOTHROW
 {
   if (mode < 0)
-    memset (tabs, 0, ncol * sizeof (char));
+    memset (tabs, 0, ncol);
   else if (screen.cur.col < ncol)
     tabs [screen.cur.col] = !!mode;
 }
@@ -1650,11 +1648,8 @@ rxvt_term::scr_rvideo_mode (bool on) NOTHROW
       rvideo_state = on;
 
       ::swap (pix_colors[Color_fg], pix_colors[Color_bg]);
-#if XPM_BACKGROUND
+#ifdef HAVE_BG_PIXMAP
       if (bgPixmap.pixmap == None)
-#endif
-#if ENABLE_TRANSPARENCY
-        if (!option (Opt_transparent) || am_transparent == 0)
 #endif
           XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
 
@@ -1808,7 +1803,7 @@ rxvt_term::scr_expose (int x, int y, int ewidth, int eheight, bool refresh) NOTH
       min_it (rc[i].col, ncol - 1);
       min_it (rc[i].row, nrow - 1);
     }
-
+// TODO: this line somehow causes segfault if scr_expose() is called just after resize
   for (i = rc[PART_BEG].row; i <= rc[PART_END].row; i++)
     fill_text (&drawn_buf[i].t[rc[PART_BEG].col], 0, rc[PART_END].col - rc[PART_BEG].col + 1);
 
@@ -1892,16 +1887,14 @@ rxvt_term::scr_bell () NOTHROW
 #  endif
     XMapWindow (dpy, parent[0]);
 # endif
+
 # if ENABLE_FRILLS
   if (option (Opt_urgentOnBell))
     {
-      XWMHints *h;
-
-      h = XGetWMHints(dpy, parent[0]);
-      if (h != NULL)
+      if (XWMHints *h = XGetWMHints(dpy, parent[0]))
         {
           h->flags |= XUrgencyHint;
-          XSetWMHints(dpy, parent[0], h);
+          XSetWMHints (dpy, parent[0], h);
         }
     }
 # endif
@@ -1916,7 +1909,6 @@ rxvt_term::scr_bell () NOTHROW
     }
   else
     XBell (dpy, 0);
-
 #endif
 }
 
@@ -2007,11 +1999,8 @@ rxvt_term::scr_refresh () NOTHROW
   have_bg = 0;
   refresh_count = 0;
 
-#if XPM_BACKGROUND
+#ifdef HAVE_BG_PIXMAP
   have_bg |= bgPixmap.pixmap != None;
-#endif
-#if ENABLE_TRANSPARENCY
-  have_bg |= option (Opt_transparent) && am_transparent;
 #endif
   ocrow = oldcursor.row; /* is there an old outline cursor on screen? */
 
@@ -2483,31 +2472,25 @@ rxvt_term::scr_remap_chars () NOTHROW
 void
 rxvt_term::scr_recolour () NOTHROW
 {
-  if (1
-#if ENABLE_TRANSPARENCY
-      && !am_transparent
-#endif
-#if XPM_BACKGROUND
-      && !bgPixmap.pixmap
-#endif
-      )
-    {
-      XSetWindowBackground (dpy, parent[0], pix_colors[Color_border]);
-      XClearWindow (dpy, parent[0]);
-      XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
-#if HAVE_SCROLLBARS
-      if (scrollBar.win)
-        {
-          XSetWindowBackground (dpy, scrollBar.win, pix_colors[Color_border]);
-          scrollBar.setIdle ();
-          scrollbar_show (0);
-        }
-#endif
-    }
-
+#ifdef HAVE_BG_PIXMAP
+  bgPixmap.apply ();
+#else
+  XSetWindowBackground (dpy, parent[0], pix_colors[Color_border]);
+  XClearWindow (dpy, parent[0]);
+  XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
+# if HAVE_SCROLLBARS
+  if (scrollBar.win)
+   {
+     XSetWindowBackground (dpy, scrollBar.win, pix_colors[Color_border]);
+     scrollBar.setIdle ();
+     scrollbar_show (0);
+   }
+# endif
   scr_clear ();
   scr_touch (true);
   want_refresh = 1;
+#endif
+  
 }
 
 /* ------------------------------------------------------------------------- */
@@ -3680,18 +3663,6 @@ rxvt_term::selection_send (const XSelectionRequestEvent &rq) NOTHROW
 /* ------------------------------------------------------------------------- *
  *                              MOUSE ROUTINES                               *
  * ------------------------------------------------------------------------- */
-
-/*
- * return col/row values corresponding to x/y pixel values
- */
-void
-rxvt_term::pixel_position (int *x, int *y) NOTHROW
-{
-  *x = Pixel2Col (*x);
-  /* max_it (*x, 0); min_it (*x, (int)ncol - 1); */
-  *y = Pixel2Row (*y);
-  /* max_it (*y, 0); min_it (*y, (int)nrow - 1); */
-}
 
 /* ------------------------------------------------------------------------- */
 #ifdef USE_XIM

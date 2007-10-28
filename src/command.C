@@ -97,7 +97,6 @@ static unsigned short iso14755_symtab[] = {
 
   XK_Shift_Lock,	0x21eb,
   XK_ISO_Lock,		0x21eb,
-  XK_ISO_Lock,		0x21eb,
   XK_Caps_Lock,		0x21ec,
   XK_Num_Lock,		0x21ed,
   XK_ISO_Level3_Shift,	0x21ee,
@@ -550,6 +549,7 @@ rxvt_term::key_press (XKeyEvent &ev)
       if (keysym >= 0xFF00 && keysym <= 0xFFFF)
         {
             {
+              bool kp = priv_modes & PrivMode_aplKP ? !shft : shft;
               newlen = 1;
               switch (keysym)
                 {
@@ -562,14 +562,14 @@ rxvt_term::key_press (XKeyEvent &ev)
                         kbuf[1] = '\0';
                       }
                     else
-                      strcpy (kbuf, key_backspace);
+                      strcpy (kbuf, rs[Rs_backspace_key]);
                     break;
 #endif
 #ifndef NO_DELETE_KEY
-# ifdef XK_KP_Prior
+# ifdef XK_KP_Delete
                   case XK_KP_Delete:
                     /* allow shift to override */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033On");
                         break;
@@ -577,7 +577,7 @@ rxvt_term::key_press (XKeyEvent &ev)
                     /* FALLTHROUGH */
 # endif
                   case XK_Delete:
-                    strcpy (kbuf, key_delete);
+                    strcpy (kbuf, rs[Rs_delete_key]);
                     break;
 #endif
                   case XK_Tab:
@@ -602,7 +602,7 @@ rxvt_term::key_press (XKeyEvent &ev)
                   case XK_KP_Down:	/* \033Or or standard */
                   case XK_KP_Right:	/* \033Ov or standard */
                   case XK_KP_Left:	/* \033Ot or standard */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033OZ");
                         kbuf[2] = "txvr"[keysym - XK_KP_Left];
@@ -635,7 +635,7 @@ rxvt_term::key_press (XKeyEvent &ev)
 # ifdef XK_KP_Prior
                   case XK_KP_Prior:
                     /* allow shift to override */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033Oy");
                         break;
@@ -648,7 +648,7 @@ rxvt_term::key_press (XKeyEvent &ev)
 # ifdef XK_KP_Next
                   case XK_KP_Next:
                     /* allow shift to override */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033Os");
                         break;
@@ -661,7 +661,7 @@ rxvt_term::key_press (XKeyEvent &ev)
 #endif
                   case XK_KP_Enter:
                     /* allow shift to override */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033OM");
                         break;
@@ -714,7 +714,7 @@ rxvt_term::key_press (XKeyEvent &ev)
                   case XK_KP_8:		/* "\033Ox" : "8" */
                   case XK_KP_9:		/* "\033Oy" : "9" */
                     /* allow shift to override */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033Oj");
                         kbuf[2] += (keysym - XK_KP_Multiply);
@@ -733,7 +733,7 @@ rxvt_term::key_press (XKeyEvent &ev)
 #ifdef XK_KP_Insert
                   case XK_KP_Insert:
                     /* allow shift to override */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033Op");
                         break;
@@ -756,7 +756,7 @@ rxvt_term::key_press (XKeyEvent &ev)
 #ifdef XK_KP_End
                   case XK_KP_End:
                     /* allow shift to override */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033Oq");
                         break;
@@ -769,7 +769,7 @@ rxvt_term::key_press (XKeyEvent &ev)
 #ifdef XK_KP_Home
                   case XK_KP_Home:
                     /* allow shift to override */
-                    if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
+                    if (kp)
                       {
                         strcpy (kbuf, "\033Ow");
                         break;
@@ -1036,12 +1036,11 @@ void
 rxvt_term::flush ()
 {
   flush_ev.stop ();
-
-#ifdef ENABLE_TRANSPARENCY
-  if (want_full_refresh)
+  
+#ifdef HAVE_BG_PIXMAP  
+  if (bgPixmap.check_clearChanged ())
     {
-      want_full_refresh = 0;
-      scr_clear ();
+//      scr_clear (true); This needs to be researched further!
       scr_touch (false);
     }
 #endif
@@ -1304,10 +1303,17 @@ rxvt_term::mouse_report (XButtonEvent &ev)
 {
   int button_number, key_state = 0;
   int x, y;
+  int code = 32;
 
-  x = ev.x;
-  y = ev.y;
-  pixel_position (&x, &y);
+  x = Pixel2Col (ev.x);
+  y = Pixel2Row (ev.y);
+  if (ev.type == MotionNotify) {
+    if (x == mouse_row && y == mouse_col)
+      return;
+    mouse_row = x;
+    mouse_col = y;
+    code += 32;
+  }
 
   if (MEvent.button == AnyButton)
     button_number = 3;
@@ -1363,7 +1369,7 @@ rxvt_term::mouse_report (XButtonEvent &ev)
 #endif
 
   tt_printf ("\033[M%c%c%c",
-            (32 + button_number + key_state),
+            (code + button_number + key_state),
             (32 + x + 1),
             (32 + y + 1));
 }
@@ -1477,6 +1483,9 @@ rxvt_term::x_cb (XEvent &ev)
         break;
 
       case ConfigureNotify:
+      /* fprintf (stderr, "ConfigureNotify for %X, parent is %X, geom is %dx%d%+d%+d, old geom was %dx%d\n",
+              ev.xconfigure.window, parent[0], ev.xconfigure.width, ev.xconfigure.height, ev.xconfigure.x, ev.xconfigure.y,
+              szHint.width, szHint.height); */
         if (ev.xconfigure.window == parent[0])
           {
             while (XCheckTypedWindowEvent (dpy, ev.xconfigure.window, ConfigureNotify, &ev))
@@ -1486,21 +1495,15 @@ rxvt_term::x_cb (XEvent &ev)
               {
                 seen_resize = 1;
                 resize_all_windows (ev.xconfigure.width, ev.xconfigure.height, 1);
-#ifdef XPM_BACKGROUND
-                if (!option (Opt_transparent) && bgPixmap.auto_resize)
-                  {
-                    resize_pixmap ();
-                    scr_touch (true);
-                  }
+              }
+            else
+              {
+#ifdef HAVE_BG_PIXMAP
+                if (bgPixmap.window_position_sensitive ())
+                  update_background ();
 #endif
               }
-
             HOOK_INVOKE ((this, HOOK_CONFIGURE_NOTIFY, DT_XEVENT, &ev, DT_END));
-
-#ifdef ENABLE_TRANSPARENCY
-            if (option (Opt_transparent))
-              check_our_parents ();
-#endif
           }
         break;
 
@@ -1541,27 +1544,24 @@ rxvt_term::x_cb (XEvent &ev)
         HOOK_INVOKE ((this, HOOK_UNMAP_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
 
-#ifdef ENABLE_TRANSPARENCY
-      case ReparentNotify:
-        rootwin_cb (ev);
-        break;
-#endif				/* ENABLE_TRANSPARENCY */
-
       case GraphicsExpose:
       case Expose:
         if (ev.xany.window == vt)
           {
             do
-              scr_expose (ev.xexpose.x, ev.xexpose.y,
-                          ev.xexpose.width, ev.xexpose.height, False);
+              {
+                scr_expose (ev.xexpose.x, ev.xexpose.y,
+                            ev.xexpose.width, ev.xexpose.height, False);
+              }
             while (XCheckTypedWindowEvent (dpy, vt, ev.xany.type, &ev));
 
             ev.xany.type = ev.xany.type == Expose ? GraphicsExpose : Expose;
 
             while (XCheckTypedWindowEvent (dpy, vt, ev.xany.type, &ev))
-              scr_expose (ev.xexpose.x, ev.xexpose.y,
-                          ev.xexpose.width, ev.xexpose.height, False);
-
+              {
+                scr_expose (ev.xexpose.x, ev.xexpose.y,
+                            ev.xexpose.width, ev.xexpose.height, False);
+              }
             want_refresh = 1;
           }
         else
@@ -1578,11 +1578,6 @@ rxvt_term::x_cb (XEvent &ev)
                 scrollBar.setIdle ();
                 scrollbar_show (0);
               }
-
-#ifdef ENABLE_TRANSPARENCY
-            if (am_transparent && ev.xany.window == parent[0])
-              XClearWindow (dpy, ev.xany.window);
-#endif
           }
         break;
 
@@ -1591,6 +1586,9 @@ rxvt_term::x_cb (XEvent &ev)
         if (hidden_pointer)
           pointer_unblank ();
 #endif
+        if ((priv_modes & PrivMode_MouseBtnEvent && ev.xbutton.state & (Button1Mask|Button2Mask|Button3Mask))
+            || priv_modes & PrivMode_MouseAnyEvent)
+          mouse_report (ev.xbutton);
         if ((priv_modes & PrivMode_mouse_report) && !bypass_keystate)
           break;
 
@@ -1754,13 +1752,10 @@ rxvt_term::focus_in ()
 #if ENABLE_FRILLS
       if (option (Opt_urgentOnBell))
         {
-          XWMHints *h;
-
-          h = XGetWMHints(dpy, parent[0]);
-          if (h != NULL)
+          if (XWMHints *h = XGetWMHints(dpy, parent[0]))
             {
               h->flags &= ~XUrgencyHint;
-              XSetWMHints(dpy, parent[0], h);
+              XSetWMHints (dpy, parent[0], h);
             }
         }
 #endif
@@ -1836,14 +1831,12 @@ rxvt_term::rootwin_cb (XEvent &ev)
          * if user used some Esetroot compatible prog to set the root bg,
          * use the property to determine the pixmap.  We use it later on.
          */
-        if (ev.xproperty.atom != xa[XA_XROOTPMAP_ID]
-            && ev.xproperty.atom != xa[XA_ESETROOT_PMAP_ID])
-          return;
-
-        /* FALLTHROUGH */
-      case ReparentNotify:
-        if (option (Opt_transparent))
-          check_our_parents ();
+        if (ev.xproperty.atom == xa[XA_XROOTPMAP_ID]
+            || ev.xproperty.atom == xa[XA_ESETROOT_PMAP_ID])
+          {
+            bgPixmap.set_root_pixmap ();
+            update_background ();
+          }
         break;
     }
 # endif
@@ -2808,9 +2801,8 @@ rxvt_term::process_csi_seq ()
   unicode_t ch, priv, i;
   unsigned int nargs, p;
   int n, ndef;
-  int arg[ESC_ARGS];
+  int arg[ESC_ARGS] = { };
 
-  memset (arg, 0, sizeof (arg));
   nargs = 0;
 
   priv = 0;
@@ -2869,10 +2861,10 @@ rxvt_term::process_csi_seq ()
                 // 'U' for rxvt-unicode != 7.[34] (where it was broken).
                 //
                 // second parameter is xterm patch level for xterm, MMmmpp (e.g. 20703) for rxvt
-                // and Mm (e.g. 72 for 7.2) for urxvt <= 7.2, and 94 for later versions, to signify
-                // that we do not support xterm mouse reporting (should be 95 when we do).
+                // and Mm (e.g. 72 for 7.2) for urxvt <= 7.2, 94 for urxvt <= 8.3, and 95 for later
+                // versions.
                 //
-                tt_printf ("\033[>%d;94;0c", 'U');
+                tt_printf ("\033[>%d;95;0c", 'U');
               }
             break;
           case '?':
@@ -3433,52 +3425,59 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
         process_color_seq (op, Color_IT, str, resp);
         break;
 #endif
-#if ENABLE_TRANSPARENCY && TINTING
+#if ENABLE_TRANSPARENCY
       case URxvt_Color_tint:
         process_color_seq (op, Color_tint, str, resp);
-
-        check_our_parents ();
-
-        if (am_transparent)
-          want_full_refresh = want_refresh = 1;
-
-        break;
-#endif
-
-      case Rxvt_Pixmap:
         {
-          if (*str != ';')
-            {
-#if XPM_BACKGROUND
-              scale_pixmap ("");	/* reset to default scaling */
-              set_bgPixmap (str);	/* change pixmap */
-              scr_touch (true);
-#endif
-            }
-
-          int changed = 0;
-
-          while ((str = strchr (str, ';')) != NULL)
-            {
-              str++;
-#if XPM_BACKGROUND
-              changed += scale_pixmap (str);
-#endif
-            }
-
+          bool changed = false;
+          if (ISSET_PIXCOLOR (Color_tint))
+            changed = bgPixmap.set_tint (pix_colors_focused [Color_tint]);
+          else
+            changed = bgPixmap.unset_tint ();
           if (changed)
-            {
-#ifdef XPM_BACKGROUND
-              resize_pixmap ();
-              scr_touch (true);
-#endif
-            }
-#if ENABLE_TRANSPARENCY && defined(HAVE_AFTERIMAGE)
-          if (option (Opt_transparent))
-            check_our_parents ();
-#endif
+            update_background ();
         }
+
         break;
+#endif
+
+#if BG_IMAGE_FROM_FILE
+      case Rxvt_Pixmap:
+        if (!strcmp (str, "?"))
+          {
+            char str[256];
+
+            sprintf (str, "[%dx%d+%d+%d]",	/* can't presume snprintf () ! */
+                     min (bgPixmap.h_scale, 32767), min (bgPixmap.v_scale, 32767),
+                     min (bgPixmap.h_align, 32767), min (bgPixmap.v_align, 32767));
+            process_xterm_seq (XTerm_title, str, CHAR_ST);
+          }
+        else
+          {
+            int changed = 0;
+
+            if (*str != ';')
+              {
+                /* reset to default scaling :*/
+                bgPixmap.unset_geometry ();
+                if (bgPixmap.set_file (str))	/* change pixmap */
+                  changed++;
+                str = strchr (str, ';');
+                if (str == NULL)
+                  bgPixmap.set_defaultGeometry ();
+              }
+            while (str)
+              {
+                str++;
+                if (bgPixmap.set_geometry (str))
+                  changed++;
+                str = strchr (str, ';');
+              }
+            if (changed)
+                update_background ();
+          }
+        break;
+#endif
 
       case Rxvt_restoreFG:
         set_window_color (Color_fg, str);
@@ -3610,12 +3609,10 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
   int state;
 
   static const struct
-    {
-      const int       argval;
-      const unsigned long bit;
-    }
-
-  argtopriv[] = {
+  {
+    const int       argval;
+    const unsigned long bit;
+  } argtopriv[] = {
                   { 1, PrivMode_aplCUR },
                   { 2, PrivMode_vt52 },
                   { 3, PrivMode_132 },
@@ -3642,8 +3639,8 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
 #endif
                   { 1000, PrivMode_MouseX11 },
                  // 1001 Use Hilite Mouse Tracking. NYI, TODO
-                 // 1002 Use Cell Motion Mouse Tracking. NYI, TODO
-                 // 1003 Use All Motion Mouse Tracking. NYI, TODO
+                  { 1002, PrivMode_MouseBtnEvent },
+                  { 1003, PrivMode_MouseAnyEvent },
                   { 1010, PrivMode_TtyOutputInh }, // rxvt extension
                   { 1011, PrivMode_Keypress }, // rxvt extension
                  // 1035 enable modifiers for alt, numlock NYI
@@ -3727,7 +3724,7 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
             /* case 8:	- auto repeat, can't do on a per window basis */
             case 9:			/* X10 mouse reporting */
               if (state)		/* orthogonal */
-                priv_modes &= ~PrivMode_MouseX11;
+                priv_modes &= ~(PrivMode_MouseX11|PrivMode_MouseBtnEvent|PrivMode_MouseAnyEvent);
               break;
 #ifdef scrollBar_esc
             case scrollBar_esc:
@@ -3750,12 +3747,22 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
             /* case 67:	- backspace key */
             case 1000:		/* X11 mouse reporting */
               if (state)		/* orthogonal */
-                priv_modes &= ~PrivMode_MouseX10;
+                priv_modes &= ~(PrivMode_MouseX10|PrivMode_MouseBtnEvent|PrivMode_MouseAnyEvent);
               break;
 #if 0
             case 1001:
               break;		/* X11 mouse highlighting */
 #endif
+            case 1002:
+            case 1003:
+              if (state) {
+                priv_modes &= ~(PrivMode_MouseX10|PrivMode_MouseX11);
+                priv_modes &= arg[i] == 1003 ? ~PrivMode_MouseBtnEvent : ~PrivMode_MouseAnyEvent;
+                vt_emask_mouse = PointerMotionMask;
+              } else
+                vt_emask_mouse = NoEventMask;
+              vt_select_input ();
+              break;
             case 1010:		/* scroll to bottom on TTY output inhibit */
               set_option (Opt_scrollTtyOutput, !state);
               break;
@@ -4017,7 +4024,6 @@ void rxvt_term::pty_write ()
         {
           free (v_buffer);
           v_buffer = 0;
-          v_buflen = 0;
 
           pty_ev.set (EVENT_READ);
           return;

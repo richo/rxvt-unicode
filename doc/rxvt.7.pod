@@ -211,10 +211,9 @@ except maybe libX11 :)
 
 =head3 I can't get transparency working, what am I doing wrong?
 
-First of all, transparency isn't officially supported in rxvt-unicode, so
-you are mostly on your own. Do not bug the author about it (but you may
-bug everybody else). Also, if you can't get it working consider it a rite
-of passage: ... and you failed.
+First of all, please address all transparency related issues to Sasha Vasko at 
+sasha@aftercode.net and do not bug the author about it. Also, if you can't 
+get it working consider it a rite of passage: ... and you failed.
 
 Here are four ways to get transparency. B<Do> read the manpage and option
 descriptions for the programs mentioned and rxvt-unicode. Really, do it!
@@ -231,10 +230,10 @@ support, or you are unable to read.
 to use effects other than tinting and shading: Just shade/tint/whatever
 your picture with gimp or any other tool:
 
-   convert wallpaper.jpg -blur 20x20 -modulate 30 background.xpm
-   @@URXVT_NAME@@ -pixmap background.xpm -pe automove-background
+   convert wallpaper.jpg -blur 20x20 -modulate 30 background.jpg
+   @@URXVT_NAME@@ -pixmap background.jpg -pe automove-background
 
-That works. If you think it doesn't, you lack XPM and Perl support, or you
+That works. If you think it doesn't, you lack AfterImage and Perl support, or you
 are unable to read.
 
 3. Use an ARGB visual:
@@ -462,6 +461,13 @@ has been designed yet).
 Until then, you might get away with switching fonts at runtime (see L<Can
 I switch the fonts at runtime?> later in this document).
 
+=head3 How can I make mplayer display video correctly?
+
+We are working on it, in the meantime, as a workaround, use something like:
+
+   @@URXVT_NAME@@ -b 600 -geometry 20x1 -e sh -c 'mplayer -wid $WINDOWID file...'
+
+
 =head2 Keyboard, Mouse & User Interaction
 
 =head3 The new selection selects pieces that are too big, how can I select single words?
@@ -655,7 +661,6 @@ See some more examples in the documentation for the B<keysym> resource.
 Rather than have rxvt-unicode try to accommodate all the various possible
 keyboard mappings, it is better to use `xmodmap' to remap the keys as
 required for your particular machine.
-
 
 
 =head2 Terminal Configuration
@@ -1901,6 +1906,24 @@ X<Priv66>
 
 =end table
 
+=item B<< C<Pm = 1002> >> (X11 XTerm)
+
+=begin table
+
+	B<< C<h> >>	Send Mouse X & Y on button press and release, and motion with a button pressed.
+	B<< C<l> >>	No mouse reporting.
+
+=end table
+
+=item B<< C<Pm = 1003> >> (X11 XTerm)
+
+=begin table
+
+	B<< C<h> >>	Send Mouse X & Y on button press and release, and motion.
+	B<< C<l> >>	No mouse reporting.
+
+=end table
+
 =item B<< C<Pm = 1010> >> (B<rxvt>)
 
 =begin table
@@ -1985,7 +2008,7 @@ B<octet> can be escaped by prefixing it with SYN (0x16, ^V).
 	B<< C<Ps = 17> >>	Change colour of highlight characters to B<< C<Pt> >>
 	B<< C<Ps = 18> >>	Change colour of bold characters to B<< C<Pt> >> [deprecated, see 706]
 	B<< C<Ps = 19> >>	Change colour of underlined characters to B<< C<Pt> >> [deprecated, see 707]
-	B<< C<Ps = 20> >>	Change background pixmap parameters (see section XPM) (Compile XPM).
+	B<< C<Ps = 20> >>	Change background pixmap parameters (see section BACKGROUND IMAGE) (Compile AfterImage).
 	B<< C<Ps = 39> >>	Change default foreground colour to B<< C<Pt> >>.
 	B<< C<Ps = 46> >>	Change Log File to B<< C<Pt> >> I<unimplemented>
 	B<< C<Ps = 49> >>	Change default background colour to B<< C<Pt> >>.
@@ -2009,10 +2032,10 @@ B<octet> can be escaped by prefixing it with SYN (0x16, ^V).
 
 =back
 
-=head1 XPM
+=head1 BACKGROUND IMAGE
 
-For the XPM XTerm escape sequence B<< C<ESC ] 20 ; Pt ST> >> then value
-of B<< C<Pt> >> can be the name of the background pixmap followed by a
+For the BACGROUND IMAGE XTerm escape sequence B<< C<ESC ] 20 ; Pt ST> >> then value
+of B<< C<Pt> >> can be the name of the background image file followed by a
 sequence of scaling/positioning commands separated by semi-colons. The
 scaling/positioning commands are as follows:
 
@@ -2060,13 +2083,13 @@ For example:
 
 =over 4
 
-=item B<\E]20;funky\a>
+=item B<\E]20;funky.jpg\a>
 
-load B<funky.xpm> as a tiled image
+load B<funky.jpg> as a tiled image
 
-=item B<\E]20;mona;100\a>
+=item B<\E]20;mona.jpg;100\a>
 
-load B<mona.xpm> with a scaling of 100%
+load B<mona.jpg> with a scaling of 100%
 
 =item B<\E]20;;200;?\a>
 
@@ -2203,9 +2226,9 @@ your system.
 
 General hint: if you get compile errors, then likely your configuration
 hasn't been tested well. Either try with C<--enable-everything> or use
-the default configuration (i.e. C<--enable-xxx> or C<--disable-xxx>). Of
-course, you should always report when a combination doesn't work, so it
-can be fixed. Marc Lehmann <rxvt@schmorp.de>.
+the default configuration (i.e. no C<--enable-xxx> or C<--disable-xxx>
+switches). Of course, you should always report when a combination doesn't
+work, so it can be fixed. Marc Lehmann <rxvt@schmorp.de>.
 
 All
 
@@ -2327,10 +2350,6 @@ Write user and tty to lastlog file (used by programs like
 F<lastlogin>) at start of rxvt execution.  This option requires
 --enable-utmp to also be specified.
 
-=item --enable-xpm-background (default: on)
-
-Add support for XPM background pixmaps.
-
 =item --enable-afterimage (default: on)
 
 Add support for libAfterImage to be used for transparency and background
@@ -2354,10 +2373,6 @@ transparency to the term.
 =item --enable-fading (default: on)
 
 Add support for fading the text when focus is lost.
-
-=item --enable-tinting (default: on)
-
-Add support for tinting of transparent backgrounds (requires C<--enable-transparency>).
 
 =item --enable-rxvt-scroll (default: on)
 
@@ -2510,18 +2525,6 @@ PATH.
 =item --with-x
 
 Use the X Window System (pretty much default, eh?).
-
-=item --with-xpm-includes=DIR
-
-Look for the XPM includes in DIR.
-
-=item --with-xpm-library=DIR
-
-Look for the XPM library in DIR.
-
-=item --with-xpm
-
-Not needed - define via --enable-xpm-background.
 
 =back
 

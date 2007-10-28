@@ -7,6 +7,9 @@
  *                              - original version
  * Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
  *                              - extensive modifications
+ * Copyright (c) 1996      Chuck Blake <cblake@BBN.COM>
+ * Copyright (c) 1997      mj olesen <olesen@me.queensu.ca>
+ * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  *                              - extensive modifications
  * Copyright (c) 1999      D J Hawkey Jr <hawkeyd@visi.com>
@@ -39,6 +42,107 @@
 #include <limits>
 
 #include <csignal>
+
+#ifdef HAVE_XSETLOCALE
+# define X_LOCALE
+# include <X11/Xlocale.h>
+#else
+# ifdef HAVE_SETLOCALE
+#  include <clocale>
+# endif
+#endif
+
+#ifdef HAVE_NL_LANGINFO
+# include <langinfo.h>
+#endif
+
+#ifdef DISPLAY_IS_IP
+/* On Solaris link with -lsocket and -lnsl */
+#include <sys/types.h>
+#include <sys/socket.h>
+
+/* these next two are probably only on Sun (not Solaris) */
+#ifdef HAVE_SYS_SOCKIO_H
+#include <sys/sockio.h>
+#endif
+#ifdef HAVE_SYS_BYTEORDER_H
+#include <sys/byteorder.h>
+#endif
+
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+
+static char *
+rxvt_network_display (const char *display)
+{
+  char            buffer[1024], *rval = NULL;
+  struct ifconf   ifc;
+  struct ifreq   *ifr;
+  int             i, skfd;
+
+  if (display[0] != ':' && strncmp (display, "unix:", 5))
+    return (char *) display;		/* nothing to do */
+
+  ifc.ifc_len = sizeof (buffer);	/* Get names of all ifaces */
+  ifc.ifc_buf = buffer;
+
+  if ((skfd = socket (AF_INET, SOCK_DGRAM, 0)) < 0)
+    {
+      perror ("socket");
+      return NULL;
+    }
+
+  if (ioctl (skfd, SIOCGIFCONF, &ifc) < 0)
+    {
+      perror ("SIOCGIFCONF");
+      close (skfd);
+      return NULL;
+    }
+
+  for (i = 0, ifr = ifc.ifc_req;
+       i < (ifc.ifc_len / sizeof (struct ifreq));
+       i++, ifr++)
+    {
+      struct ifreq ifr2;
+
+      strcpy (ifr2.ifr_name, ifr->ifr_name);
+
+      if (ioctl (skfd, SIOCGIFADDR, &ifr2) >= 0)
+        {
+          unsigned long addr;
+          struct sockaddr_in *p_addr;
+
+          p_addr = (struct sockaddr_in *) &ifr2.ifr_addr;
+          addr = htonl ((unsigned long)p_addr->sin_addr.s_addr);
+
+          /*
+           * not "0.0.0.0" or "127.0.0.1" - so format the address
+           */
+          if (addr && addr != 0x7F000001)
+            {
+              char *colon = strchr (display, ':');
+
+              if (colon == NULL)
+                colon = ":0.0";
+
+              rval = rxvt_malloc (strlen (colon) + 16);
+              sprintf (rval, "%d.%d.%d.%d%s",
+                      (int) ((addr >> 030) & 0xFF),
+                      (int) ((addr >> 020) & 0xFF),
+                      (int) ((addr >> 010) & 0xFF),
+                      (int) (addr & 0xFF), colon);
+              break;
+            }
+        }
+    }
+
+  close (skfd);
+
+  return rval;
+}
+#endif
 
 const char *const def_colorName[] =
   {
@@ -168,7 +272,7 @@ const char *const def_colorName[] =
     COLOR_SCROLLBAR,
     COLOR_SCROLLTROUGH,
 #endif                          /* KEEP_SCROLLCOLOR */
-#if TINTING
+#if ENABLE_TRANSPARENCY
     NULL,
 #endif
 #if OFF_FOCUS_FADING
@@ -185,9 +289,6 @@ rxvt_term::init_vars ()
   pix_colors_unfocused = new rxvt_color [TOTAL_COLORS];
 #endif
 
-#if defined(XPM_BACKGROUND) || defined(ENABLE_TRANSPARENCY)
-  pixmap = None;
-#endif
 
   MEvent.time = CurrentTime;
   MEvent.button = AnyButton;
@@ -204,12 +305,6 @@ rxvt_term::init_vars ()
   refresh_type = SLOW_REFRESH;
 
   oldcursor.row = oldcursor.col = -1;
-#ifdef XPM_BACKGROUND
-  /*  bgPixmap.w = bgPixmap.h = 0; */
-  bgPixmap.x = bgPixmap.y = 0;
-  bgPixmap.pixmap = None;
-#endif
-
   last_bot = last_state = -1;
 
   set_option (Opt_scrollBar);
@@ -239,7 +334,7 @@ rxvt_term::init_secondary ()
       /* TODO: BOO HISS */
       dup2 (STDERR_FILENO, STDIN_FILENO);
     }
-  else if (i > STDIN_FILENO)
+  else if (i != STDIN_FILENO)
     {
       dup2 (i, STDIN_FILENO);
       close (i);
@@ -264,7 +359,6 @@ const char **
 rxvt_term::init_resources (int argc, const char *const *argv)
 {
   int i, r_argc;
-  char *val;
   const char **cmd_argv, **r_argv;
 
   /*
@@ -274,15 +368,10 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     if (!strcmp (argv[r_argc], "-e"))
       break;
 
-  r_argv = (const char **)rxvt_malloc (sizeof (char *) * (r_argc + 1));
-
-  for (i = 0; i < r_argc; i++)
-    r_argv[i] = (const char *)argv[i];
-
-  r_argv[i] = NULL;
-
   if (r_argc == argc)
     cmd_argv = NULL;
+  else if (!argv[r_argc + 1])
+    rxvt_fatal ("-e requires an argument\n");
   else
     {
       cmd_argv = (const char **)rxvt_malloc (sizeof (char *) * (argc - r_argc));
@@ -293,7 +382,14 @@ rxvt_term::init_resources (int argc, const char *const *argv)
       cmd_argv[i] = NULL;
     }
 
-  rs[Rs_name] = rxvt_r_basename (argv[0]);
+  r_argv = (const char **)rxvt_malloc (sizeof (char *) * (r_argc + 1));
+
+  for (i = 0; i < r_argc; i++)
+    r_argv[i] = (const char *)argv[i];
+
+  r_argv[i] = NULL;
+
+  rs[Rs_name] = rxvt_basename (argv[0]);
 
   /*
    * Open display, get options/resources and create the window
@@ -305,7 +401,10 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   get_options (r_argc, r_argv);
 
   if (!(display = displays.get (rs[Rs_display_name])))
-    rxvt_fatal ("can't open display %s, aborting.\n", rs[Rs_display_name]);
+    {
+      free (r_argv);
+      rxvt_fatal ("can't open display %s, aborting.\n", rs[Rs_display_name]);
+    }
 
   // using a local pointer decreases code size a lot
   xa = display->xa;
@@ -346,7 +445,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   if (cmd_argv && cmd_argv[0])
     {
       if (!rs[Rs_title])
-        rs[Rs_title] = rxvt_r_basename (cmd_argv[0]);
+        rs[Rs_title] = rxvt_basename (cmd_argv[0]);
       if (!rs[Rs_iconName])
         rs[Rs_iconName] = rs[Rs_title];
     }
@@ -394,39 +493,20 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 #ifndef NO_BACKSPACE_KEY
   if (!rs[Rs_backspace_key])
 # ifdef DEFAULT_BACKSPACE
-    key_backspace = DEFAULT_BACKSPACE;
+    rs[Rs_backspace_key] = DEFAULT_BACKSPACE;
 # else
-    key_backspace = "DEC";       /* can toggle between \010 or \177 */
+    rs[Rs_backspace_key] = "DEC";       /* can toggle between \010 or \177 */
 # endif
-  else
-    {
-      val = strdup (rs[Rs_backspace_key]);
-      rxvt_Str_trim (val);
-      rxvt_Str_escaped (val);
-      key_backspace = val;
-    }
 #endif
 
 #ifndef NO_DELETE_KEY
   if (!rs[Rs_delete_key])
 # ifdef DEFAULT_DELETE
-    key_delete = DEFAULT_DELETE;
+    rs[Rs_delete_key] = DEFAULT_DELETE;
 # else
-    key_delete = "\033[3~";
+    rs[Rs_delete_key] = "\033[3~";
 # endif
-  else
-    {
-      val = strdup (rs[Rs_delete_key]);
-      rxvt_Str_trim (val);
-      rxvt_Str_escaped (val);
-      key_delete = val;
-    }
 #endif
-  if (rs[Rs_answerbackstring])
-    {
-      rxvt_Str_trim ((char *)rs[Rs_answerbackstring]);
-      rxvt_Str_escaped ((char *)rs[Rs_answerbackstring]);
-    }
 
 #ifdef HAVE_SCROLLBARS
   setup_scrollbar (rs[Rs_scrollBar_align], rs[Rs_scrollstyle], rs[Rs_scrollBar_thickness]);
@@ -481,7 +561,6 @@ void
 rxvt_term::init_env ()
 {
   int i;
-  unsigned int u;
   char *val;
 
 #ifdef DISPLAY_IS_IP
@@ -506,7 +585,7 @@ rxvt_term::init_env ()
     rs[Rs_display_name] = val;   /* use broken `:0' value */
 
   i = strlen (val);
-  env_display = (char *)rxvt_malloc ((i + 9) * sizeof (char));
+  env_display = (char *)rxvt_malloc (i + 9);
 
   sprintf (env_display, "DISPLAY=%s", val);
 
@@ -537,7 +616,7 @@ rxvt_term::init_env ()
 
   if (rs[Rs_term_name] != NULL)
     {
-      env_term = (char *)rxvt_malloc ((strlen (rs[Rs_term_name]) + 6) * sizeof (char));
+      env_term = (char *)rxvt_malloc (strlen (rs[Rs_term_name]) + 6);
       sprintf (env_term, "TERM=%s", rs[Rs_term_name]);
       putenv (env_term);
     }
@@ -647,7 +726,7 @@ rxvt_term::init_command (const char *const *argv)
     priv_modes |= PrivMode_smoothScroll;
 
 #ifndef NO_BACKSPACE_KEY
-  if (strcmp (key_backspace, "DEC") == 0)
+  if (strcmp (rs[Rs_backspace_key], "DEC") == 0)
     priv_modes |= PrivMode_HaveBackSpace;
 #endif
 
@@ -907,18 +986,14 @@ rxvt_term::create_windows (int argc, const char *const *argv)
     {
       if (XInternAtom (dpy, "_MOTIF_WM_INFO", True) == None)
         {
-          /*     print_warning("Window Manager does not support MWM hints.  Bypassing window manager control for borderless window.\n");*/
+          // rxvt_warn("Window Manager does not support MWM hints.  Bypassing window manager control for borderless window.\n");
           attributes.override_redirect = true;
-          mwmhints.flags = 0;
         }
       else
         {
           mwmhints.flags = MWM_HINTS_DECORATIONS;
-          mwmhints.decorations = 0;
         }
     }
-  else
-    mwmhints.flags = 0;
 #endif
 
 #if ENABLE_XEMBED
@@ -1038,26 +1113,6 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   vt_select_input ();
 
   vt_ev.start (display, vt);
-
-#ifdef XPM_BACKGROUND
-  if (rs[Rs_backgroundPixmap] != NULL
-#ifndef HAVE_AFTERIMAGE  
-      && !option (Opt_transparent)
-#endif	  
-    )
-    {
-      const char *p = rs[Rs_backgroundPixmap];
-
-      if ((p = strchr (p, ';')) != NULL)
-        {
-          p++;
-          scale_pixmap (p);
-        }
-
-      set_bgPixmap (rs[Rs_backgroundPixmap]);
-      scr_touch (true);
-    }
-#endif
 
   /* graphics context for the vt window */
   gcvalue.foreground         = pix_colors[Color_fg];
@@ -1284,9 +1339,9 @@ rxvt_term::run_command (const char *const *argv)
   int er;
 
 #ifndef NO_BACKSPACE_KEY
-  if (key_backspace[0] && !key_backspace[1])
-    er = key_backspace[0];
-  else if (strcmp (key_backspace, "DEC") == 0)
+  if (rs[Rs_backspace_key][0] && !rs[Rs_backspace_key][1])
+    er = rs[Rs_backspace_key][0];
+  else if (strcmp (rs[Rs_backspace_key], "DEC") == 0)
     er = '\177';            /* the initial state anyway */
   else
 #endif
@@ -1400,7 +1455,7 @@ rxvt_term::run_child (const char *const *argv)
   sigprocmask (SIG_SETMASK, &ss, 0);
 
   /* command interpreter path */
-  if (argv != NULL)
+  if (argv)
     {
 # ifdef DEBUG_CMD
       int             i;
@@ -1419,18 +1474,18 @@ rxvt_term::run_child (const char *const *argv)
       if ((shell = getenv ("SHELL")) == NULL || *shell == '\0')
         shell = "/bin/sh";
 
-      argv0 = (const char *)rxvt_r_basename (shell);
+      argv0 = (const char *)rxvt_basename (shell);
 
       if (option (Opt_loginShell))
         {
-          login = (char *)rxvt_malloc ((strlen (argv0) + 2) * sizeof (char));
+          login = (char *)rxvt_malloc (strlen (argv0) + 2);
 
           login[0] = '-';
           strcpy (&login[1], argv0);
           argv0 = login;
         }
 
-      execlp (shell, argv0, NULL);
+      execlp (shell, argv0, (char *)0);
       /* no error message: STDERR is closed! */
     }
 

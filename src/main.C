@@ -40,12 +40,17 @@
 #include <csignal>
 #include <cstring>
 
-#ifdef TTY_GID_SUPPORT
-# include <grp.h>
-#endif
-
 #ifdef HAVE_TERMIOS_H
 # include <termios.h>
+#endif
+
+#ifdef HAVE_XSETLOCALE
+# define X_LOCALE
+# include <X11/Xlocale.h>
+#else
+# ifdef HAVE_SETLOCALE
+#  include <clocale>
+# endif
 #endif
 
 vector<rxvt_term *> rxvt_term::termlist;
@@ -153,8 +158,8 @@ rxvt_term::rxvt_term ()
 #if ENABLE_TRANSPARENCY || ENABLE_PERL
     rootwin_ev (this, &rxvt_term::rootwin_cb),
 #endif
-#if ENABLE_TRANSPARENCY
-    check_our_parents_ev(this, &rxvt_term::check_our_parents_cb),
+#if HAVE_BG_PIXMAP
+    update_background_ev(this, &rxvt_term::update_background_cb),
 #endif
 #ifdef HAVE_SCROLLBARS
     scrollbar_ev (this, &rxvt_term::x_cb),
@@ -203,7 +208,8 @@ rxvt_term::rxvt_term ()
 
 // clean up the most important stuff, do *not* call x or free mem etc.
 // for use before an emergency exit
-void rxvt_term::emergency_cleanup ()
+void
+rxvt_term::emergency_cleanup ()
 {
   if (cmd_pid)
     kill (-cmd_pid, SIGHUP);
@@ -506,14 +512,50 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
   if (option (Opt_scrollBar))
     resize_scrollbar ();      /* create and map scrollbar */
 #endif
+#ifdef HAVE_BG_PIXMAP
+  {
+    bgPixmap.set_target (this);
+
 #ifdef ENABLE_TRANSPARENCY
-  if (option (Opt_transparent))
-    {
-      XSelectInput (dpy, display->root, PropertyChangeMask);
-      check_our_parents ();
-      rootwin_ev.start (display, display->root);
-    }
+    if (option (Opt_transparent))
+      {
+        bgPixmap.set_transparent ();
+#ifdef HAVE_AFTERIMAGE        
+        if (rs [Rs_blurradius])
+          bgPixmap.set_blur_radius (rs [Rs_blurradius]);
+#endif          
+        if (ISSET_PIXCOLOR (Color_tint))
+          bgPixmap.set_tint (pix_colors_focused [Color_tint]);
+        if (rs [Rs_shade])
+          bgPixmap.set_shade (rs [Rs_shade]);
+
+        bgPixmap.set_root_pixmap ();
+        XSelectInput (dpy, display->root, PropertyChangeMask);
+        rootwin_ev.start (display, display->root);
+      }
 #endif
+
+#ifdef BG_IMAGE_FROM_FILE
+    if (rs[Rs_backgroundPixmap] != NULL)
+      {
+        const char *p = rs[Rs_backgroundPixmap];
+
+        if ((p = strchr (p, ';')) != NULL)
+          {
+            p++;
+            bgPixmap.set_geometry (p);
+          }
+        else
+          bgPixmap.set_defaultGeometry ();
+
+        if (bgPixmap.set_file (rs[Rs_backgroundPixmap]))
+          if (!bgPixmap.window_position_sensitive ())
+            update_background ();
+      }
+#endif
+  }
+#endif
+
 #if ENABLE_PERL
   rootwin_ev.start (display, display->root);
 #endif
@@ -867,14 +909,16 @@ rxvt_term::set_fonts ()
   return true;
 }
 
-void rxvt_term::set_string_property (Atom prop, const char *str, int len)
+void
+rxvt_term::set_string_property (Atom prop, const char *str, int len)
 {
   XChangeProperty (dpy, parent[0],
                    prop, XA_STRING, 8, PropModeReplace,
                    (const unsigned char *)str, len >= 0 ? len : strlen (str));
 }
 
-void rxvt_term::set_utf8_property (Atom prop, const char *str, int len)
+void
+rxvt_term::set_utf8_property (Atom prop, const char *str, int len)
 {
   wchar_t *ws = rxvt_mbstowcs (str, len);
   char *s = rxvt_wcstoutf8 (ws);
@@ -908,10 +952,10 @@ rxvt_term::set_icon_name (const char *str)
 #endif
 }
 
-#ifdef XTERM_COLOR_CHANGE
 void
 rxvt_term::set_window_color (int idx, const char *color)
 {
+#ifdef XTERM_COLOR_CHANGE
   rxvt_color xcol;
   int i;
   
@@ -958,11 +1002,8 @@ done:
   update_fade_color (idx);
   recolour_cursor ();
   scr_recolour ();
-}
-
-#else
-# define set_window_color (idx,color)   ((void)0)
 #endif                          /* XTERM_COLOR_CHANGE */
+}
 
 void
 rxvt_term::recolour_cursor ()
@@ -1004,7 +1045,7 @@ rxvt_term::set_colorfgbg ()
     if (pix_colors[Color_bg] == pix_colors[i])
       {
         sprintf (bstr, "%d", (i - Color_Black));
-#ifdef XPM_BACKGROUND
+#ifdef BG_IMAGE_FROM_FILE
         xpmb = "default;";
 #endif
         break;
@@ -1110,10 +1151,12 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
                          window_vt_x, window_vt_y,
                          width, height);
 
-      scr_clear ();
-#ifdef XPM_BACKGROUND
-      resize_pixmap ();
+#ifdef HAVE_BG_PIXMAP
+      if (bgPixmap.window_size_sensitive ())
+        update_background ();
 #endif
+
+      scr_clear ();
     }
 
   if (fix_screen || old_height == 0)
@@ -1122,9 +1165,10 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
   // TODO, with nvidia-8178, resizes kill the alpha channel, report if not fixed in newer version
   //scr_touch (false);
 
-#ifdef XPM_BACKGROUND
-  if (pixmap)
-    scr_touch (false);
+#ifdef HAVE_BG_PIXMAP
+//  TODO: this don't seem to have any effect - do we still need it ? If so - in which case exactly ?
+//  if (bgPixmap.pixmap)
+//    scr_touch (false);
 #endif
 
 #ifdef USE_XIM
@@ -1662,5 +1706,64 @@ rxvt_term::IMSetPosition ()
    XFree (preedit_attr);
 }
 #endif                          /* USE_XIM */
+
+void
+rxvt_term::get_window_origin (int &x, int &y)
+{
+  Window cr;
+  XTranslateCoordinates (dpy, parent[0], display->root, 0, 0, &x, &y, &cr);
+/*  fprintf( stderr, "origin is %+d%+d\n", x, y);*/
+}
+
+Pixmap
+rxvt_term::get_pixmap_property (int prop_id)
+{
+  if (prop_id > 0 && prop_id < NUM_XA)
+    if (xa[prop_id])
+      {
+        int aformat;
+        unsigned long nitems, bytes_after;
+        Atom atype;
+        unsigned char *prop = NULL;
+        int result = XGetWindowProperty (dpy, display->root, xa[prop_id],
+                                         0L, 1L, False, XA_PIXMAP, &atype, &aformat,
+                                         &nitems, &bytes_after, &prop);
+        if (result == Success && prop && atype == XA_PIXMAP)
+          {
+            return *(Pixmap *)prop;
+          }
+      }
+  return None;
+}
+
+#ifdef HAVE_BG_PIXMAP
+int
+rxvt_term::update_background ()
+{
+  bgPixmap.invalidate ();
+
+  /* no chance of real time refresh if we are blurring ! */
+  if (bgPixmap.invalid_since + 0.5 < NOW && !(bgPixmap.flags & bgPixmap_t::blurNeeded))
+    bgPixmap.render ();
+  else
+    {
+      update_background_ev.stop ();
+      if (!bgPixmap.need_client_side_rendering())
+        update_background_ev.start (NOW + .05);
+      else if (bgPixmap.flags & bgPixmap_t::blurNeeded)
+        update_background_ev.start (NOW + .2); /* very slow !!! */
+      else
+        update_background_ev.start (NOW + .07);
+    }
+  return 0;
+}
+
+void
+rxvt_term::update_background_cb (time_watcher &w)
+{
+  bgPixmap.render ();
+}
+
+#endif /* HAVE_BG_PIXMAP */
 
 /*----------------------- end-of-file (C source) -----------------------*/

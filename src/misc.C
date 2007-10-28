@@ -81,7 +81,7 @@ rxvt_wcstoutf8 (const wchar_t *str, int len)
         *p++ = 0xc0 | ( w >>  6),
         *p++ = 0x80 | ( w        & 0x3f);
       else if (w < 0x010000)
-        *p++ = 0xe0 | ( w >> 12       ),
+        *p++ = 0xe0 | ( w >> 12),
         *p++ = 0x80 | ((w >>  6) & 0x3f),
         *p++ = 0x80 | ( w        & 0x3f);
       else if (w < 0x110000)
@@ -165,7 +165,7 @@ rxvt_utf8towcs (const char *str, int len)
 }
 
 char *
-rxvt_r_basename (const char *str) NOTHROW
+rxvt_basename (const char *str) NOTHROW
 {
   char *base = strrchr (str, '/');
 
@@ -235,37 +235,10 @@ rxvt_exit_failure () THROW ((class rxvt_failure_exception))
 }
 
 /*
- * check that the first characters of S1 match S2
- *
- * No Match
- *      return: 0
- * Match
- *      return: strlen (S2)
+ * remove leading/trailing space in place.
  */
-int
-rxvt_Str_match (const char *s1, const char *s2) NOTHROW
-{
-  int n = strlen (s2);
-
-  return ((strncmp (s1, s2, n) == 0) ? n : 0);
-}
-
-const char *
-rxvt_Str_skip_space (const char *str) NOTHROW
-{
-  if (str)
-    while (*str && isspace (*str))
-      str++;
-
-  return str;
-}
-
-/*
- * remove leading/trailing space and strip-off leading/trailing quotes.
- * in place.
- */
-char           *
-rxvt_Str_trim (char *str) NOTHROW
+char *
+rxvt_strtrim (char *str) NOTHROW
 {
   char *r, *s;
 
@@ -282,15 +255,6 @@ rxvt_Str_trim (char *str) NOTHROW
   while (r > s && isspace (*r))
     r--;
 
-#if 0
-  /* skip matching leading/trailing quotes */
-  if (*s == '"' && *r == '"' && n > 1)
-    {
-      s++;
-      n -= 2;
-    }
-#endif
-
   memmove (str, s, r + 1 - s);
   str[r + 1 - s] = 0;
 
@@ -298,96 +262,10 @@ rxvt_Str_trim (char *str) NOTHROW
 }
 
 /*
- * in-place interpretation of string:
- *
- *      backslash-escaped:      "\a\b\E\e\n\r\t", "\octal"
- *      Ctrl chars:     ^@ .. ^_, ^?
- *
- *      Emacs-style:    "M-" prefix
- *
- * Also,
- *      "M-x" prefixed strings, append "\r" if needed
- *      "\E]" prefixed strings (XTerm escape sequence) append ST if needed
- *
- * returns the converted string length
- */
-int
-rxvt_Str_escaped (char *str) NOTHROW
-{
-  char            ch, *s, *d;
-  int             i, num, append = 0;
-
-  if (!str || !*str)
-    return 0;
-
-  d = s = str;
-
-  if (*s == 'M' && s[1] == '-')
-    {
-      /* Emacs convenience, replace leading `M-..' with `\E..' */
-      *d++ = C0_ESC;
-      s += 2;
-      if (toupper (*s) == 'X')
-        /* append carriage-return for `M-xcommand' */
-        for (*d++ = 'x', append = '\r', s++; isspace (*s); s++) ;
-    }
-  for (; (ch = *s++);)
-    {
-      if (ch == '\\')
-        {
-          ch = *s++;
-          if (ch >= '0' && ch <= '7')
-            {	/* octal */
-              num = ch - '0';
-              for (i = 0; i < 2; i++, s++)
-                {
-                  ch = *s;
-                  if (ch < '0' || ch > '7')
-                    break;
-                  num = num * 8 + ch - '0';
-                }
-              ch = (char)num;
-            }
-          else if (ch == 'a')
-            ch = C0_BEL;	/* bell */
-          else if (ch == 'b')
-            ch = C0_BS;	/* backspace */
-          else if (ch == 'E' || ch == 'e')
-            ch = C0_ESC;	/* escape */
-          else if (ch == 'n')
-            ch = '\n';	/* newline */
-          else if (ch == 'r')
-            ch = '\r';	/* carriage-return */
-          else if (ch == 't')
-            ch = C0_HT;	/* tab */
-        }
-      else if (ch == '^')
-        {
-          ch = *s++;
-          ch = toupper (ch);
-          ch = (ch == '?' ? 127 : (ch - '@'));
-        }
-      *d++ = ch;
-    }
-
-  /* ESC] is an XTerm escape sequence, must be terminated */
-  if (*str == '\0' && str[1] == C0_ESC && str[2] == ']')
-    append = CHAR_ST;
-
-  /* add trailing character as required */
-  if (append && d[-1] != append)
-    *d++ = append;
-  *d = '\0';
-
-  return (d - str);
-}
-
-/*
  * Split a comma-separated string into an array, stripping leading and
  * trailing spaces from each entry.  Empty strings are properly returned
- * Caller should free each entry and array when done
  */
-char          **
+char **
 rxvt_splitcommastring (const char *cs) NOTHROW
 {
   int             l, n, p;
@@ -411,7 +289,7 @@ rxvt_splitcommastring (const char *cs) NOTHROW
       ret[l] = (char *)malloc (p + 1);
       strncpy (ret[l], s, p);
       ret[l][p] = '\0';
-      rxvt_Str_trim (ret[l]);
+      rxvt_strtrim (ret[l]);
       s = ++t;
     }
 

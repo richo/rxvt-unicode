@@ -239,7 +239,22 @@ rxvt_font::clear_rect (rxvt_drawable &d, int x, int y, int w, int h, int color) 
   else if (color >= 0)
     {
 #if XFT
-      XftDrawRect (d, &term->pix_colors[color].c, x, y, w, h);
+      bool done = false;
+#ifdef HAVE_BG_PIXMAP
+      if (term->bgPixmap.pixmap && color >= 0 && term->pix_colors[color].c.color.alpha < 0x0ff00)
+        {
+          Picture dst = XftDrawPicture (d);
+          if (dst != 0)
+            {
+              XClearArea (disp, d, x, y, w, h, false);
+              Picture solid_color_pict = XftDrawSrcPicture (d, &term->pix_colors[color].c);
+              XRenderComposite (disp, PictOpOver, solid_color_pict, None, dst, 0, 0, 0, 0, x, y, w, h);
+              done = true;
+            }
+        }
+#endif        
+      if (!done)
+        XftDrawRect (d, &term->pix_colors[color].c, x, y, w, h);
 #else
       XSetForeground (disp, gc, term->pix_colors[color]);
       XFillRectangle (disp, d, gc, x, y, w, h);
@@ -1045,7 +1060,7 @@ struct rxvt_font_xft : rxvt_font {
              const text_t *text, int len,
              int fg, int bg);
 
-  bool has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &carefull) const;
+  bool has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &careful) const;
 
 protected:
   XftFont *f;
@@ -1274,14 +1289,15 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
   int w = term->fwidth * len;
   int h = term->fheight;
 
-  bool buffered = bg >= 0                         // we don't use a transparent bg
-#ifndef FORCE_UNBUFFERED_XFT
-# ifdef ENABLE_TRANSPARENCY
-                  || !term->am_transparent        // we aren't transparent
-# endif
+  /* TODO: this logic needs some more thinking, since we no longer do pseudo-transparency.
+   * Maybe make buffering into a resource flag? Compile time option doesn't seems like a 
+   * good idea from the perspective of packaging for wide variety of user configs.
+   */
+  bool buffered = true
+#ifdef FORCE_UNBUFFERED_XFT
+                  && bg >= 0
 #endif
                   ;
-
   // cut trailing spaces
   while (len && text [len - 1] == ' ')
     len--;
@@ -1317,38 +1333,66 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
 
   if (buffered)
     {
+      bool back_rendered = false;
       if (ep != enc)
         {
           rxvt_drawable &d2 = d.screen->scratch_drawable (w, h);
 
-          if (0)
-            ;
-#ifdef ENABLE_TRANSPARENCY
-          else if (bg < 0 && term->am_pixmap_trans)
-            XCopyArea (disp, term->pixmap, d2, gc,
-                       x + term->window_vt_x, y + term->window_vt_y,
-                       w, h, 0, 0);
-#endif
-#ifdef XPM_BACKGROUND
-          else if (bg < 0 && term->bgPixmap.pixmap)
+#ifdef HAVE_BG_PIXMAP
+          if (term->bgPixmap.pixmap)
             {
-              XGCValues gcv;
+              Picture dst = 0;
 
-              gcv.fill_style  = FillTiled;
-              gcv.tile        = term->pixmap;
-              gcv.ts_x_origin = -x;
-              gcv.ts_y_origin = -y;
+              if (bg >= 0 && term->pix_colors[bg].c.color.alpha < 0x0ff00)
+                dst = XftDrawPicture (d2);
+                
+              if (bg < 0 || dst != 0)
+                {
+                  int src_x = x, src_y = y ; 
+                  
+                  if (term->bgPixmap.is_parentOrigin ())
+                    {
+                      src_x += term->window_vt_x;
+                      src_y += term->window_vt_y;
+                    }
+                    
+                  if (term->bgPixmap.pmap_width >= src_x+w
+                      && term->bgPixmap.pmap_height >= src_y+h)
+                    {
+                      XCopyArea (disp, term->bgPixmap.pixmap, d2, gc,
+                                 src_x, src_y, w, h, 0, 0);
+                    }
+                  else
+                    {
+                      XGCValues gcv;
 
-              GC gc2 = XCreateGC (disp, d2,
-                                  GCTile | GCTileStipXOrigin | GCTileStipYOrigin | GCFillStyle,
-                                  &gcv);
+                      gcv.fill_style  = FillTiled;
+                      gcv.tile        = term->bgPixmap.pixmap;
+                      gcv.ts_x_origin = -src_x;
+                      gcv.ts_y_origin = -src_y;
 
-              XFillRectangle (disp, d2, gc2, 0, 0, w, h);
+                      XChangeGC (disp, gc,
+                                 GCTile | GCTileStipXOrigin | GCTileStipYOrigin | GCFillStyle,
+                                 &gcv);
 
-              XFreeGC (disp, gc2);
+                      XFillRectangle (disp, d2, gc, 0, 0, w, h);
+
+                      gcv.fill_style = FillSolid;
+                      XChangeGC (disp, gc, GCFillStyle, &gcv);
+                    }
+
+                  if (bg >= 0)
+                    {
+                      Picture solid_color_pict = XftDrawSrcPicture (d2, &term->pix_colors[bg].c);
+                      XRenderComposite (disp, PictOpOver, solid_color_pict, None, dst, 0, 0, 0, 0, 0, 0, w, h);
+                    }
+
+                  back_rendered = true;
+                }
             }
 #endif
-          else
+
+          if (bg >= 0 && !back_rendered)
             XftDrawRect (d2, &term->pix_colors[bg].c, 0, 0, w, h);
 
           XftDrawGlyphSpec (d2, &term->pix_colors[fg].c, f, enc, ep - enc);

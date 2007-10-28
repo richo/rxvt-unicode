@@ -97,7 +97,6 @@ dnl AC_PROG_LIBTOOL()dnl#		libtool
 
 support_frills=yes
 support_inheritpixmap=yes
-support_tinting=yes
 support_fading=yes
 support_keepscrolling=yes
 support_selectionscrolling=yes
@@ -110,7 +109,6 @@ support_scroll_next=yes
 support_scroll_xterm=yes
 support_scroll_plain=yes
 support_xim=yes
-support_xpm=yes
 support_afterimage=yes
 support_afterstep=yes
 support_xft=yes
@@ -140,7 +138,6 @@ AC_ARG_ENABLE(everything,
     if test x$enableval = xno; then
        support_frills=no
        support_inheritpixmap=no
-       support_tinting=no
        support_fading=no
        support_keepscrolling=no
        support_selectionscrolling=no
@@ -156,7 +153,6 @@ AC_ARG_ENABLE(everything,
        support_utmp=no
        support_wtmp=no
        support_xim=no
-       support_xpm=no
        support_afterimage=no
        support_afterstep=no
        support_xft=no
@@ -171,7 +167,6 @@ AC_ARG_ENABLE(everything,
     if test x$enableval = xyes; then
        support_frills=yes
        support_inheritpixmap=yes
-       support_tinting=yes
        support_fading=yes
        support_keepscrolling=yes
        support_selectionscrolling=yes
@@ -187,7 +182,6 @@ AC_ARG_ENABLE(everything,
        support_utmp=yes
        support_wtmp=yes
        support_xim=yes
-       support_xpm=yes
        support_afterimage=yes
        support_afterstep=yes
        support_xft=yes
@@ -225,12 +219,6 @@ AC_ARG_ENABLE(font-styles,
     support_styles=$enableval
   fi])
 
-AC_ARG_ENABLE(xpm-background,
-  [  --enable-xpm-background enable background pixmaps],
-  [if test x$enableval = xyes -o x$enableval = xno; then
-    support_xpm=$enableval
-  fi])
-
 AC_ARG_ENABLE(afterimage,
   [  --enable-afterimage enable integration with libAfterImage for background images],
   [if test x$enableval = xyes -o x$enableval = xno; then
@@ -253,12 +241,6 @@ AC_ARG_ENABLE(transparency,
   [  --enable-transparency   enable transparent backgrounds],
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_inheritpixmap=$enableval
-  fi])
-
-AC_ARG_ENABLE(tinting,
-  [  --enable-tinting        enable tinting of transparent bg],
-  [if test x$enableval = xyes -o x$enableval = xno; then
-    support_tinting=$enableval
   fi])
 
 AC_ARG_ENABLE(fading,
@@ -298,7 +280,7 @@ AC_ARG_ENABLE(plain-scroll,
   fi])
 
 AC_ARG_WITH(codesets,
-  [  --with-codesets=NAME,.. compile in additional codesets (jp,jp_ext,kr,zh,zh_ext,all)],
+  [  --with-codesets=CS,... compile in additional codesets (jp,jp_ext,kr,zh,zh_ext,all)],
   [codesets="$withval"])
 
 AC_ARG_ENABLE(xim,
@@ -333,7 +315,7 @@ AC_ARG_ENABLE(8bitctrls,
 
 RESFALLBACK=Rxvt
 AC_ARG_ENABLE(fallback,
-  [  --enable-fallback(=CLASS) fall back on CLASS resources in addition to URxvt ones (default: Rxvt)],
+  [  --enable-fallback@<:@=CLASS@:>@ fall back on CLASS resources in addition to URxvt ones (default: Rxvt)],
   [
    test x$enableval = xyes && enableval=Rxvt
    test x$enableval = xno  && enableval=
@@ -402,7 +384,7 @@ AC_ARG_ENABLE(mousewheel,
   fi])
 
 AC_ARG_ENABLE(slipwheeling,
-  [  --enable-slipwheeling   enable slip wheel scrolling     (requires previous)],
+  [  --enable-slipwheeling   enable slip wheel scrolling (requires --enable-mousewheel)],
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_mouseslipwheel=$enableval
   fi])
@@ -439,7 +421,7 @@ AC_ARG_WITH(terminfo,
 
 dnl# --------------------------------------------------------------------------
 
-AC_PATH_PROG(TIC, tic)
+AC_PATH_PROG(TIC, tic, :)
 
 dnl# need a neat way to detect SVR4 or its features
 dnl# in src/command.c we use these functions:
@@ -455,9 +437,6 @@ dnl## #endif
 dnl## ], [AC_MSG_RESULT(yes); AC_DEFINE(PERHAPS_SVR4)], AC_MSG_RESULT(perhaps not?))
 
 AC_PATH_XTRA
-
-dnl# the only reasonable way to find libXpm is do-it-yourself
-dnl# only check if we want xpm-background
 
 AFTERIMAGE_CFLAGS=
 AFTERIMAGE_LIBS=
@@ -491,13 +470,6 @@ if test x$support_afterimage = xyes; then
     else
       AC_MSG_RESULT(no)
     fi
-  fi
-fi
-
-if test x$support_afterimage != xyes -a x$support_xpm = xyes ; then
-  VT_FIND_LIBXPM
-  if test x$no_xpm = xyes; then
-    support_xpm=needsmanualspecification
   fi
 fi
 
@@ -689,20 +661,35 @@ ac_save_LIBS=$LIBS
 ac_save_CFLAGS=$CFLAGS
 CFLAGS="$CFLAGS $X_CFLAGS"
 LIBS="$LIBS $X_LIBS $X_EXTRA_LIBS -lX11"
-AC_CACHE_CHECK(for working Xlocale, rxvt_cv_func_xlocale,
-[AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <X11/Xlib.h>
-#include <stdlib.h>
-main() {
-char *p;
-if ((p = XSetLocaleModifiers("@im=none")) != NULL && *p)
-exit (XSupportsLocale() ? 0 : 1);
-else
-exit (1);}]])],[dnl
-  rxvt_cv_func_xlocale=yes],[rxvt_cv_func_xlocale=no],[dnl
-  :])])
 if test x$support_xim = xyes; then
+  AC_CACHE_CHECK(for working Xlocale, rxvt_cv_func_xlocale,
+  [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <X11/Xlib.h>
+  #include <stdlib.h>
+  main() {
+  char *p;
+  if ((p = XSetLocaleModifiers("@im=none")) != NULL && *p)
+  exit (XSupportsLocale() ? 0 : 1);
+  else
+  exit (1);}]])],[dnl
+    rxvt_cv_func_xlocale=yes],[rxvt_cv_func_xlocale=no],[dnl
+    :])])
   if test x$rxvt_cv_func_xlocale = xyes; then
     AC_DEFINE(USE_XIM, 1, Define if you want to have XIM (X Input Method) protocol support - required for multibyte characters input)
+    AC_CACHE_CHECK(for broken XIM callback, rxvt_broken_ximcb,
+    [AC_COMPILE_IFELSE([
+    #include <X11/Xlib.h>
+
+    void im_destroy_cb (XIC unused1, XPointer client_data, XPointer unused3);
+
+    void f() {
+      XIMCallback cb;
+      cb.callback = im_destroy_cb;
+    }
+    ],rxvt_broken_ximcb=yes,rxvt_broken_ximcb=no)])
+
+    if test x$rxvt_broken_ximcb = xyes; then
+       AC_DEFINE(XIMCB_PROTO_BROKEN, 1, Define if your XIMCallback specifies XIC as first type.)
+    fi
   fi
 fi
 
@@ -728,22 +715,6 @@ if test x$rxvt_cv_func_nl_langinfo = xyes; then
 fi
 
 SCM_RIGHTS_CHECK
-
-AC_CACHE_CHECK(for broken XIM callback, rxvt_broken_ximcb,
-[AC_COMPILE_IFELSE([
-#include <X11/Xlib.h>
-
-void im_destroy_cb (XIC unused1, XPointer client_data, XPointer unused3);
-
-void f() {
-  XIMCallback cb;
-  cb.callback = im_destroy_cb;
-}
-],rxvt_broken_ximcb=yes,rxvt_broken_ximcb=no)])
-
-if test x$rxvt_broken_ximcb = xyes; then
-   AC_DEFINE(XIMCB_PROTO_BROKEN, 1, Define if your XIMCallback specifies XIC as first type.)
-fi
 
 PTY_CHECK
 
@@ -784,9 +755,6 @@ fi
 if test x$support_fading = xyes; then
   AC_DEFINE(OFF_FOCUS_FADING, 1, Define if you want faded colors when focus is lost)
 fi
-if test x$support_tinting = xyes; then
-  AC_DEFINE(TINTING, 1, Define if you want your background to be tinted)
-fi
 if test x$support_inheritpixmap = xyes; then
   AC_DEFINE(ENABLE_TRANSPARENCY, 1, Define if you want your background to use the parent window background)
 fi
@@ -796,18 +764,18 @@ fi
 if test x$support_selectionscrolling = xyes; then
   AC_DEFINE(SELECTION_SCROLLING, 1, Define to allow scrolling when the selection moves to the top or bottom of the screen)
 fi
+if test x$support_frills = xyes; then
+  AC_DEFINE(ENABLE_FRILLS, 1, Define if you want handling for rarely used but handy features)
+fi
 if test x$support_mousewheel = xyes; then
   AC_DEFINE(MOUSE_WHEEL, 1, Define to use wheel events (button4 and button5) to scroll)
 fi
 if test x$support_mouseslipwheel = xyes; then
   AC_DEFINE(MOUSE_SLIP_WHEELING, 1, Define to have CTRL cause wheel events to accelerate scrolling. Release CTRL to halt scrolling)
 fi
-if test x$support_xpm = xyes -o x$support_afterimage = xyes ; then
-  AC_DEFINE(XPM_BACKGROUND, 1, Define if you want to have sexy-looking background pixmaps. Needs libXpm or libAfterImage)
-fi
-
 if test x$support_afterimage = xyes; then
   AC_DEFINE(HAVE_AFTERIMAGE, 1, Define if you want to use libAfterImage for image processing)
+  AC_DEFINE(BG_IMAGE_FROM_FILE, 1, Define if you want to have sexy-looking background pixmaps. Needs libAfterImage)
 fi
 
 dnl if test x$support_afterstep = xyes; then
@@ -901,14 +869,6 @@ AC_SUBST(PERL)
 AC_SUBST(IF_PERL)
 AC_SUBST(PERL_O)
 
-if test x$support_perl = xyes; then
-   support_frills=yes
-fi
-
-if test x$support_frills = xyes; then
-  AC_DEFINE(ENABLE_FRILLS, 1, Define if you want handling for rarely used but handy features)
-fi
-
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
@@ -965,18 +925,6 @@ echo "Configuration:
   Compiler flags:             $CXXFLAGS
   Linker:                     $LINKER"
 
-if test x$support_xpm = xyes; then
-  echo "  Xpm library:                $XPM_LIBS"
-fi
-
-if test x$support_afterimage = xyes; then
-  echo "  AfterImage support:         yes"
-fi
-
-dnl if test x$support_afterstep = xyes; then
-dnl   echo "  AfterStep integration:      yes"
-dnl fi
-
 if test x$term != x; then
   echo "  set TERM to:                $term"
 fi
@@ -991,17 +939,8 @@ fi
 echo
 echo "  embedded perl:              $support_perl"
 echo "  libafterimage:              $support_afterimage"
+dnl echo "  AfterStep integration:      $support_afterstep"
 echo
-if test x$support_xpm = xneedsmanualspecification; then
-  echo ".----------------------------------------------------------------."
-  echo ". WARNING: --enable-xpm-background was specified however the     ."
-  echo ".          XPM includes files and libraries could not be found.  ."
-  echo ".          XPM backgrounds are now being DISABLED!  If you want  ."
-  echo ".          to use them you should rerun   configure   with the   ."
-  echo ".          appropriate --with-xpm-includes=/path/to/xpm/includes ."
-  echo ".          and --with-xpm-library=/path/to/xpm/library lines.    ."
-  echo ".----------------------------------------------------------------."
-fi
 if test x$support_xim = xyes -a x$rxvt_cv_func_xlocale = xno; then
   echo ".----------------------------------------------------------------."
   echo ". WARNING: --enable-xim was specified however the locale support ."
