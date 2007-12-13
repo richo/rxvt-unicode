@@ -15,14 +15,43 @@ TODO: investigate -pe tabbed -g 80x25 being 23 not 24 or 25 lines
 WISH: selection-color-pair instead of reverse video
 WISH: load system-wide config file even if we don't have one
 WISH: look into XAddConnectionWatch, does anybody need that?
-WISH: anyevent mouse notification / manage MotionMask better.
 DUMB: support tex fonts
+
+8.7  Sun Nov 25 10:23:49 CET 2007
+        - update libev with an important bugfix that would cause crashes
+          when closing windows (when using rxvtd, and update is recommended).
+        - do not compile in the block builtin graphics with --disable-frills.
+
+8.6  Fri Nov 23 14:10:57 CET 2007
+        - upgrade libev to disable kqueue on anything but netbsd as it
+          seems to be broken everywhere else w.r.t. ptys.
+        - allow for spurious event notifications, as at least epoll and
+          especially solaris ports like to lie about them (symptoms:
+          urxvt "hangs" until there is some x11 related activity).
+        - -keysym command line options are now subjected to xlib parsing.
+        - add 'xrm' option analogous to Xt one.
+
+8.5a Wed Nov 21 10:16:33 CET 2007
+	- make it compile with --disable-transparency.
+
+8.5  Wed Nov 21 05:19:20 CET 2007
+        - expect major portability issues in this release: please test and report.
+      	- converted from the veritable io manager event loop to
+          the high performance libev (http://software.schmorp.de/pkg/libev).
+        - minor tuning to the perl selection (include single words and more quoting chars).
+	- fix memory leak in pixmap code.
+	- fix a serious bug while setting the XIM destroy callback
+          on (typical) 64 bit systems.
+	- automove-background functionality re-implemented internaly using :root op in pixmap
+	  geometry string. For example: rxvt -pixmap "image.jpg;:root"
+        - do not link rxvtc against every lib on the planet anymore.
+        - parallel builds should work once more.
 
 8.4  Sat Oct 27 14:02:13 CEST 2007
 	- overhaul of the transparency/pixmap code (sasha).
 	- fix possible race betwen visual bell and poweron.
           (reported by Martin von Gagern, gentoo?).
-        - rxvt -e no longer crashes the child.
+        - urxvt -e no longer crashes the child.
         - fixed some minor memleaks on incorrect usage or
           missing DISPLAY.
         - implement xterm 1002/1003 mouse tracking modes (exg).

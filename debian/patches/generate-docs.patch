@@ -1,17 +1,10 @@
-Index: rxvt-unicode-8.3/doc/Makefile.in
+Index: rxvt-unicode-8.7/doc/Makefile.in
 ===================================================================
---- rxvt-unicode-8.3.orig/doc/Makefile.in	2007-08-12 01:36:41.000000000 -0400
-+++ rxvt-unicode-8.3/doc/Makefile.in	2007-08-12 02:22:51.000000000 -0400
-@@ -28,21 +28,17 @@
+--- rxvt-unicode-8.7.orig/doc/Makefile.in	2007-12-12 20:52:07.000000000 -0500
++++ rxvt-unicode-8.7/doc/Makefile.in	2007-12-12 20:54:11.000000000 -0500
+@@ -36,15 +36,10 @@
  
- #-------------------------------------------------------------------------
- 
-+SED = sed
- SEDREPLACE = -e 's%@@RXVT_VERSION@@%$(VERSION)%g;'	\
- 	     -e 's%@@RXVT_NAME@@%$(RXVTNAME)%g;'	\
- 	     -e 's%@@RXVT_DATE@@%$(DATE)%g;'		\
- 	     -e 's%@@RXVT_LIBDIR@@%$(libdir)%g;'	\
- 	     -e 's%@@URXVT_NAME@@%urxvt%g;'
+ POD2MAN = pod2man -n @@RXVT_NAME@@ -r"$(VERSION)" -q\" -c "RXVT-UNICODE"
  
 -all:
 -	sed $(SEDREPLACE) < $(srcdir)/rxvt.1.man.in  >rxvt.1.man
@@ -28,9 +21,9 @@ Index: rxvt-unicode-8.3/doc/Makefile.in
  
  %.tbl: %.pod
  	$(srcdir)/podtbl <$< >$@
-@@ -56,43 +52,61 @@
+@@ -58,39 +53,58 @@
  %.7.man.in: %.7.tbl
- 	pod2man -n @@RXVT_NAME@@ -r"$(VERSION)" -q\" -s7 -c "RXVT-UNICODE" <$< >$@
+ 	$(POD2MAN) -s7 <$< >$@
  
 -%.html: %.tbl
 -	sed $(SEDREPLACE) <$< | pod2xhtml --css http://res.tst.eu/pod.css >$@
@@ -53,15 +46,15 @@ Index: rxvt-unicode-8.3/doc/Makefile.in
 +	podselect -section "RXVT-UNICODE\\/URXVT FREQUENTLY ASKED QUESTIONS" <$< | pod2text >$@
 +
 +%.man: %.man.in
-+	$(SED) $(SEDREPLACE) <$< >$@
++	sed $(SEDREPLACE) <$< >$@
 +%.txt: %.txt.in
-+	$(SED) $(SEDREPLACE) <$< >$@
++	sed $(SEDREPLACE) <$< >$@
 +%.html: %.html.in
-+	$(SED) $(SEDREPLACE) <$< >$@
++	sed $(SEDREPLACE) <$< >$@
 +../README.configure: README.configure.in
-+	$(SED) $(SEDREPLACE) <$< >$@
++	sed $(SEDREPLACE) <$< >$@
 +../README.FAQ: README.FAQ.in
-+	$(SED) $(SEDREPLACE) <$< >$@
++	sed $(SEDREPLACE) <$< >$@
 +
 +etc/rxvt-unicode.termcap:
 +	infocmp -C rxvt-unicode >$@
@@ -101,8 +94,6 @@ Index: rxvt-unicode-8.3/doc/Makefile.in
 -	rm -f ../README.configure ../README.FAQ
 -	rm -f $(srcdir)/etc/rxvt-unicode.termcap
 +	rm -f rxvt.1.tbl rxvt.7.tbl rxvtc.1.tbl rxvtd.1.tbl rxvtperl.3.tbl
- 
--cleandir: realclean
 +realclean: clean distclean
 +	rm -f rxvt.1.man.in  rxvt.7.man.in  rxvtc.1.man.in  rxvtd.1.man.in  rxvtperl.3.man.in
 +	rm -f rxvt.1.txt.in  rxvt.7.txt.in  rxvtc.1.txt.in  rxvtd.1.txt.in  rxvtperl.3.txt.in
@@ -110,8 +101,5 @@ Index: rxvt-unicode-8.3/doc/Makefile.in
 +	rm -f README.configure.in README.FAQ.in
 +	rm -f pod*.tmp tags *~
  
--install:
-+install: alldoc
- 	$(INSTALL) -d $(DESTDIR)$(man1dir)
- 	$(INSTALL) -d $(DESTDIR)$(man7dir)
- 	$(INSTALL_DATA) rxvt.1.man  $(DESTDIR)$(man1dir)/$(RXVTNAME).$(man1ext)
+ cleandir: realclean
+ 

@@ -121,11 +121,11 @@ Turn on/off skip scrolling (allow multiple screens per refresh); resource B<skip
 Turn on/off illusion of a transparent window background. Obsolete form of it is
 B<-ip> and it should not be used anymore; resource B<transparent>.
 
-I<Please note that old resource name of B<inheritPixmap> is obsolete and should be 
-changed to B<transparent>. Backwards compatibility support for B<inheritPixmap> will 
+I<Please note that old resource name of B<inheritPixmap> is obsolete and should be
+changed to B<transparent>. Backwards compatibility support for B<inheritPixmap> will
 be phased out in future versions of rxvt!>
 
-I<Please address all transparency related issues to Sasha Vasko at 
+I<Please address all transparency related issues to Sasha Vasko at
 sasha@aftercode.net. Read the FAQ (man 7 @@RXVT_NAME@@)!>
 
 =item B<-fade> I<number>
@@ -147,14 +147,15 @@ non-tiled backgrounds, currently. See also the B<-sh> option that can be
 used to brighten or darken the image in addition to tinting it.
 Please note that certain tint colours can be applied on the server-side,
 thus yielding performance gain of two orders of magnitude. These colours are:
-blue, red, green, cyan, magenta, yellow, and those close to them; resource
+blue, red, green, cyan, magenta, yellow, and those close to them. Also
+pure black and pure white colors essentially mean no tinting; resource
 I<tintColor>. Example:
 
    @@RXVT_NAME@@ -tr -tint blue -sh 40
 
 =item B<-sh> I<number>
 
-Darken (0 .. 100) or lighten (-1 .. -100) the transparent
+Darken (0 .. 100) or lighten (100 .. 200) the transparent
 background image in addition to (or instead of) tinting it;
 resource I<shading>.
 
@@ -185,9 +186,9 @@ Window background colour; resource B<background>.
 
 Window foreground colour; resource B<foreground>.
 
-=item B<-pixmap> I<file[;geom]>
+=item B<-pixmap> I<file[;geom[:op1][:op2][...]]>
 
-Compile I<afterimage>: Specify image file for the background and also 
+Compile I<afterimage>: Specify image file for the background and also
 optionally specify its scaling with a geometry string. Note you may need to
 add quotes to avoid special shell interpretation of the C<;> in the
 command-line; for more details see resource B<backgroundPixmap>.
@@ -450,6 +451,19 @@ will not immediately destroy its window when the program executed within
 it exits. Instead, it will wait till it is being killed or closed by the
 user; resource B<hold>.
 
+=item B<-xrm> I<string>
+
+Works like the X Toolkit option of the same name, by adding the I<string>
+as if it were specified in a resource file. Resource values specified this
+way take precedence over all other resource specifications.
+
+Note that you need to use the I<same> syntax as in the .Xdefaults file,
+e.g. C<*.background: black>. Also note that all @@RXVT_NAME@@-specific
+options can be specified as long-options on the commandline, so use
+of B<-xrm> is mostly limited to cases where you want to specify other
+resources (e.g. for input methods) or for compatibility with other
+programs.
+
 =item B<-keysym.>I<sym> I<string>
 
 Remap a key symbol. See resource B<keysym>.
@@ -532,6 +546,7 @@ with later settings overwriting earlier ones:
   3. RESOURCE_MANAGER property on root-window OR $HOME/.Xdefaults
   4. SCREEN_RESOURCES for the current screen
   5. $XENVIRONMENT file OR $HOME/.Xdefaults-<nodename>
+  6. resources specified via -xrm on the commandline
 
 Note that when reading X resources, B<@@RXVT_NAME@@> recognizes two class
 names: B<Rxvt> and B<URxvt>. The class name B<Rxvt> allows resources
@@ -677,7 +692,7 @@ Specify background blending type; option B<-blt>.
 
 =item B<blurRadius:> I<number>
 
-Apply Gaussian Blurr with the specified radius to the transparent 
+Apply Gaussian Blurr with the specified radius to the transparent
 background image; option B<-blr>.
 
 =item B<scrollColor:> I<colour>
@@ -694,22 +709,31 @@ Use the specified colour for the scrollbar's trough area [default
 The colour of the border around the text area and between the scrollbar
 and the text.
 
-=item B<backgroundPixmap:> I<file[;geom]>
+=item B<backgroundPixmap:> I<file[;geom[:op1][:op2][...]]>
 
-Use the specified image file for the background and also optionally 
-specify its scaling with a geometry string B<WxH+X+Y>, 
-in which B<"W" / "H"> specify the horizontal/vertical scale (percent), 
-and B<"X" / "Y"> locate the image centre (percent). 
-A scale of 0 displays the image with tiling. A scale of 1 displays the 
-image without any scaling. A scale of 2 to 9 specifies an integer 
-number of images in that direction. No image will be magnified beyond 
-10 times its original size. The maximum permitted scale is 1000. 
-Special string of B<"auto"> used as a geometry will cause image to be 
-automatically scaled to match window size.
-If used in conjunction with B<-tr> option - specified pixmap will be 
-blended over transparency image using either alpha-blending, or any 
+Use the specified image file for the background and also
+optionally specify its scaling with a geometry string B<WxH+X+Y>,
+(default C<0x0+50+50>) in which B<"W" / "H"> specify the
+horizontal/vertical scale (percent), and B<"X" / "Y"> locate the image
+centre (percent).  A scale of 0 displays the image with tiling. A scale
+of 1 displays the image without any scaling. A scale of 2 to 9 specifies
+an integer number of images in that direction. No image will be magnified
+beyond 10 times its original size. The maximum permitted scale is 1000.
+Additional operations can be specified after colon B<:op1:op2...>.
+Supported operations are:
+
+  tile        force background image to be tiled and not scaled. Equivalent to 0x0,
+  propscale   will scale image keeping proportions, 
+  auto        will scale image to match window size. Equivalent to 100x100;
+  hscale      will scale image horizontally to the window size; 
+  vscale      will scale image vertically to the window size;
+  scale       will scale image to match window size;
+  root        will tile image as if it was a root window background, auto-adjusting
+              whenever terminal window moves. 
+
+If used in conjunction with B<-tr> option, the specified pixmap will be
+blended over transparency image using either alpha-blending, or any
 other blending type, specified with B<-blt "type"> option.
-[default 0x0+50+50]
 
 =item B<path:> I<path>
 
@@ -992,7 +1016,7 @@ will be created). In this mode, characters outside ISO-8859-1 can be used.
 When the selection extension is not used, only ISO-8859-1 characters can
 be used. If not specified, the built-in default is used:
 
-B<< BACKSLASH `"'&()*,;<=>?@[]{|} >>
+B<< BACKSLASH `"'&()*,;<=>?@[]^{|} >>
 
 =item B<preeditType:> I<style>
 
@@ -1472,8 +1496,8 @@ resources or on the command line.
 =item B<COLORTERM>
 
 Either C<rxvt>, C<rxvt-xpm>, depending on whether @@RXVT_NAME@@ was
-compiled with background image support, and optionally with the added 
-extension C<-mono> to indicate that rxvt-unicode runs on a monochrome 
+compiled with background image support, and optionally with the added
+extension C<-mono> to indicate that rxvt-unicode runs on a monochrome
 screen.
 
 =item B<COLORFGBG>
@@ -1483,7 +1507,7 @@ the colour code used as default foreground/text colour (or the string
 C<default> to indicate that the default-colour escape sequence is to be
 used), C<bg> is the colour code used as default background colour (or the
 string C<default>), and C<xpm> is the string C<default> if @@RXVT_NAME@@
-was compiled with background image support. Libraries like C<ncurses> 
+was compiled with background image support. Libraries like C<ncurses>
 and C<slang> can (and do) use this information to optimize screen output.
 
 =item B<WINDOWID>
@@ -1585,7 +1609,7 @@ Project Coordinator (changes.txt 2.21a to 2.4.5)
 =item Geoff Wing L<< <gcw@pobox.com> >>
 
 Rewrote screen display and text selection routines.
-   
+
 Project Coordinator (changes.txt 2.4.6 - rxvt-unicode)
 
 =item Marc Alexander Lehmann L<< <rxvt-unicode@schmorp.de> >>

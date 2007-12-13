@@ -22,7 +22,20 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	INSTALL_PROGRAM += -s
 endif
 
-cfgcommon = --host=$(DEB_HOST_GNU_TYPE) --build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info --enable-mousewheel --enable-xgetdefault --enable-iso14755 --enable-font-styles --enable-utmp --enable-wtmp --with-term=rxvt-unicode
+cfgcommon = \
+    --host=$(DEB_HOST_GNU_TYPE) \
+    --build=$(DEB_BUILD_GNU_TYPE) \
+    --prefix=/usr \
+    --mandir=\$${prefix}/share/man \
+    --infodir=\$${prefix}/share/info \
+    --enable-plain-scroll \
+    --enable-keepscrolling \
+    --enable-selectionscrolling \
+    --enable-pointer-blank \
+    --enable-utmp \
+    --enable-wtmp \
+    --enable-lastlog \
+    --with-term=rxvt-unicode
 
 config.status: configure
 	dh_testdir
@@ -30,13 +43,46 @@ config.status: configure
 	cp -f /usr/share/misc/config.guess config.guess
 
 conf-unicode-lite:
-	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) --disable-xft --disable-perl
+	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	    --disable-xft \
+	    --disable-perl \
+	    --disable-iso14755
 
 conf-unicode:
-	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) --enable-rxvt-scroll --enable-next-scroll --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-transparency --enable-xpm-background --enable-fading --enable-linespace --enable-xft --enable-tinting --enable-perl
+	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	    --enable-xft \
+	    --enable-font-styles \
+	    --enable-afterimage \
+	    --enable-transparency \
+	    --enable-fading \
+	    --enable-rxvt-scroll \
+	    --enable-next-scroll \
+	    --enable-xterm-scroll \
+	    --enable-perl \
+	    --enable-mousewheel \
+	    --enable-slipwheeling \
+	    --enable-smart-resize \
+	    --disable-iso14755
 
 conf-unicode-ml:
-	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) --enable-everything --enable-half-shadow --enable-xim --enable-keepscrolling --enable-slipwheeling --enable-smart-resize --enable-pointer-blank --enable-unicode3 --enable-transparency --enable-xpm-background --enable-fading --enable-linespace --enable-combining --enable-tinting --enable-frills --enable-perl
+	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	    --enable-unicode3 \
+	    --enable-combining \
+	    --enable-xft \
+	    --enable-font-styles \
+	    --enable-afterimage \
+	    --enable-transparency \
+	    --enable-fading \
+	    --enable-rxvt-scroll \
+	    --enable-next-scroll \
+	    --enable-xterm-scroll \
+	    --enable-perl \
+	    --enable-xim \
+	    --enable-iso14755 \
+	    --enable-frills \
+	    --enable-mousewheel \
+	    --enable-slipwheeling \
+	    --enable-smart-resize
 
 patch: patch-stamp
 patch-stamp:

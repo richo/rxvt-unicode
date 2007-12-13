@@ -34,15 +34,26 @@ sub on_init {
 
 # "find interesting things"-patterns
 my @mark_patterns = (
+#   qr{ ([[:word:]]+) }x,
+   qr{ ([^[:space:]]+) }x,
+
    # common types of "parentheses"
-   qr{ (?<![^[:space:]]) ‘ ([^‘’]+) ’ (?![^[:space]]) }x,
-   qr{ (?<![^[:space:]]) ` ([^`']+) ' (?![^[:space]]) }x,
-   qr{ (?<![^[:space:]]) (" [^[:space:]] [^"]* ")                 }x,
-   qr{                   (" [^"]* [^[:space:]] ") (?![^[:space]]) }x,
-   qr{ \< ([^<>[:space:]]+) \> }x,
-   qr{ \{ ([^{}[:space:]]+) \} }x,
-   qr{ \[ ([^{}[:space:]]+) \] }x,
-   qr{ \( ([^()[:space:]]+) \) }x,
+   qr{ (?<![^[:space:]])  ` ([^‘’]+)  ` (?![^[:space:]]) }x,
+   qr{ (?<![^[:space:]])  ‘ ([^‘’]+)  ’ (?![^[:space:]]) }x,
+   qr{ (?<![^[:space:]])  ` ([^`']+)  ' (?![^[:space:]]) }x,
+
+   qr{ (?<![^[:space:]])  ‘ ([^‘’]+)  ’ (?![^[:space:]]) }x,
+   qr{ (?<![^[:space:]])  “ ([^“”]+)  ” (?![^[:space:]]) }x,
+
+   qr{ (?<![^[:space:]]) (' [^[:space:]] [^']* ')                  }x,
+   qr{                   (' [^']* [^[:space:]] ') (?![^[:space:]]) }x,
+   qr{ (?<![^[:space:]]) (" [^[:space:]] [^"]* ")                  }x,
+   qr{                   (" [^"]* [^[:space:]] ") (?![^[:space:]]) }x,
+
+   qr{ \{ ([^\{\}]+) \} }x,
+   qr{ \( ([^\(\)]+) \) }x,
+   qr{ \[ ([^\[\]]+) \] }x,
+   qr{ \< ([^\<\>]+) \> }x,
 
    # urls, just a heuristic
    qr{(

@@ -3,9 +3,6 @@
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 1997      Carsten Haitzler <raster@zip.com.au>
- * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
- * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  * Copyright (c) 2005-2006 Marc Lehmann <pcg@goof.com>
  * Copyright (c) 2007      Sasha Vasko <sasha@aftercode.net>
  *
@@ -33,7 +30,7 @@
 #define TIMING_TEST_START(id) \
 	struct timeval timing_test_##id##_stv;\
   gettimeofday (&timing_test_##id##_stv, NULL);
-  
+
 #define TIMING_TEST_PRINT_RESULT(id) \
   do{ struct timeval tv;gettimeofday (&tv, NULL); tv.tv_sec -= (timing_test_##id##_stv).tv_sec;\
       fprintf (stderr, "%s: %s: %d: elapsed  %ld usec\n", #id, __FILE__, __LINE__,\
@@ -89,7 +86,7 @@
  */
 
 #ifdef HAVE_BG_PIXMAP
-bgPixmap_t::bgPixmap_t()
+bgPixmap_t::bgPixmap_t ()
 {
 #ifdef HAVE_AFTERIMAGE
   original_asim = NULL;
@@ -102,10 +99,26 @@ bgPixmap_t::bgPixmap_t()
   pixmap = None;
 }
 
+void
+bgPixmap_t::destroy ()
+{
+#ifdef HAVE_AFTERIMAGE
+  if (original_asim)
+    safe_asimage_destroy (original_asim);
+#endif
+
+  if (pixmap && target)
+    XFreePixmap (target->dpy, pixmap);
+}
 
 bool
 bgPixmap_t::window_size_sensitive ()
 {
+# ifdef ENABLE_TRANSPARENCY
+  if (flags & isTransparent)
+    return true;
+# endif
+
 # ifdef BG_IMAGE_FROM_FILE
 #  ifdef HAVE_AFTERIMAGE
   if (original_asim != NULL)
@@ -116,12 +129,30 @@ bgPixmap_t::window_size_sensitive ()
         return true;
     }
 # endif
+
+  return false;
+}
+
+bool 
+bgPixmap_t::window_position_sensitive () 
+{
 # ifdef ENABLE_TRANSPARENCY
   if (flags & isTransparent)
     return true;
 # endif
+
+# ifdef BG_IMAGE_FROM_FILE
+#  ifdef HAVE_AFTERIMAGE
+  if (original_asim != NULL)
+#  endif
+    {
+      if (h_align == rootAlign || v_align == rootAlign)
+        return true;
+    }
+# endif
+
   return false;
-}
+};
 
 bool bgPixmap_t::need_client_side_rendering ()
 {
@@ -134,7 +165,7 @@ bool bgPixmap_t::need_client_side_rendering ()
     {
 #  ifdef HAVE_AFTERIMAGE		// can't blur without libAI anyways
       if ((flags & blurNeeded) && !(flags & blurServerSide))
-				return true;
+        return true;
 #  endif
       if ((flags & tintNeeded) && !(flags & tintServerSide))
         return true;
@@ -165,10 +196,13 @@ check_set_align_value (int geom_flags, int flag, int &align, int new_value)
 {
   if (geom_flags & flag)
     {
-      if (new_value < -100)
-        new_value = -100;
-      else if (new_value > 200)
-        new_value = 200;
+      if (new_value != bgPixmap_t::rootAlign)
+        {
+          if (new_value < -100)
+            new_value = -100;
+          else if (new_value > 200)
+            new_value = 200;
+        }
       if (new_value != align)
         {
           align = new_value;
@@ -320,7 +354,7 @@ bgPixmap_t::set_geometry (const char *geom)
           x = y = defaultAlign;
           w = h = defaultScale;
         }
-        
+
       if (!(flags & geometrySet))
         geom_flags |= WidthValue|HeightValue|XValue|YValue;
 
@@ -332,14 +366,14 @@ bgPixmap_t::set_geometry (const char *geom)
 #  define CHECK_GEOM_OPS(op_str)  (strncasecmp (ops, (op_str), sizeof(op_str)-1) == 0)
               if (CHECK_GEOM_OPS("tile"))
                 {
-                  w = h = 0;
+                  w = h = noScale;
                   geom_flags |= WidthValue|HeightValue;
                 }
               else if (CHECK_GEOM_OPS("propscale"))
                 {
                   if (w == 0 && h == 0)
                     {
-                      w = 100;
+                      w = windowScale;
                       geom_flags |= WidthValue;
                     }
                   new_flags |= propScale;
@@ -347,29 +381,35 @@ bgPixmap_t::set_geometry (const char *geom)
               else if (CHECK_GEOM_OPS("hscale"))
                 {
                   if (w == 0)
-                    w = 100;
-                  h = 0;
+                    w = windowScale;
+                  h = noScale;
                   geom_flags |= WidthValue|HeightValue;
                 }
               else if (CHECK_GEOM_OPS("vscale"))
                 {
                   if (h == 0)
-                    h = 100;
-                  w = 0;
+                    h = windowScale;
+                  w = noScale;
                   geom_flags |= WidthValue|HeightValue;
                 }
               else if (CHECK_GEOM_OPS("scale"))
                 {
                   if (h == 0)
-                    h = 100;
+                    h = windowScale;
                   if (w == 0)
-                    w = 100;
+                    w = windowScale;
                   geom_flags |= WidthValue|HeightValue;
                 }
               else if (CHECK_GEOM_OPS("auto"))
                 {
-                  w = h = 100;
-                  x = y = 50;
+                  w = h = windowScale;
+                  x = y = centerAlign;
+                  geom_flags |= WidthValue|HeightValue|XValue|YValue;
+                }
+              else if (CHECK_GEOM_OPS("root"))
+                {
+                  w = h = noScale;
+                  x = y = rootAlign;
                   geom_flags |= WidthValue|HeightValue|XValue|YValue;
                 }
 #  undef CHECK_GEOM_OPS
@@ -418,8 +458,16 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
 
   if (original_asim)
     {
-      x = make_align_position (h_align, target_width, w > 0 ? w : (int)original_asim->width);
-      y = make_align_position (v_align, target_height, h > 0 ? h : (int)original_asim->height);
+      if (h_align == rootAlign || v_align == rootAlign)
+        {
+          target->get_window_origin(x, y);
+          x = -x;
+          y = -y;
+        }
+      if (h_align != rootAlign)
+        x = make_align_position (h_align, target_width, w > 0 ? w : (int)original_asim->width);
+      if (v_align != rootAlign)
+        y = make_align_position (v_align, target_height, h > 0 ? h : (int)original_asim->height);
     }
 
   if (original_asim == NULL
@@ -451,25 +499,27 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
       if ((w > 0 && w != original_asim->width)
           || (h > 0 && h != original_asim->height))
         {
-          result = scale_asimage (target->asv, original_asim, 
-                                  w > 0 ? w : original_asim->width, 
+          result = scale_asimage (target->asv, original_asim,
+                                  w > 0 ? w : original_asim->width,
                                   h > 0 ? h : original_asim->height,
                                   background ? ASA_ASImage : ASA_XImage,
                                   100, ASIMAGE_QUALITY_DEFAULT);
         }
       if (background == NULL)
-        {/* if tiling - pixmap has to be sized exactly as the image */
+        {/* if tiling - pixmap has to be sized exactly as the image,
+            but there is no need to make it bigger then the window! */
           if (h_scale == 0)
-            new_pmap_width = result->width;
+            new_pmap_width = min (result->width, target_width);
           if (v_scale == 0)
-            new_pmap_height = result->height;
+            new_pmap_height = min (result->height, target_height);
           /* we also need to tile our image in one or both directions */
           if (h_scale == 0 || v_scale == 0)
             {
               ASImage *tmp = tile_asimage (target->asv, result,
-                                            (h_scale > 0) ? 0 : (int)result->width - x, 
-                                            (v_scale > 0) ? 0 : (int)result->height - y, 
-                                            result->width, result->height,
+                                            (h_scale > 0) ? 0 : (int)result->width - x,
+                                            (v_scale > 0) ? 0 : (int)result->height - y,
+                                            new_pmap_width, 
+                                            new_pmap_height,
                                             TINT_LEAVE_SAME, ASA_XImage,
                                             100, ASIMAGE_QUALITY_DEFAULT);
               if (tmp)
@@ -580,7 +630,7 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
       /* put result on pixmap */
       if (dst_x < new_pmap_width && dst_y < new_pmap_height)
         asimage2drawable (target->asv, pixmap, result, gc, src_x, src_y, dst_x, dst_y, dst_width, dst_height, True);
-    
+
       if (result != background && result != original_asim)
         destroy_asimage (&result);
 
@@ -616,15 +666,15 @@ bgPixmap_t::set_file (const char *file)
           free (f);
         }
       return (original_asim != NULL);
-#  endif    
+#  endif
     }
   return false;
 }
 
-# endif	/* BG_IMAGE_FROM_FILE */
+# endif /* BG_IMAGE_FROM_FILE */
 
 # ifdef ENABLE_TRANSPARENCY
-bool 
+bool
 bgPixmap_t::set_transparent ()
 {
   if (!(flags & isTransparent))
@@ -659,7 +709,7 @@ bgPixmap_t::set_blur_radius (const char *geom)
       ++changed;
       v_blurRadius = vr;
     }
-    
+
   if (v_blurRadius == 0 && h_blurRadius == 0)
     flags &= ~blurNeeded;
   else
@@ -696,7 +746,7 @@ compute_tint_shade_flags (rxvt_color *tint, int shade)
         flags |= bgPixmap_t::tintNeeded;
       }
     }
-    
+
   if (flags & bgPixmap_t::tintNeeded)
     {
       if (flags & bgPixmap_t::tintWholesome)
@@ -743,7 +793,9 @@ bgPixmap_t::set_shade (const char *shade_str)
 {
   int new_shade = (shade_str) ? atoi (shade_str) : 0;
 
-  if (new_shade == 100)
+  if (new_shade < 0 && new_shade > -100)
+		new_shade = 200 - (100 + new_shade);
+  else if (new_shade == 100)
     new_shade = 0;
 
   if (new_shade != shade)
@@ -756,9 +808,9 @@ bgPixmap_t::set_shade (const char *shade_str)
   return false;
 }
 
-/* make_transparency_pixmap() 
+/* make_transparency_pixmap()
  * Builds a pixmap sized the same as terminal window, with depth same as the root window
- * that pixmap contains tiled portion of the root pixmap that is supposed to be covered by 
+ * that pixmap contains tiled portion of the root pixmap that is supposed to be covered by
  * our window.
  */
 unsigned long
@@ -884,9 +936,9 @@ bgPixmap_t::make_transparency_pixmap ()
 
   if (tiled_root_pmap != None)
     {
-      if (!need_client_side_rendering ()) 
+      if (!need_client_side_rendering ())
         {
-          if ((flags & tintNeeded)) 
+          if ((flags & tintNeeded))
             {
               if (flags & tintWholesome)
                 {
@@ -937,14 +989,14 @@ bgPixmap_t::make_transparency_pixmap ()
                   pf.direct.alphaMask = 0xff;
 
                   XRenderPictFormat *solid_format = XRenderFindFormat (dpy,
-																																			 (PictFormatType|
-																																			  PictFormatDepth|
-																																			  PictFormatRedMask|
-																																			  PictFormatGreenMask|
-																																			  PictFormatBlueMask|
-																																			  PictFormatAlphaMask),
-																																			 &pf,
-																																			 0);
+                                                                       (PictFormatType|
+                                                                        PictFormatDepth|
+                                                                        PictFormatRedMask|
+                                                                        PictFormatGreenMask|
+                                                                        PictFormatBlueMask|
+                                                                        PictFormatAlphaMask),
+                                                                       &pf,
+                                                                       0);
                   XRenderPictFormat *root_format = XRenderFindVisualFormat (dpy, DefaultVisualOfScreen (ScreenOfDisplay (dpy, target->display->screen)));
                   XRenderPictureAttributes pa ;
 
@@ -956,7 +1008,7 @@ bgPixmap_t::make_transparency_pixmap ()
                   Picture overlay_pic = XRenderCreatePicture (dpy, overlay_pmap, solid_format, CPRepeat, &pa);
                   XFreePixmap (dpy, overlay_pmap);
 
-                  pa.component_alpha = True;              
+                  pa.component_alpha = True;
                   Pixmap mask_pmap = XCreatePixmap (dpy, root, 1, 1, 32);
                   Picture mask_pic = XRenderCreatePicture (dpy, mask_pmap, solid_format, CPRepeat|CPComponentAlpha, &pa);
                   XFreePixmap (dpy, mask_pmap);
@@ -982,7 +1034,7 @@ bgPixmap_t::make_transparency_pixmap ()
                   XRenderFreePicture (dpy, back_pic);
 #   if DO_TIMING_TEST
                   XSync (dpy, False);
-#   endif                  
+#   endif
 #  endif
                 }
              }
@@ -996,20 +1048,20 @@ bgPixmap_t::make_transparency_pixmap ()
       pmap_height = window_height;
       pmap_depth = root_depth;
     }
-      
+
   if (gc)
     XFreeGC (dpy, gc);
 
   TIMING_TEST_PRINT_RESULT (tp);
-    
-  return result;    
+
+  return result;
 }
 
 bool
 bgPixmap_t::set_root_pixmap ()
 {
   Pixmap new_root_pixmap = None;
-  
+
   new_root_pixmap = target->get_pixmap_property (XA_XROOTPMAP_ID);
   if (new_root_pixmap == None)
     new_root_pixmap = target->get_pixmap_property (XA_ESETROOT_PMAP_ID);
@@ -1102,8 +1154,8 @@ bgPixmap_t::render ()
 
 # elif !XFT /* our own client-side tinting */
 
-  /* ATTENTION: We ASSUME that XFT will let us do all the tinint neccessary server-side.
-	   This may need to be changed in need_client_seide_rendering() logic is altered !!! */
+  /* ATTENTION: We ASSUME that XFT will let us do all the tinting neccessary server-side.
+     This may need to be changed in need_client_side_rendering() logic is altered !!! */
 
   if (background_flags && (flags & isInvalid))
     {
@@ -1167,10 +1219,10 @@ bgPixmap_t::render ()
 
   TIMING_TEST_PRINT_RESULT (tp);
 
-  return true;      
+  return true;
 }
 
-bool 
+bool
 bgPixmap_t::set_target (rxvt_term *new_target)
 {
   if (new_target)
@@ -1227,7 +1279,7 @@ bgPixmap_t::apply()
               XSetWindowBackground (target->dpy, target->scrollBar.win, target->pix_colors[Color_border]);
 # endif
         }
-      /* don't want Expose on the parent or vt. It is better to use 
+      /* don't want Expose on the parent or vt. It is better to use
          scr_touch or we get a great deal of flicker otherwise: */
       XClearWindow (target->dpy, target->parent[0]);
 
@@ -1244,7 +1296,7 @@ bgPixmap_t::apply()
     }
 }
 
-#endif    /* HAVE_BG_PIXMAP */
+#endif /* HAVE_BG_PIXMAP */
 
 #if defined(ENABLE_TRANSPARENCY) && !defined(HAVE_AFTERIMAGE) && !XFT
 /* taken from aterm-0.4.2 */

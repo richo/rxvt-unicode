@@ -30,21 +30,20 @@ dummy:
 
 subdirs = src doc
 
+RECURSIVE_TARGETS = all allbin alldoc tags clean distclean realclean install
+
 #-------------------------------------------------------------------------
 
-all allbin alldoc tags:
-	@for I in ${subdirs}; do (cd $$I; ${MAKE} $@) || exit 1; done
+$(RECURSIVE_TARGETS):
+	@for I in $(subdirs); do (cd $$I; $(MAKE) $@) || exit 1; done
 
 distclean realclean: distclean-local
-
-clean distclean realclean:
-	@for I in ${subdirs}; do (cd $$I; ${MAKE} $@) || exit 1; done
 
 #
 # entry points for other programs
 #
 rxvt:
-	(cd src; ${MAKE})
+	(cd src; $(MAKE))
 
 #-------------------------------------------------------------------------
 configure: configure.ac aclocal.m4 config.h.in
@@ -56,9 +55,6 @@ config.status:
 
 config.h.in: configure.ac
 	cd $(srcdir); ./autogen.sh
-
-install:
-	@for I in $(subdirs); do (cd $$I; $(MAKE) DESTDIR=$(DESTDIR) $@) || exit 1; done
 
 check: all
 	echo "no tests"
@@ -77,7 +73,7 @@ distdir:
 	cd src && $(MAKE) depend
 	rm -rf $(VERNAME)
 	mkdir $(VERNAME)
-	rsync -aR `cat MANIFEST` $(VERNAME)/.
+	rsync -aR --copy-unsafe-links `cat MANIFEST` $(VERNAME)/.
 
 tar.gz: distdir
 	tar cvf - $(VERNAME) | gzip -vf9 > $(VERNAME).tar.gz

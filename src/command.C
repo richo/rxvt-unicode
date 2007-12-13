@@ -551,6 +551,36 @@ rxvt_term::key_press (XKeyEvent &ev)
             {
               bool kp = priv_modes & PrivMode_aplKP ? !shft : shft;
               newlen = 1;
+#ifdef XK_KP_Home
+              static const KeySym keypadtrans[] = {
+                XK_KP_7, // XK_KP_Home
+                XK_KP_4, // XK_KP_Left
+                XK_KP_8, // XK_KP_Up
+                XK_KP_6, // XK_KP_Right
+                XK_KP_2, // XK_KP_Down
+#ifndef UNSHIFTED_SCROLLKEYS
+                XK_KP_9, // XK_KP_Prior
+                XK_KP_3, // XK_KP_Next
+#else
+                XK_Prior,
+                XK_Next,
+#endif
+                XK_KP_1, // XK_KP_End
+                XK_KP_5, // XK_KP_Begin
+              };
+
+              if (IN_RANGE_INC (keysym, XK_KP_Home, XK_KP_Begin))
+                {
+                  unsigned int index = keysym - XK_KP_Home;
+                  keysym = kp ? keypadtrans[index] : XK_Home + index;
+                }
+              else if (keysym == XK_KP_Insert)
+                keysym = kp ? XK_KP_0 : XK_Insert;
+#ifndef NO_DELETE_KEY
+              else if (keysym == XK_KP_Delete)
+                keysym = kp ? XK_KP_Decimal : XK_Delete;
+#endif
+#endif
               switch (keysym)
                 {
 #ifndef NO_BACKSPACE_KEY
@@ -566,16 +596,6 @@ rxvt_term::key_press (XKeyEvent &ev)
                     break;
 #endif
 #ifndef NO_DELETE_KEY
-# ifdef XK_KP_Delete
-                  case XK_KP_Delete:
-                    /* allow shift to override */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033On");
-                        break;
-                      }
-                    /* FALLTHROUGH */
-# endif
                   case XK_Delete:
                     strcpy (kbuf, rs[Rs_delete_key]);
                     break;
@@ -597,22 +617,6 @@ rxvt_term::key_press (XKeyEvent &ev)
                       }
                     break;
 
-#ifdef XK_KP_Left
-                  case XK_KP_Up:	/* \033Ox or standard */
-                  case XK_KP_Down:	/* \033Or or standard */
-                  case XK_KP_Right:	/* \033Ov or standard */
-                  case XK_KP_Left:	/* \033Ot or standard */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033OZ");
-                        kbuf[2] = "txvr"[keysym - XK_KP_Left];
-                        break;
-                      }
-                    else
-                      /* translate to std. cursor key */
-                      keysym = XK_Left + (keysym - XK_KP_Left);
-                    /* FALLTHROUGH */
-#endif
                   case XK_Up:	/* "\033[A" */
                   case XK_Down:	/* "\033[B" */
                   case XK_Right:	/* "\033[C" */
@@ -632,29 +636,9 @@ rxvt_term::key_press (XKeyEvent &ev)
                     break;
 
 #ifndef UNSHIFTED_SCROLLKEYS
-# ifdef XK_KP_Prior
-                  case XK_KP_Prior:
-                    /* allow shift to override */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033Oy");
-                        break;
-                      }
-                    /* FALLTHROUGH */
-# endif
                   case XK_Prior:
                     strcpy (kbuf, "\033[5~");
                     break;
-# ifdef XK_KP_Next
-                  case XK_KP_Next:
-                    /* allow shift to override */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033Os");
-                        break;
-                      }
-                    /* FALLTHROUGH */
-# endif
                   case XK_Next:
                     strcpy (kbuf, "\033[6~");
                     break;
@@ -683,12 +667,6 @@ rxvt_term::key_press (XKeyEvent &ev)
                       }
                     break;
 
-#ifdef XK_KP_Begin
-                  case XK_KP_Begin:
-                    strcpy (kbuf, "\033Ou");
-                    break;
-
-#endif
                   case XK_KP_F1:	/* "\033OP" */
                   case XK_KP_F2:	/* "\033OQ" */
                   case XK_KP_F3:	/* "\033OR" */
@@ -730,16 +708,6 @@ rxvt_term::key_press (XKeyEvent &ev)
                     strcpy (kbuf, "\033[1~");
                     break;
 
-#ifdef XK_KP_Insert
-                  case XK_KP_Insert:
-                    /* allow shift to override */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033Op");
-                        break;
-                      }
-                    /* FALLTHROUGH */
-#endif
                   case XK_Insert:
                     strcpy (kbuf, "\033[2~");
                     break;
@@ -753,29 +721,9 @@ rxvt_term::key_press (XKeyEvent &ev)
                   case XK_Select:
                     strcpy (kbuf, "\033[4~");
                     break;
-#ifdef XK_KP_End
-                  case XK_KP_End:
-                    /* allow shift to override */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033Oq");
-                        break;
-                      }
-                    /* FALLTHROUGH */
-#endif
                   case XK_End:
                     strcpy (kbuf, KS_END);
                     break;
-#ifdef XK_KP_Home
-                  case XK_KP_Home:
-                    /* allow shift to override */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033Ow");
-                        break;
-                      }
-                    /* FALLTHROUGH */
-#endif
                   case XK_Home:
                     strcpy (kbuf, KS_HOME);
                     break;
@@ -1036,8 +984,8 @@ void
 rxvt_term::flush ()
 {
   flush_ev.stop ();
-  
-#ifdef HAVE_BG_PIXMAP  
+
+#ifdef HAVE_BG_PIXMAP
   if (bgPixmap.check_clearChanged ())
     {
 //      scr_clear (true); This needs to be researched further!
@@ -1096,18 +1044,18 @@ rxvt_term::flush ()
 }
 
 void
-rxvt_term::check_cb (check_watcher &w)
+rxvt_term::prepare_cb (ev::prepare &w, int revents)
 {
   make_current ();
 
   display->flush ();
 
   if (want_refresh && !flush_ev.active)
-    flush_ev.start (NOW + 1. / 60.); // refresh at max. 60 hz normally
+    flush_ev.start (1. / 60.); // refresh at max. 60 Hz normally
 }
 
 void
-rxvt_term::flush_cb (time_watcher &w)
+rxvt_term::flush_cb (ev::timer &w, int revents)
 {
   make_current ();
 
@@ -1117,57 +1065,54 @@ rxvt_term::flush_cb (time_watcher &w)
 
 #ifdef CURSOR_BLINK
 void
-rxvt_term::cursor_blink_cb (time_watcher &w)
+rxvt_term::cursor_blink_cb (ev::timer &w, int revents)
 {
   hidden_cursor = !hidden_cursor;
   want_refresh = 1;
-
-  w.start (w.at + CURSOR_BLINK_INTERVAL);
 }
 #endif
 
 #ifdef TEXT_BLINK
 void
-rxvt_term::text_blink_cb (time_watcher &w)
+rxvt_term::text_blink_cb (ev::timer &w, int revents)
 {
   if (scr_refresh_rend (RS_Blink, RS_Blink))
     {
       hidden_text = !hidden_text;
       want_refresh = 1;
-      w.start (w.at + TEXT_BLINK_INTERVAL);
     }
 }
 #endif
 
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
 void
-rxvt_term::cont_scroll_cb (time_watcher &w)
+rxvt_term::cont_scroll_cb (ev::timer &w, int revents)
 {
   if ((scrollbar_isUp() || scrollbar_isDn()) &&
       scr_page (scrollbar_isUp() ? UP : DN, 1))
-    {
-      want_refresh = 1;
-      w.start (w.at + SCROLLBAR_CONTINUOUS_DELAY);
-    }
+    want_refresh = 1;
+  else
+    w.stop ();
 }
 #endif
 
 #ifdef SELECTION_SCROLLING
 void
-rxvt_term::sel_scroll_cb (time_watcher &w)
+rxvt_term::sel_scroll_cb (ev::timer &w, int revents)
 {
   if (scr_page (scroll_selection_dir, scroll_selection_lines))
     {
       selection_extend (selection_save_x, selection_save_y, selection_save_state);
       want_refresh = 1;
-      w.start (w.at + SCROLLBAR_CONTINUOUS_DELAY);
     }
+  else
+    w.stop ();
 }
 #endif
 
 #if defined(MOUSE_WHEEL) && defined(MOUSE_SLIP_WHEELING)
 void
-rxvt_term::slip_wheel_cb (time_watcher &w)
+rxvt_term::slip_wheel_cb (ev::timer &w, int revents)
 {
   if (mouse_slip_wheel_speed == 0
       || mouse_slip_wheel_speed < 0 ? scr_page (DN, -mouse_slip_wheel_speed)
@@ -1177,17 +1122,18 @@ rxvt_term::slip_wheel_cb (time_watcher &w)
         mouse_slip_wheel_speed = 0;
 
       want_refresh = 1;
-      w.start (w.at + SCROLLBAR_CONTINUOUS_DELAY);
     }
+  else
+    w.stop ();
 }
 #endif
 
 #if LINUX_YIELD_HACK
 static struct event_handler
 {
-  check_watcher yield_ev;
+  ev::prepare yield_ev;
 
-  void yield_cb (check_watcher &w)
+  void yield_cb (ev::prepare &w, int revents)
   {
     // this should really be sched_yield(), but the linux guys thought
     // that giving a process calling sched_yield () less cpu time than
@@ -1248,17 +1194,17 @@ rxvt_term::pty_fill ()
 }
 
 void
-rxvt_term::pty_cb (io_watcher &w, short revents)
+rxvt_term::pty_cb (ev::io &w, int revents)
 {
   make_current ();
 
-  if (revents & EVENT_READ)
+  if (revents & ev::READ)
     // loop, but don't allow a single term to monopolize us
     while (pty_fill ())
       if (cmd_parse ())
         break;
 
-  if (revents & EVENT_WRITE)
+  if (revents & ev::WRITE)
     pty_write ();
 }
 
@@ -1272,7 +1218,7 @@ rxvt_term::pointer_unblank ()
   hidden_pointer = 0;
 
   if (option (Opt_pointerBlank))
-    pointer_ev.start (NOW + pointerBlankDelay);
+    pointer_ev.start (pointerBlankDelay);
 #endif
 }
 
@@ -1290,7 +1236,7 @@ rxvt_term::pointer_blank ()
 }
 
 void
-rxvt_term::pointer_cb (time_watcher &w)
+rxvt_term::pointer_cb (ev::timer &w, int revents)
 {
   make_current ();
 
@@ -1307,13 +1253,14 @@ rxvt_term::mouse_report (XButtonEvent &ev)
 
   x = Pixel2Col (ev.x);
   y = Pixel2Row (ev.y);
-  if (ev.type == MotionNotify) {
-    if (x == mouse_row && y == mouse_col)
-      return;
-    mouse_row = x;
-    mouse_col = y;
-    code += 32;
-  }
+  if (ev.type == MotionNotify)
+    {
+      if (x == mouse_row && y == mouse_col)
+        return;
+      mouse_row = x;
+      mouse_col = y;
+      code += 32;
+    }
 
   if (MEvent.button == AnyButton)
     button_number = 3;
@@ -1531,7 +1478,7 @@ rxvt_term::x_cb (XEvent &ev)
       case MapNotify:
         mapped = 1;
 #ifdef TEXT_BLINK
-        text_blink_ev.start (NOW + TEXT_BLINK_INTERVAL);
+        text_blink_ev.start (TEXT_BLINK_INTERVAL);
 #endif
         HOOK_INVOKE ((this, HOOK_MAP_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
@@ -1633,7 +1580,7 @@ rxvt_term::x_cb (XEvent &ev)
                          * already in the middle of scrolling.
                          */
                         if (!sel_scroll_ev.active)
-                          sel_scroll_ev.start (NOW + SCROLLBAR_INITIAL_DELAY);
+                          sel_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
 
                         /* save the event params so we can highlight
                          * the selection in the pending-scroll loop
@@ -1702,7 +1649,7 @@ rxvt_term::x_cb (XEvent &ev)
           want_refresh = 1;
         }
 
-      cursor_blink_ev.start (NOW + CURSOR_BLINK_INTERVAL);
+      cursor_blink_ev.again ();
     }
 #endif
 
@@ -1740,7 +1687,7 @@ rxvt_term::focus_in ()
 #endif
 #if CURSOR_BLINK
       if (option (Opt_cursorBlink))
-        cursor_blink_ev.start (NOW + CURSOR_BLINK_INTERVAL);
+        cursor_blink_ev.start (CURSOR_BLINK_INTERVAL, CURSOR_BLINK_INTERVAL);
 #endif
 #if OFF_FOCUS_FADING
       if (rs[Rs_fade])
@@ -1788,6 +1735,7 @@ rxvt_term::focus_out ()
 #if CURSOR_BLINK
       if (option (Opt_cursorBlink))
         cursor_blink_ev.stop ();
+
       hidden_cursor = 0;
 #endif
 #if OFF_FOCUS_FADING
@@ -1904,7 +1852,7 @@ rxvt_term::button_press (XButtonEvent &ev)
 #else
           MEvent.button = ev.button;
           mouse_report (ev);
-#endif				/* MOUSE_REPORT_DOUBLECLICK */
+#endif /* MOUSE_REPORT_DOUBLECLICK */
 
         }
       else
@@ -2008,7 +1956,7 @@ rxvt_term::button_press (XButtonEvent &ev)
               }
         }
       else
-#endif				/* NO_SCROLLBAR_REPORT */
+#endif /* NO_SCROLLBAR_REPORT */
 
         {
           char            upordown = 0;
@@ -2030,7 +1978,7 @@ rxvt_term::button_press (XButtonEvent &ev)
           if (upordown)
             {
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-              cont_scroll_ev.start (NOW + SCROLLBAR_INITIAL_DELAY);
+              cont_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
 #endif
               if (scr_page (upordown < 0 ? UP : DN, 1))
                 {
@@ -2155,7 +2103,7 @@ rxvt_term::button_release (XButtonEvent &ev)
 #else				/* MOUSE_REPORT_DOUBLECLICK */
           MEvent.button = AnyButton;
           mouse_report (ev);
-#endif				/* MOUSE_REPORT_DOUBLECLICK */
+#endif /* MOUSE_REPORT_DOUBLECLICK */
           return;
         }
 
@@ -2203,10 +2151,7 @@ rxvt_term::button_release (XButtonEvent &ev)
                   if (mouse_slip_wheel_speed < -nrow) mouse_slip_wheel_speed = -nrow;
                   if (mouse_slip_wheel_speed > +nrow) mouse_slip_wheel_speed = +nrow;
 
-                  if (slip_wheel_ev.at < NOW)
-                    slip_wheel_ev.at = NOW + SCROLLBAR_CONTINUOUS_DELAY;
-
-                  slip_wheel_ev.start ();
+                  slip_wheel_ev.start (SCROLLBAR_CONTINUOUS_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
                 }
               else
                 {
@@ -2284,7 +2229,7 @@ rxvt_term::cmd_parse ()
                     {
                       refresh_count = 0;
 
-                      if (!option (Opt_skipScroll) || io_manager::now () > NOW + 1. / 60.)
+                      if (!option (Opt_skipScroll) || ev_time () > ev::now () + 1. / 60.)
                         {
                           refreshnow = true;
                           ch = NOCHAR;
@@ -2505,7 +2450,7 @@ rxvt_term::process_print_pipe ()
 
   pclose_printer (fd);
 }
-#endif				/* PRINTPIPE */
+#endif /* PRINTPIPE */
 /*}}} */
 
 /* *INDENT-OFF* */
@@ -3755,11 +3700,13 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
 #endif
             case 1002:
             case 1003:
-              if (state) {
-                priv_modes &= ~(PrivMode_MouseX10|PrivMode_MouseX11);
-                priv_modes &= arg[i] == 1003 ? ~PrivMode_MouseBtnEvent : ~PrivMode_MouseAnyEvent;
-                vt_emask_mouse = PointerMotionMask;
-              } else
+              if (state)
+                {
+                  priv_modes &= ~(PrivMode_MouseX10|PrivMode_MouseX11);
+                  priv_modes &= arg[i] == 1003 ? ~PrivMode_MouseBtnEvent : ~PrivMode_MouseAnyEvent;
+                  vt_emask_mouse = PointerMotionMask;
+                }
+              else
                 vt_emask_mouse = NoEventMask;
               vt_select_input ();
               break;
@@ -4009,7 +3956,7 @@ rxvt_term::tt_write (const char *data, unsigned int len)
   memcpy (v_buffer + v_buflen, data, len);
   v_buflen += len;
 
-  pty_ev.set (EVENT_READ | EVENT_WRITE);
+  pty_ev.set (ev::READ | ev::WRITE);
 }
 
 void rxvt_term::pty_write ()
@@ -4025,14 +3972,14 @@ void rxvt_term::pty_write ()
           free (v_buffer);
           v_buffer = 0;
 
-          pty_ev.set (EVENT_READ);
+          pty_ev.set (ev::READ);
           return;
         }
 
       memmove (v_buffer, v_buffer + written, v_buflen);
     }
   else if (written != -1 || (errno != EAGAIN && errno != EINTR))
-    pty_ev.set (EVENT_READ);
+    pty_ev.set (ev::READ);
 }
 
 /*----------------------- end-of-file (C source) -----------------------*/

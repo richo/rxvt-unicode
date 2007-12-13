@@ -1,3 +1,16 @@
+rxvt-unicode (8.7-1) unstable; urgency=low
+
+  * New upstream release (Closes: #455541)
+    - libafterimage now used for pixmap support (Closes: #448663)
+    - Merges man-typos.patch, popup-https.patch, sensible-browser.patch
+  * All flavors but -lite will depend on libafterimage, but XIM and
+    ISO14775 are now only in -ml so as not to bother users who don't want
+    them. (Closes: #393847)
+  * Fix groff copypasta in select-quoted.patch
+  * Don't install rxvt.1.gz as a slave alternative twice (Closes: #412062)
+
+ -- Decklin Foster <decklin@red-bean.com>  Wed, 12 Dec 2007 19:45:22 -0500
+
 rxvt-unicode (8.4-1) unstable; urgency=low
 
   * New upstream release
