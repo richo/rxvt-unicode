@@ -1,46 +1,106 @@
 #ifndef EVPP_H__
 #define EVPP_H__
 
-#include "ev.h"
+#ifdef EV_H
+# include EV_H
+#else
+# include <ev.h>
+#endif
 
 namespace ev {
 
-  template<class watcher>
-  class callback
+  template<class ev_watcher, class watcher>
+  struct base : ev_watcher
   {
-    struct object { };
+    #if EV_MULTIPLICITY
+      EV_P;
 
-    void *obj;
-    void (object::*meth)(watcher &, int);
-
-    /* a proxy is a kind of recipe on how to call a specific class method */
-    struct proxy_base {
-      virtual void call (void *obj, void (object::*meth)(watcher &, int), watcher &w, int) const = 0;
-    };
-    template<class O1, class O2>
-    struct proxy : proxy_base {
-      virtual void call (void *obj, void (object::*meth)(watcher &, int), watcher &w, int e) const
+      void set (EV_P)
       {
-        ((reinterpret_cast<O1 *>(obj)) ->* (reinterpret_cast<void (O2::*)(watcher &, int)>(meth)))
-          (w, e);
+        this->EV_A = EV_A;
       }
-    };
+    #endif
 
-    proxy_base *prxy;
-
-  public:
-    template<class O1, class O2>
-    explicit callback (O1 *object, void (O2::*method)(watcher &, int))
+    base ()
     {
-      static proxy<O1,O2> p;
-      obj  = reinterpret_cast<void *>(object);
-      meth = reinterpret_cast<void (object::*)(watcher &, int)>(method);
-      prxy = &p;
+      ev_init (this, 0);
     }
 
-    void call (watcher *w, int e) const
+    void set_ (void *data, void (*cb)(EV_P_ ev_watcher *w, int revents))
     {
-      return prxy->call (obj, meth, *w, e);
+      this->data = data;
+      ev_set_cb (static_cast<ev_watcher *>(this), cb);
+    }
+
+    // method callback
+    template<class K, void (K::*method)(watcher &w, int)>
+    void set (K *object)
+    {
+      set_ (object, method_thunk<K, method>);
+    }
+
+    template<class K, void (K::*method)(watcher &w, int)>
+    static void method_thunk (EV_P_ ev_watcher *w, int revents)
+    {
+      K *obj = static_cast<K *>(w->data);
+      (obj->*method) (*static_cast<watcher *>(w), revents);
+    }
+
+    // const method callback
+    template<class K, void (K::*method)(watcher &w, int) const>
+    void set (const K *object)
+    {
+      set_ (object, const_method_thunk<K, method>);
+    }
+
+    template<class K, void (K::*method)(watcher &w, int) const>
+    static void const_method_thunk (EV_P_ ev_watcher *w, int revents)
+    {
+      K *obj = static_cast<K *>(w->data);
+      (static_cast<K *>(w->data)->*method) (*static_cast<watcher *>(w), revents);
+    }
+
+    // function callback
+    template<void (*function)(watcher &w, int)>
+    void set (void *data = 0)
+    {
+      set_ (data, function_thunk<function>);
+    }
+
+    template<void (*function)(watcher &w, int)>
+    static void function_thunk (EV_P_ ev_watcher *w, int revents)
+    {
+      function (*static_cast<watcher *>(w), revents);
+    }
+
+    // simple callback
+    template<class K, void (K::*method)()>
+    void set (K *object)
+    {
+      set_ (object, method_noargs_thunk<K, method>);
+    }
+
+    template<class K, void (K::*method)()>
+    static void method_noargs_thunk (EV_P_ ev_watcher *w, int revents)
+    {
+      K *obj = static_cast<K *>(w->data);
+      (obj->*method) ();
+    }
+
+    void operator ()(int events = EV_UNDEF)
+    {
+      return ev_cb (static_cast<ev_watcher *>(this))
+        (static_cast<ev_watcher *>(this), events);
+    }
+
+    bool is_active () const
+    {
+      return ev_is_active (static_cast<const ev_watcher *>(this));
+    }
+
+    bool is_pending () const
+    {
+      return ev_is_pending (static_cast<const ev_watcher *>(this));
     }
   };
 
@@ -52,10 +112,13 @@ namespace ev {
     TIMEOUT  = EV_TIMEOUT,
     PERIODIC = EV_PERIODIC,
     SIGNAL   = EV_SIGNAL,
+    CHILD    = EV_CHILD,
+    STAT     = EV_STAT,
     IDLE     = EV_IDLE,
     CHECK    = EV_CHECK,
     PREPARE  = EV_PREPARE,
-    CHILD    = EV_CHILD,
+    FORK     = EV_FORK,
+    EMBED    = EV_EMBED,
     ERROR    = EV_ERROR,
   };
 
@@ -67,49 +130,24 @@ namespace ev {
   }
 
   #if EV_MULTIPLICITY
-
-    #define EV_CONSTRUCT(cppstem)							\
-      EV_P;                                                                             \
-                                                                                        \
-      void set (EV_P)                                                                   \
+    #define EV_CONSTRUCT                                                                \
+      (EV_P = EV_DEFAULT)                                                               \
       {                                                                                 \
-        this->EV_A = EV_A;                                                              \
-      }                                                                                 \
-                                                                                        \
-      template<class O1, class O2>                                                      \
-      explicit cppstem (O1 *object, void (O2::*method)(cppstem &, int), EV_P = ev_default_loop (0)) \
-      : callback<cppstem> (object, method), EV_A (EV_A)
-
+        set (EV_A);                                                                     \
+      }
   #else
-
-    #define EV_CONSTRUCT(cppstem)							\
-      template<class O1, class O2>							\
-      explicit cppstem (O1 *object, void (O2::*method)(cppstem &, int))                 \
-      : callback<cppstem> (object, method)
-
+    #define EV_CONSTRUCT                                                                \
+      ()                                                                                \
+      {                                                                                 \
+      }
   #endif
 
   /* using a template here would require quite a bit more lines,
    * so a macro solution was chosen */
   #define EV_BEGIN_WATCHER(cppstem,cstem)	                                        \
                                                                                         \
-  struct cppstem : ev_ ## cstem, callback<cppstem>                                      \
+  struct cppstem : base<ev_ ## cstem, cppstem>                                          \
   {                                                                                     \
-    EV_CONSTRUCT (cppstem)                                                              \
-    {                                                                                   \
-      ev_init (static_cast<ev_ ## cstem *>(this), thunk);                               \
-    }                                                                                   \
-                                                                                        \
-    bool is_active () const                                                             \
-    {                                                                                   \
-      return ev_is_active (static_cast<const ev_ ## cstem *>(this));                    \
-    }                                                                                   \
-                                                                                        \
-    bool is_pending () const                                                            \
-    {                                                                                   \
-      return ev_is_pending (static_cast<const ev_ ## cstem *>(this));                   \
-    }                                                                                   \
-                                                                                        \
     void start ()                                                                       \
     {                                                                                   \
       ev_ ## cstem ## _start (EV_A_ static_cast<ev_ ## cstem *>(this));                 \
@@ -120,28 +158,21 @@ namespace ev {
       ev_ ## cstem ## _stop (EV_A_ static_cast<ev_ ## cstem *>(this));                  \
     }                                                                                   \
                                                                                         \
-    void operator ()(int events = EV_UNDEF)                                             \
-    {                                                                                   \
-      return call (this, events);                                                       \
-    }                                                                                   \
+    cppstem EV_CONSTRUCT                                                                \
                                                                                         \
     ~cppstem ()                                                                         \
     {                                                                                   \
       stop ();                                                                          \
     }                                                                                   \
                                                                                         \
+    using base<ev_ ## cstem, cppstem>::set;                                             \
+                                                                                        \
   private:                                                                              \
                                                                                         \
     cppstem (const cppstem &o)								\
-    : callback<cppstem> (this, (void (cppstem::*)(cppstem &, int))0)                    \
     { /* disabled */ }                                        				\
                                                                                         \
     void operator =(const cppstem &o) { /* disabled */ }                                \
-                                                                                        \
-    static void thunk (EV_P_ struct ev_ ## cstem *w, int revents)                       \
-    {                                                                                   \
-      (*static_cast<cppstem *>(w))(revents);                                            \
-    }                                                                                   \
                                                                                         \
   public:
 
@@ -193,7 +224,7 @@ namespace ev {
     }
   EV_END_WATCHER (timer, timer)
 
-  #if EV_PERIODICS
+  #if EV_PERIODIC_ENABLE
   EV_BEGIN_WATCHER (periodic, periodic)
     void set (ev_tstamp at, ev_tstamp interval = 0.)
     {
@@ -215,18 +246,6 @@ namespace ev {
     }
   EV_END_WATCHER (periodic, periodic)
   #endif
-
-  EV_BEGIN_WATCHER (idle, idle)
-    void set () { }
-  EV_END_WATCHER (idle, idle)
-
-  EV_BEGIN_WATCHER (prepare, prepare)
-    void set () { }
-  EV_END_WATCHER (prepare, prepare)
-
-  EV_BEGIN_WATCHER (check, check)
-    void set () { }
-  EV_END_WATCHER (check, check)
 
   EV_BEGIN_WATCHER (sig, signal)
     void set (int signum)
@@ -260,20 +279,48 @@ namespace ev {
     }
   EV_END_WATCHER (child, child)
 
-  #if EV_MULTIPLICITY
-
-  EV_BEGIN_WATCHER (embed, embed)
-    void set (struct ev_loop *loop)
+  #if EV_STAT_ENABLE
+  EV_BEGIN_WATCHER (stat, stat)
+    void set (const char *path, ev_tstamp interval = 0.)
     {
       int active = is_active ();
       if (active) stop ();
-      ev_embed_set (static_cast<ev_embed *>(this), loop);
+      ev_stat_set (static_cast<ev_stat *>(this), path, interval);
       if (active) start ();
     }
 
+    void start (const char *path, ev_tstamp interval = 0.)
+    {
+      stop ();
+      set (path, interval);
+      start ();
+    }
+
+    void update ()
+    {
+      ev_stat_stat (EV_A_ static_cast<ev_stat *>(this));
+    }
+  EV_END_WATCHER (stat, stat)
+  #endif
+
+  EV_BEGIN_WATCHER (idle, idle)
+    void set () { }
+  EV_END_WATCHER (idle, idle)
+
+  EV_BEGIN_WATCHER (prepare, prepare)
+    void set () { }
+  EV_END_WATCHER (prepare, prepare)
+
+  EV_BEGIN_WATCHER (check, check)
+    void set () { }
+  EV_END_WATCHER (check, check)
+
+  #if EV_EMBED_ENABLE
+  EV_BEGIN_WATCHER (embed, embed)
     void start (struct ev_loop *embedded_loop)
     {
-      set (embedded_loop);
+      stop ();
+      ev_embed_set (static_cast<ev_embed *>(this), embedded_loop);
       start ();
     }
 
@@ -282,7 +329,12 @@ namespace ev {
       ev_embed_sweep (EV_A_ static_cast<ev_embed *>(this));
     }
   EV_END_WATCHER (embed, embed)
+  #endif
 
+  #if EV_FORK_ENABLE
+  EV_BEGIN_WATCHER (fork, fork)
+    void set () { }
+  EV_END_WATCHER (fork, fork)
   #endif
 
   #undef EV_CONSTRUCT

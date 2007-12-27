@@ -113,10 +113,10 @@ optList[] = {
               BOOL (Rs_transparent, "inheritPixmap", "ip", Opt_transparent, 0, "inherit parent pixmap"),
               BOOL (Rs_transparent, "transparent", "tr", Opt_transparent, 0, "inherit parent pixmap"),
               STRG (Rs_color + Color_tint, "tintColor", "tint", "color", "tint color"),
-              STRG (Rs_shade, "shading", "sh", "%", "shade background by x %."),
+              STRG (Rs_shade, "shading", "sh", "number", "shade background by number %."),
 #endif
 #if OFF_FOCUS_FADING
-              STRG (Rs_fade, "fading", "fade", "%", "fade colors x% percent when rxvt-unicode is losing focus"),
+              STRG (Rs_fade, "fading", "fade", "number", "fade colors by number % when losing focus"),
               STRG (Rs_color + Color_fade, "fadeColor", "fadecolor", "color", "target color for off-focus fading"),
 #endif
               BOOL (Rs_utmpInhibit, "utmpInhibit", "ut", Opt_utmpInhibit, 0, "utmp inhibit"),
@@ -241,7 +241,6 @@ optList[] = {
 #ifndef NO_DELETE_KEY
               RSTRG (Rs_delete_key, "deletekey", "string"),
 #endif
-              RSTRG (Rs_selectstyle, "selectstyle", "mode"),
 #ifdef PRINTPIPE
               RSTRG (Rs_print_pipe, "print-pipe", "string"),
 #endif
@@ -427,7 +426,8 @@ rxvt_usage (int type)
               len += 4 + strlen (optList[i].opt) + (optList_isBool (i) ? 2: 0);
               col += len;
               if (col > 79)
-                {	/* assume regular width */
+                {
+                  /* assume regular width */
                   rxvt_log ("\n");
                   col = 1 + len;
                 }
@@ -555,7 +555,8 @@ rxvt_term::get_options (int argc, const char *const *argv)
                 }
             }
           else
-            {		/* boolean value */
+            {
+              /* boolean value */
               set_option (optList[entry].index, flag == resval_on);
 
               if (optList[entry].doff != -1)

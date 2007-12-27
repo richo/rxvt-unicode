@@ -1,13 +1,13 @@
-Index: rxvt-unicode-8.7/src/rxvttoolkit.C
+Index: rxvt-unicode-8.9/src/rxvttoolkit.C
 ===================================================================
---- rxvt-unicode-8.7.orig/src/rxvttoolkit.C	2007-12-12 20:52:06.000000000 -0500
-+++ rxvt-unicode-8.7/src/rxvttoolkit.C	2007-12-12 20:52:08.000000000 -0500
-@@ -320,13 +320,15 @@
+--- rxvt-unicode-8.9.orig/src/rxvttoolkit.C	2007-12-24 03:02:12.000000000 -0500
++++ rxvt-unicode-8.9/src/rxvttoolkit.C	2007-12-26 20:07:07.000000000 -0500
+@@ -321,13 +321,15 @@
    // 6. System wide per application default file.
  
    /* Add in $XAPPLRESDIR/Rxvt only; not bothering with XUSERFILESEARCHPATH */
--  if ((xe = (char *)getenv ("XAPPLRESDIR")))
-+  if (!(xe = (char *)getenv ("XAPPLRESDIR")))
+-  if ((xe = getenv ("XAPPLRESDIR")))
++  if (!(xe = getenv ("XAPPLRESDIR")))
      {
 -      snprintf (fname, sizeof (fname), "%s/%s", xe, RESCLASS);
 -

@@ -3,7 +3,7 @@
  *---------------------------------------------------------------------------*
  *
  * Copyright (c) 1997-2001 Geoff Wing <gcw@pobox.com>
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -598,14 +598,14 @@ rxvt_term::scr_color (unsigned int color, int fgbg) NOTHROW
  */
 void
 rxvt_term::scr_rendition (int set, int style) NOTHROW
-  {
-    if (set)
-      rstyle |= style;
-    else if (style == ~RS_None)
-      rstyle = DEFAULT_RSTYLE;
-    else
-      rstyle &= ~style;
-  }
+{
+  if (set)
+    rstyle |= style;
+  else if (style == ~RS_None)
+    rstyle = DEFAULT_RSTYLE;
+  else
+    rstyle &= ~style;
+}
 
 /* ------------------------------------------------------------------------- */
 /*
@@ -1188,7 +1188,8 @@ rxvt_term::scr_gotorc (int row, int col, int relative) NOTHROW
   else
     {
       if (screen.flags & Screen_Relative)
-        {        /* relative origin mode */
+        {
+          /* relative origin mode */
           screen.cur.row = row + screen.tscroll;
           min_it (screen.cur.row, screen.bscroll);
         }
@@ -1474,7 +1475,8 @@ rxvt_term::scr_insdel_chars (int count, int insdel) NOTHROW
                 || (selection.end.col + count >= ncol))
               CLEAR_SELECTION ();
             else
-              {              /* shift selection */
+              {
+                /* shift selection */
                 selection.beg.col  += count;
                 selection.mark.col += count; /* XXX: yes? */
                 selection.end.col  += count;
@@ -1872,6 +1874,7 @@ rxvt_term::bell_cb (ev::timer &w, int revents)
 {
   rvideo_bell = false;
   scr_rvideo_mode (rvideo_mode);
+  refresh_check ();
 }
 #endif
 
@@ -1903,7 +1906,7 @@ rxvt_term::scr_bell () NOTHROW
     {
       rvideo_bell = true;
       scr_rvideo_mode (rvideo_mode);
-      display->flush ();
+      flush ();
 
       bell_ev.start (VISUAL_BELL_DURATION);
     }
@@ -2263,8 +2266,7 @@ rxvt_term::scr_refresh () NOTHROW
               bool invert = rend & RS_RVid;
 
 #ifndef NO_BOLD_UNDERLINE_REVERSE
-              if (rend & RS_Bold
-                  && fore == Color_fg)
+              if (rend & RS_Bold && fore == Color_fg)
                 {
                   if (ISSET_PIXCOLOR (Color_BD))
                     fore = Color_BD;
@@ -2274,8 +2276,7 @@ rxvt_term::scr_refresh () NOTHROW
 # endif
                 }
 
-              if (rend & RS_Italic
-                  && fore == Color_fg)
+              if (rend & RS_Italic && fore == Color_fg)
                 {
                   if (ISSET_PIXCOLOR (Color_IT))
                     fore = Color_IT;
@@ -2319,9 +2320,9 @@ rxvt_term::scr_refresh () NOTHROW
 #ifdef TEXT_BLINK
               if (rend & RS_Blink && (back == Color_bg || fore == Color_bg))
                 {
-                  if (!text_blink_ev.active)
+                  if (!text_blink_ev.is_active ())
                     {
-                      text_blink_ev.start (TEXT_BLINK_INTERVAL, TEXT_BLINK_INTERVAL);
+                      text_blink_ev.again ();
                       hidden_text = 0;
                     }
                   else if (hidden_text)
@@ -2475,9 +2476,11 @@ rxvt_term::scr_recolour () NOTHROW
 #ifdef HAVE_BG_PIXMAP
   bgPixmap.apply ();
 #else
+
   XSetWindowBackground (dpy, parent[0], pix_colors[Color_border]);
   XClearWindow (dpy, parent[0]);
   XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
+
 # if HAVE_SCROLLBARS
   if (scrollBar.win)
    {
@@ -2486,11 +2489,12 @@ rxvt_term::scr_recolour () NOTHROW
      scrollbar_show (0);
    }
 # endif
+
   scr_clear ();
   scr_touch (true);
   want_refresh = 1;
-#endif
 
+#endif
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2854,7 +2858,8 @@ void
 rxvt_term::selection_request (Time tm, int selnum) NOTHROW
 {
   if (selection.text && selnum == Sel_Primary)
-    { /* internal selection */
+    {
+      /* internal selection */
       char *str = rxvt_wcstombs (selection.text, selection.len);
       paste (str, strlen (str));
       free (str);
@@ -3132,7 +3137,8 @@ rxvt_term::selection_start_colrow (int col, int row) NOTHROW
     --selection.mark.col;
 
   if (selection.op)
-    {      /* clear the old selection */
+    {
+      /* clear the old selection */
       selection.beg.row = selection.end.row = selection.mark.row;
       selection.beg.col = selection.end.col = selection.mark.col;
     }
@@ -3331,7 +3337,8 @@ rxvt_term::selection_extend_colrow (int32_t col, int32_t row, int button3, int b
    *     time of the most recent button3 press
    */
   if (button3 && buttonpress)
-    { /* button3 press */
+    {
+      /* button3 press */
       /*
        * first determine which edge of the selection we are closest to
        */
@@ -3359,7 +3366,8 @@ rxvt_term::selection_extend_colrow (int32_t col, int32_t row, int button3, int b
         }
     }
   else
-    { /* button1 drag or button3 drag */
+    {
+      /* button1 drag or button3 drag */
       if (ROWCOL_IS_AFTER (selection.mark, pos))
         {
           if (selection.mark.row == selection.end.row
@@ -3450,7 +3458,8 @@ rxvt_term::selection_extend_colrow (int32_t col, int32_t row, int button3, int b
     }
 
   if (button3 && buttonpress)
-    { /* mark may need to be changed */
+    {
+      /* mark may need to be changed */
       if (closeto == LEFT)
         {
           selection.mark.row = selection.end.row;

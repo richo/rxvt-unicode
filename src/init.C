@@ -12,9 +12,7 @@
  * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  *                              - extensive modifications
- * Copyright (c) 1999      D J Hawkey Jr <hawkeyd@visi.com>
- *                              - QNX support
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -42,6 +40,8 @@
 #include <limits>
 
 #include <csignal>
+
+#include <fcntl.h>
 
 #ifdef HAVE_XSETLOCALE
 # define X_LOCALE
@@ -280,7 +280,7 @@ const char *const def_colorName[] =
 #endif
   };
 
-bool
+void
 rxvt_term::init_vars ()
 {
   pix_colors           = //
@@ -288,7 +288,6 @@ rxvt_term::init_vars ()
 #ifdef OFF_FOCUS_FADING
   pix_colors_unfocused = new rxvt_color [TOTAL_COLORS];
 #endif
-
 
   MEvent.time = CurrentTime;
   MEvent.button = AnyButton;
@@ -300,7 +299,6 @@ rxvt_term::init_vars ()
   ext_bwidth = EXTERNALBORDERWIDTH;
   lineSpace = LINESPACE;
   saveLines = SAVELINES;
-  numpix_colors = TOTAL_COLORS;
 
   refresh_type = SLOW_REFRESH;
 
@@ -316,8 +314,6 @@ rxvt_term::init_vars ()
   set_option (Opt_pastableTabs);
   set_option (Opt_intensityStyles);
   set_option (Opt_iso14755_52);
-
-  return true;
 }
 
 void
@@ -418,6 +414,8 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 #endif
 
 #ifdef HAVE_AFTERIMAGE
+  set_application_name ((char*)rs[Rs_name]);
+  set_output_threshold (OUTPUT_LEVEL_WARNING);
   asv = create_asvisual_for_id (dpy, display->screen, depth, XVisualIDFromVisual (visual), cmap, NULL);
 #endif
   free (r_argv);
@@ -855,13 +853,10 @@ rxvt_term::color_aliases (int idx)
       int i = atoi (rs[Rs_color + idx]);
 
       if (i >= 8 && i <= 15)
-        {        /* bright colors */
-          i -= 8;
-          rs[Rs_color + idx] = rs[Rs_color + minBrightCOLOR + i];
-          return;
-        }
-
-      if (i >= 0 && i <= 7)   /* normal colors */
+        /* bright colors */
+        rs[Rs_color + idx] = rs[Rs_color + minBrightCOLOR + i - 8];
+      else if (i >= 0 && i <= 7)
+        /* normal colors */
         rs[Rs_color + idx] = rs[Rs_color + minCOLOR + i];
     }
 }
@@ -1153,7 +1148,7 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
   /*
    * standard System V termios interface
    */
-  if (GET_TERMIOS (STDIN_FILENO, tio) < 0)
+  if (tcgetattr (STDIN_FILENO, tio) < 0)
     {
       // return error - use system defaults,
       // where possible, and zero elsewhere
@@ -1231,7 +1226,6 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
    * Debugging
    */
 #ifdef DEBUG_TTYMODE
-#ifdef HAVE_TERMIOS_H
   /* c_iflag bits */
   fprintf (stderr, "Input flags\n");
 
@@ -1304,7 +1298,6 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
 
   fprintf (stderr, "\n");
 # undef FOO
-# endif /* HAVE_TERMIOS_H */
 #endif /* DEBUG_TTYMODE */
 }
 
@@ -1348,7 +1341,10 @@ rxvt_term::run_command (const char *const *argv)
     er = -1;
 
   rxvt_get_ttymode (&tio, er);
-  SET_TERMIOS (pty->tty, &tio);       /* init terminal attributes */
+  /* init terminal attributes */
+  cfsetospeed (&tio, BAUDRATE);
+  cfsetispeed (&tio, BAUDRATE);
+  tcsetattr (pty->tty, TCSANOW, &tio);
   pty->set_utf8_mode (enc_utf8);
 
   /* set initial window size */
@@ -1418,7 +1414,8 @@ rxvt_term::run_child (const char *const *argv)
   char *login;
 
   if (option (Opt_console))
-    {     /* be virtual console, fail silently */
+    {
+      /* be virtual console, fail silently */
 #ifdef TIOCCONS
       unsigned int on = 1;
 

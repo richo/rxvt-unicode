@@ -31,9 +31,6 @@
 #include <X11/keysym.h>
 #include <X11/keysymdef.h>
 #include <X11/Xatom.h>
-#if ENABLE_FRILLS
-# include <X11/Xmd.h>
-#endif
 
 #include "encoding.h"
 #include "rxvtutil.h"
@@ -82,6 +79,19 @@ typedef struct termios ttymode_t;
 # define STDIN_FILENO   0
 # define STDOUT_FILENO  1
 # define STDERR_FILENO  2
+#endif
+
+#if !defined (EACCESS) && defined(EAGAIN)
+# define EACCESS EAGAIN
+#endif
+
+#ifndef EXIT_SUCCESS            /* missing from <stdlib.h> */
+# define EXIT_SUCCESS           0       /* exit function success */
+# define EXIT_FAILURE           1       /* exit function failure */
+#endif
+
+#ifndef PATH_MAX
+# define PATH_MAX 16384
 #endif
 
 /****************************************************************************/
@@ -150,7 +160,6 @@ static inline void set_environ (char **envv)
  * STRUCTURES AND TYPEDEFS
  *****************************************************************************
  */
-struct grwin_t;
 
 /* If we're using either the rxvt scrollbar, keep the
  * scrollColor resource.
@@ -171,16 +180,6 @@ struct mouse_event {
   unsigned int state;    /* key or button mask */
   unsigned int button;   /* detail */
 };
-
-#if ENABLE_FRILLS
-typedef struct _mwmhints {
-  CARD32 flags;
-  CARD32 functions;
-  CARD32 decorations;
-  INT32  input_mode;
-  CARD32 status;
-} MWMHints;
-#endif
 
 #if ENABLE_XEMBED
 // XEMBED messages
@@ -226,17 +225,6 @@ typedef struct _mwmhints {
 
 #if defined (NO_MOUSE_REPORT) && !defined (NO_MOUSE_REPORT_SCROLLBAR)
 # define NO_MOUSE_REPORT_SCROLLBAR 1
-#endif
-
-/* now look for other badly set stuff */
-
-#if !defined (EACCESS) && defined(EAGAIN)
-# define EACCESS EAGAIN
-#endif
-
-#ifndef EXIT_SUCCESS            /* missing from <stdlib.h> */
-# define EXIT_SUCCESS           0       /* exit function success */
-# define EXIT_FAILURE           1       /* exit function failure */
 #endif
 
 #define scrollBar_esc           30
@@ -595,8 +583,6 @@ enum {
 #define PrivMode_LFNL		(1UL<<19)
 #define PrivMode_MouseBtnEvent  (1UL<<20)
 #define PrivMode_MouseAnyEvent  (1UL<<21)
-/* too annoying to implement X11 highlight tracking */
-/* #define PrivMode_MouseX11Track       (1LU<<20) */
 
 #define PrivMode_mouse_report   (PrivMode_MouseX10|PrivMode_MouseX11|PrivMode_MouseBtnEvent|PrivMode_MouseAnyEvent)
 
@@ -612,8 +598,15 @@ enum {
 #define CBUFSIZ                2048    // size of command buffer
 #define UBUFSIZ                2048    // character buffer
 
-#ifndef PATH_MAX
-# define PATH_MAX 16384
+#if ENABLE_FRILLS
+# include <X11/Xmd.h>
+typedef struct _mwmhints {
+  CARD32 flags;
+  CARD32 functions;
+  CARD32 decorations;
+  INT32  input_mode;
+  CARD32 status;
+} MWMHints;
 #endif
 
 /* Motif window hints */
@@ -663,9 +656,6 @@ enum {
 #define Row2Pixel(row)          ((int32_t)Height2Pixel(row))
 #define Width2Pixel(n)          ((int32_t)(n) * (int32_t)fwidth)
 #define Height2Pixel(n)         ((int32_t)(n) * (int32_t)fheight)
-
-// for m >= -n, ensure remainder lies between 0..n-1
-#define MOD(m,n) (((m) + (n)) % (n))
 
 #define LINENO(n) MOD (term_start + int(n), total_rows)
 #define ROW(n) row_buf [LINENO (n)]
@@ -1053,9 +1043,9 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   xevent_watcher rootwin_ev;
 #endif
 #ifdef HAVE_BG_PIXMAP
-  int update_background ();
+  void update_background ();
 #if TRACE_PIXMAPS
-  int trace_update_background (const char* file, int line);
+  void trace_update_background (const char *file, int line);
 # define update_background() trace_update_background (__FILE__, __LINE__)
 #endif
   void update_background_cb (ev::timer &w, int revents);
@@ -1070,8 +1060,8 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 #endif
 
   void child_cb (ev::child &w, int revents); ev::child child_ev;
-  void prepare_cb (ev::prepare &w, int revents); ev::prepare prepare_ev;
   void destroy_cb (ev::idle &w, int revents); ev::idle destroy_ev;
+  void refresh_check ();
   void flush ();
   void flush_cb (ev::timer &w, int revents); ev::timer flush_ev;
   bool pty_fill ();
@@ -1108,10 +1098,10 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void tt_write (const char *data, unsigned int len);
   void pty_write ();
 
-  bool init (stringvec *argv, stringvec *envv)
+  void init (stringvec *argv, stringvec *envv)
   {
     this->argv = argv;
-    return init (argv->size (), argv->begin (), envv);
+    init (argv->size (), argv->begin (), envv);
   }
 
   void make_current () const // make this the "currently active" urxvt instance
@@ -1177,7 +1167,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void process_sgr_mode (unsigned int nargs, const int *arg);
   void process_graphics ();
   // init.C
-  bool init_vars ();
+  void init_vars ();
   void init_secondary ();
   const char **init_resources (int argc, const char *const *argv);
   void init_env ();
@@ -1196,7 +1186,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   ~rxvt_term ();
   void destroy ();
   void emergency_cleanup ();
-  bool init (int argc, const char *const *argv, stringvec *envv);
+  void init (int argc, const char *const *argv, stringvec *envv);
   void recolour_cursor ();
   void resize_all_windows (unsigned int newwidth, unsigned int newheight, int ignoreparent);
   void window_calc (unsigned int newwidth, unsigned int newheight);
@@ -1273,11 +1263,19 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 
   bool option (uint8_t opt) const NOTHROW
   {
+    if (!opt)
+      return 0;
+
+    --opt;
     return options[opt >> 3] & (1 << (opt & 7));
   }
 
   void set_option (uint8_t opt, bool set = true) NOTHROW
   {
+    if (!opt)
+      return;
+
+    --opt;
     if (set)
       options[opt >> 3] |= (1 << (opt & 7));
     else

@@ -11,20 +11,14 @@
 DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
 DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
 
-CFLAGS = -Wall -g
-
+CXXFLAGS = -Wall -g
 ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0
+	CXXFLAGS += -O0
 else
-	CFLAGS += -O2
+	CXXFLAGS += -O2
 endif
 ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	INSTALL_PROGRAM += -s
-endif
-
-ARCH=$(shell dpkg-architecture -qDEB_HOST_ARCH)
-ifeq ($(ARCH),powerpc)
-	CFLAGS += -DEV_USE_POLL=1
 endif
 
 cfgcommon = \
@@ -48,13 +42,13 @@ config.status: configure
 	cp -f /usr/share/misc/config.guess config.guess
 
 conf-unicode-lite:
-	CXXFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
 	    --disable-xft \
 	    --disable-perl \
 	    --disable-iso14755
 
 conf-unicode:
-	CXXFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
 	    --enable-xft \
 	    --enable-font-styles \
 	    --enable-afterimage \
@@ -70,7 +64,7 @@ conf-unicode:
 	    --disable-iso14755
 
 conf-unicode-ml:
-	CXXFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
 	    --enable-unicode3 \
 	    --enable-combining \
 	    --enable-xft \

@@ -1,5 +1,5 @@
 /*
- * libev epoll fd activity backend
+ * libev poll fd activity backend
  *
  * Copyright (c) 2007 Marc Alexander Lehmann <libev@schmorp.de>
  * All rights reserved.
@@ -31,7 +31,7 @@
 
 #include <poll.h>
 
-static void
+void inline_size
 pollidx_init (int *base, int count)
 {
   while (count--)
@@ -67,7 +67,7 @@ poll_modify (EV_P_ int fd, int oev, int nev)
     {
       pollidxs [fd] = -1;
 
-      if (idx < --pollcnt)
+      if (expect_true (idx < --pollcnt))
         {
           polls [idx] = polls [pollcnt];
           pollidxs [polls [idx].fd] = idx;
@@ -81,7 +81,7 @@ poll_poll (EV_P_ ev_tstamp timeout)
   int i;
   int res = poll (polls, pollcnt, (int)ceil (timeout * 1000.));
 
-  if (res < 0)
+  if (expect_false (res < 0))
     {
       if (errno == EBADF)
         fd_ebadf (EV_A);
@@ -94,7 +94,7 @@ poll_poll (EV_P_ ev_tstamp timeout)
     }
 
   for (i = 0; i < pollcnt; ++i)
-    if (polls [i].revents & POLLNVAL)
+    if (expect_false (polls [i].revents & POLLNVAL))
       fd_kill (EV_A_ polls [i].fd);
     else
       fd_event (
@@ -105,10 +105,10 @@ poll_poll (EV_P_ ev_tstamp timeout)
       );
 }
 
-static int
+int inline_size
 poll_init (EV_P_ int flags)
 {
-  backend_fudge  = 1e-3; /* needed to compensate for select returning early, very conservative */
+  backend_fudge  = 0.; /* posix says this is zero */
   backend_modify = poll_modify;
   backend_poll   = poll_poll;
 
@@ -118,7 +118,7 @@ poll_init (EV_P_ int flags)
   return EVBACKEND_POLL;
 }
 
-static void
+void inline_size
 poll_destroy (EV_P)
 {
   ev_free (pollidxs);

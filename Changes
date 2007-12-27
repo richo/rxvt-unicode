@@ -17,6 +17,34 @@ WISH: load system-wide config file even if we don't have one
 WISH: look into XAddConnectionWatch, does anybody need that?
 DUMB: support tex fonts
 
+8.9  Mon Dec 24 07:51:40 CET 2007
+	- fix the issue where urxvtd would not immediately close a window
+          when the command exited but only on the next X event.
+        - changed terminfo file not to use application keypad mode.
+        - fix the issue where making a selection in one urxvtd window
+          would not clear it visually in another.
+        - fix an issue of urxvt not getting background pixmap updates
+          and flickering after bg pixmap changes (reported by Mikachu).
+	- fix redraw bug in xterm scrollbar with -sr (reported by Mikachu).
+        - correctly provide dependencies for libev (µikachu).
+        - minor code reorganisations and cleanups.
+        - be more robust in case the urxvt-popup extension cannot be loaded.
+
+8.8  Sat Dec 15 19:40:39 CET 2007
+        - option -C was aliased to all unsupported options, activating
+          options that shouldn't be compiled in, leading to interesting
+          effects.
+        - updated libev, working around a bug in linux 2.4, curing the
+          symptom of urxvt not closing its window on shell exit. also
+          fixes a problem with urxvt not refreshing.
+        - the text blink callback was called even when no blinking
+          text was visible.
+        - pre-8.4 slipwheeling behaviour has been reinstated, with
+          some minor improvements.
+        - streamlined x events processing to only flush once per
+          display and not once per terminal window.
+        - quite a bit of minor code cleanups and codesize optimisations.
+
 8.7  Sun Nov 25 10:23:49 CET 2007
         - update libev with an important bugfix that would cause crashes
           when closing windows (when using rxvtd, and update is recommended).

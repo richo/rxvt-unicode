@@ -21,7 +21,7 @@ Index: rxvt-unicode-8.7/doc/Makefile.in
  
  %.tbl: %.pod
  	$(srcdir)/podtbl <$< >$@
-@@ -58,39 +53,58 @@
+@@ -58,35 +53,58 @@
  %.7.man.in: %.7.tbl
  	$(POD2MAN) -s7 <$< >$@
  
@@ -61,9 +61,7 @@ Index: rxvt-unicode-8.7/doc/Makefile.in
  
  tags allbin:
  
--alldoc:	rxvt.1.man.in rxvt.7.man.in rxvtc.1.man.in rxvtd.1.man.in rxvtperl.3.man.in \
--	rxvt.1.txt    rxvt.7.txt    rxvtc.1.txt    rxvtd.1.txt    rxvtperl.3.txt \
--	rxvt.1.html   rxvt.7.html   rxvtc.1.html   rxvtd.1.html   rxvtperl.3.html \
+-alldoc: rxvt.1.man.in rxvt.7.man.in rxvtc.1.man.in rxvtd.1.man.in rxvtperl.3.man.in \
 -	../README.configure ../README.FAQ
 -	infocmp -C rxvt-unicode >$(srcdir)/etc/rxvt-unicode.termcap
 +alldep:	rxvt.1.man.in  rxvt.7.man.in  rxvtc.1.man.in  rxvtd.1.man.in  rxvtperl.3.man.in \
@@ -89,8 +87,6 @@ Index: rxvt-unicode-8.7/doc/Makefile.in
 -
 -realclean: distclean
 -	rm -f rxvt.1.man.in rxvt.7.man.in rxvtc.1.man.in rxvtd.1.man.in rxvtperl.3.man.in
--	rm -f rxvt.1.txt    rxvt.7.txt    rxvtc.1.txt    rxvtd.1.txt    rxvtperl.3.txt
--	rm -f rxvt.1.html   rxvt.7.html   rxvtc.1.html   rxvtd.1.html   rxvtperl.3.html
 -	rm -f ../README.configure ../README.FAQ
 -	rm -f $(srcdir)/etc/rxvt-unicode.termcap
 +	rm -f rxvt.1.tbl rxvt.7.tbl rxvtc.1.tbl rxvtd.1.tbl rxvtperl.3.tbl

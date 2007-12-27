@@ -3,7 +3,7 @@
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -297,15 +297,16 @@ rxvt_screen::clear ()
 
 rxvt_display::rxvt_display (const char *id)
 : refcounted (id)
-, x_ev (this, &rxvt_display::x_cb)
 , selection_owner (0)
 {
+  x_ev    .set<rxvt_display, &rxvt_display::x_cb    > (this);
+  flush_ev.set<rxvt_display, &rxvt_display::flush_cb> (this);
 }
 
 XrmDatabase
 rxvt_display::get_resources (bool refresh)
 {
-  char *homedir = (char *)getenv ("HOME");
+  char *homedir = getenv ("HOME");
   char fname[1024];
 
   /*
@@ -320,7 +321,7 @@ rxvt_display::get_resources (bool refresh)
   // 6. System wide per application default file.
 
   /* Add in $XAPPLRESDIR/Rxvt only; not bothering with XUSERFILESEARCHPATH */
-  if ((xe = (char *)getenv ("XAPPLRESDIR")))
+  if ((xe = getenv ("XAPPLRESDIR")))
     {
       snprintf (fname, sizeof (fname), "%s/%s", xe, RESCLASS);
 
@@ -402,7 +403,7 @@ rxvt_display::get_resources (bool refresh)
 
   // 3. User's per host defaults file
   /* Add in XENVIRONMENT file */
-  if ((xe = (char *)getenv ("XENVIRONMENT"))
+  if ((xe = getenv ("XENVIRONMENT"))
       && (rdb1 = XrmGetFileDatabase (xe)))
     XrmMergeDatabases (rdb1, &database);
   else if (homedir)
@@ -473,6 +474,7 @@ bool rxvt_display::ref_init ()
   if (!getsockname (fd, (sockaddr *)&sa, &sl))
     is_local = sa.sun_family == AF_UNIX;
 
+  flush_ev.start ();
   x_ev.start (fd, ev::READ);
   fcntl (fd, F_SETFD, FD_CLOEXEC);
 
@@ -501,6 +503,7 @@ rxvt_display::~rxvt_display ()
   XFreeCursor (dpy, blank_cursor);
 #endif
   x_ev.stop ();
+  flush_ev.stop ();
 #ifdef USE_XIM
   xims.clear ();
 #endif
@@ -569,13 +572,12 @@ void rxvt_display::x_cb (ev::io &w, int revents)
         }
 #endif
     }
-
-  XFlush (dpy);
 }
 
-void rxvt_display::flush ()
+void rxvt_display::flush_cb (ev::prepare &w, int revents)
 {
-  x_cb (x_ev, ev::READ);
+  w.stop ();
+  XFlush (dpy);
 }
 
 void rxvt_display::reg (xevent_watcher *w)
@@ -599,7 +601,12 @@ void rxvt_display::unreg (xevent_watcher *w)
 void rxvt_display::set_selection_owner (rxvt_term *owner)
 {
   if (selection_owner && selection_owner != owner)
-    selection_owner->selection_clear ();
+    {
+      rxvt_term *owner = selection_owner;
+
+      owner->selection_clear ();
+      owner->flush ();
+    }
 
   selection_owner = owner;
 }

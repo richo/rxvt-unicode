@@ -1,3 +1,11 @@
+rxvt-unicode (8.9-1) unstable; urgency=low
+
+  * New upstream release.
+  * Don't refer to CFLAGS in debian/rules, as we are actually setting
+    CXXFLAGS.
+
+ -- Decklin Foster <decklin@red-bean.com>  Wed, 26 Dec 2007 21:56:16 -0500
+
 rxvt-unicode (8.7-2) unstable; urgency=high
 
   * Set EV_USE_POLL to 1 on powerpc, to work around a particularly nasty

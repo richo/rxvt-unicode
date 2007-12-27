@@ -27,6 +27,7 @@
 #define DO_TIMING_TEST 0
 
 #if DO_TIMING_TEST
+# include <sys/time.h>
 #define TIMING_TEST_START(id) \
 	struct timeval timing_test_##id##_stv;\
   gettimeofday (&timing_test_##id##_stv, NULL);
@@ -304,7 +305,8 @@ bgPixmap_t::set_geometry (const char *geom)
             }
 
           if (flags & geometrySet)
-            {/* new geometry is an adjustment to the old one ! */
+            {
+              /* new geometry is an adjustment to the old one ! */
               if ((geom_flags & WidthValue) && (geom_flags & HeightValue))
                 {
                   if (w == 0 && h != 0)
@@ -330,14 +332,16 @@ bgPixmap_t::set_geometry (const char *geom)
           else /* setting up geometry from scratch */
             {
               if (!(geom_flags & XValue))
-                {/* use default geometry - centered */
+                {
+                  /* use default geometry - centered */
                   x = y = defaultAlign;
                 }
               else if (!(geom_flags & YValue))
                 y = x;
 
               if ((geom_flags & (WidthValue|HeightValue)) == 0)
-                {/* use default geometry - scaled */
+                {
+                  /* use default geometry - scaled */
                   w = h = defaultScale;
                 }
               else if (geom_flags & WidthValue)
@@ -350,7 +354,8 @@ bgPixmap_t::set_geometry (const char *geom)
             }
         } /* done parsing geometry string */
       else if (!(flags & geometrySet))
-        { /* default geometry - scaled and centered */
+        {
+          /* default geometry - scaled and centered */
           x = y = defaultAlign;
           w = h = defaultScale;
         }
@@ -432,7 +437,7 @@ bgPixmap_t::set_geometry (const char *geom)
       flags = new_flags;
       changed++;
     }
-//fprintf( stderr, "flags = %lX, scale = %ux%u, align=%+d%+d\n",
+//fprintf (stderr, "flags = %lX, scale = %ux%u, align=%+d%+d\n",
 //         flags, h_scale, v_scale, h_align, v_align);
   return (changed > 0);
 }
@@ -506,8 +511,9 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
                                   100, ASIMAGE_QUALITY_DEFAULT);
         }
       if (background == NULL)
-        {/* if tiling - pixmap has to be sized exactly as the image,
-            but there is no need to make it bigger then the window! */
+        {
+          /* if tiling - pixmap has to be sized exactly as the image,
+             but there is no need to make it bigger then the window! */
           if (h_scale == 0)
             new_pmap_width = min (result->width, target_width);
           if (v_scale == 0)
@@ -531,7 +537,8 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
             }
         }
       else
-        {/* if blending background and image - pixmap has to be sized same as target window */
+        {
+          /* if blending background and image - pixmap has to be sized same as target window */
           ASImageLayer *layers = create_image_layers (2);
           ASImage *merged_im = NULL;
 
@@ -541,13 +548,15 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
           layers[0].tint = background_tint;
           layers[1].im = result;
           if (w <= 0)
-            {/* tile horizontally */
+            {
+              /* tile horizontally */
               while (x > 0) x -= (int)result->width;
               layers[1].dst_x = x;
               layers[1].clip_width = result->width+target_width;
             }
           else
-            {/* clip horizontally */
+            {
+              /* clip horizontally */
               layers[1].dst_x = x;
               layers[1].clip_width = result->width;
             }
@@ -772,6 +781,7 @@ bgPixmap_t::set_tint (rxvt_color &new_tint)
       flags = (flags & ~tintFlags) | new_flags | tintSet;
       return true;
     }
+
   return false;
 }
 
@@ -785,6 +795,7 @@ bgPixmap_t::unset_tint ()
      flags = (flags&~tintFlags)|new_flags;
      return true;
     }
+
   return false;
 }
 
@@ -794,7 +805,7 @@ bgPixmap_t::set_shade (const char *shade_str)
   int new_shade = (shade_str) ? atoi (shade_str) : 0;
 
   if (new_shade < 0 && new_shade > -100)
-		new_shade = 200 - (100 + new_shade);
+    new_shade = 200 - (100 + new_shade);
   else if (new_shade == 100)
     new_shade = 0;
 
@@ -805,6 +816,7 @@ bgPixmap_t::set_shade (const char *shade_str)
       flags = (flags & (~tintFlags | tintSet)) | new_flags;
       return true;
     }
+
   return false;
 }
 
@@ -844,7 +856,8 @@ bgPixmap_t::make_transparency_pixmap ()
     return 0;
 
   if (root_pixmap != None)
-    {/* we want to validate the pixmap and get it's size at the same time : */
+    {
+      /* we want to validate the pixmap and get it's size at the same time : */
       int junk;
       unsigned int ujunk;
       /* root pixmap may be bad - allow a error */
@@ -863,7 +876,8 @@ bgPixmap_t::make_transparency_pixmap ()
     return 0;
 
   if (root_pixmap == None)
-    { /* use tricks to obtain the root background image :*/
+    {
+      /* use tricks to obtain the root background image :*/
       /* we want to create Overrideredirect window overlapping out window
          with background type of Parent Relative and then grab it */
       XSetWindowAttributes attr;
@@ -893,7 +907,8 @@ bgPixmap_t::make_transparency_pixmap ()
             ++ev_count;
 
           if (ev_count > 0);
-            { /* hooray! - we can grab the image! */
+            {
+              /* hooray! - we can grab the image! */
               gc = XCreateGC (dpy, root, 0, NULL);
               if (gc)
                 {
@@ -901,6 +916,7 @@ bgPixmap_t::make_transparency_pixmap ()
                   success = true;
                 }
             }
+
           XDestroyWindow (dpy, src);
           XUngrabServer (dpy);
           //fprintf (stderr, "%s:%d: ev_count = %d\n", __FUNCTION__, __LINE__, ev_count);
@@ -915,7 +931,8 @@ bgPixmap_t::make_transparency_pixmap ()
           result |= transpPmapTiled;
     }
   else
-    {/* strightforward pixmap copy */
+    {
+      /* strightforward pixmap copy */
       gcv.tile = root_pixmap;
       gcv.fill_style = FillTiled;
 
@@ -973,7 +990,7 @@ bgPixmap_t::make_transparency_pixmap ()
                       c.g = (c.g * shade) / 100;
                       c.b = (c.b * shade) / 100;
                     }
-                  else if( shade > 100 && shade < 200)
+                  else if (shade > 100 && shade < 200)
                     {
                       c.r = (c.r * (200 - shade)) / 100;
                       c.g = (c.g * (200 - shade)) / 100;
@@ -1029,6 +1046,7 @@ bgPixmap_t::make_transparency_pixmap ()
                       XRenderComposite (dpy, PictOpOver, overlay_pic, mask_pic, back_pic, 0, 0, 0, 0, 0, 0, window_width, window_height);
                       result |= transpPmapTinted;
                     }
+
                   XRenderFreePicture (dpy, mask_pic);
                   XRenderFreePicture (dpy, overlay_pic);
                   XRenderFreePicture (dpy, back_pic);
@@ -1060,9 +1078,7 @@ bgPixmap_t::make_transparency_pixmap ()
 bool
 bgPixmap_t::set_root_pixmap ()
 {
-  Pixmap new_root_pixmap = None;
-
-  new_root_pixmap = target->get_pixmap_property (XA_XROOTPMAP_ID);
+  Pixmap new_root_pixmap = target->get_pixmap_property (XA_XROOTPMAP_ID);
   if (new_root_pixmap == None)
     new_root_pixmap = target->get_pixmap_property (XA_ESETROOT_PMAP_ID);
 
@@ -1071,6 +1087,7 @@ bgPixmap_t::set_root_pixmap ()
       root_pixmap = new_root_pixmap;
       return true;
     }
+
   return false;
 }
 # endif /* ENABLE_TRANSPARENCY */
@@ -1078,7 +1095,6 @@ bgPixmap_t::set_root_pixmap ()
 # ifndef HAVE_AFTERIMAGE
 static void ShadeXImage(rxvt_term *term, XImage* srcImage, int shade, int rm, int gm, int bm);
 # endif
-
 
 bool
 bgPixmap_t::render ()
@@ -1170,9 +1186,10 @@ bgPixmap_t::render ()
     }
 # endif /* HAVE_AFTERIMAGE */
 
-  if (result != NULL)
+  if (result)
     {
       GC gc = XCreateGC (target->dpy, target->vt, 0UL, NULL);
+
       if (gc)
         {
           if (/*pmap_depth != target->depth &&*/ pixmap != None)
@@ -1180,29 +1197,35 @@ bgPixmap_t::render ()
               XFreePixmap (target->dpy, pixmap);
               pixmap = None;
             }
+
           if (pixmap == None)
             {
               pixmap = XCreatePixmap (target->dpy, target->vt, result->width, result->height, target->depth);
-              pmap_width = result->width;
+              pmap_width  = result->width;
               pmap_height = result->height;
-              pmap_depth = target->depth;
+              pmap_depth  = target->depth;
             }
+
           if (pmap_depth != result->depth)
-            { /* Bad Match error will ensue ! stupid X !!!! */
-              if( result->depth == 24 && pmap_depth == 32)
+            {
+              /* Bad Match error will ensue ! stupid X !!!! */
+              if (result->depth == 24 && pmap_depth == 32)
                 result->depth = 32;
-              else if( result->depth == 32 && pmap_depth == 24)
+              else if (result->depth == 32 && pmap_depth == 24)
                 result->depth = 24;
               else
                 {
                   /* TODO: implement image recoding */
                 }
             }
+
           if (pmap_depth == result->depth)
             XPutImage (target->dpy, pixmap, gc, result, 0, 0, 0, 0, result->width, result->height);
+
           XFreeGC (target->dpy, gc);
           flags = flags & ~isInvalid;
         }
+
         XDestroyImage (result);
     }
 
@@ -1238,13 +1261,14 @@ bgPixmap_t::set_target (rxvt_term *new_target)
 }
 
 void
-bgPixmap_t::apply()
+bgPixmap_t::apply ()
 {
   if (target)
     {
       flags &= ~isVtOrigin;
       if (pixmap != None)
-        { /* set target's background to pixmap */
+        {
+          /* set target's background to pixmap */
 # ifdef ENABLE_TRANSPARENCY
           if (flags & isTransparent)
             {
@@ -1270,7 +1294,8 @@ bgPixmap_t::apply()
             }
         }
       else
-        { /* set target background to a pixel */
+        {
+          /* set target background to a pixel */
           XSetWindowBackground (target->dpy, target->parent[0], target->pix_colors[Color_border]);
           XSetWindowBackground (target->dpy, target->vt, target->pix_colors[Color_bg]);
           /* do we also need to set scrollbar's background here ? */

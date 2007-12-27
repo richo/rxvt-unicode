@@ -167,7 +167,7 @@ See L<perlre> for more info about perl regular expression syntax.
 A support package that tries to make editing with readline easier. At
 the moment, it reacts to clicking shift-left mouse button by trying to
 move the text cursor to this position. It does so by generating as many
-cursor-left or cursor-right keypresses as required (the this only works
+cursor-left or cursor-right keypresses as required (this only works
 for programs that correctly support wide characters).
 
 To avoid too many false positives, this is only done when:
@@ -1287,7 +1287,7 @@ to see the actual list:
   preeditType print_pipe pty_fd reverseVideo saveLines scrollBar
   scrollBar_align scrollBar_floating scrollBar_right scrollBar_thickness
   scrollTtyKeypress scrollTtyOutput scrollWithBuffer scrollstyle
-  secondaryScreen secondaryScroll selectstyle shade term_name title
+  secondaryScreen secondaryScroll shade term_name title
   transient_for transparent transparent_all tripleclickwords utmpInhibit
   visualBell
 
@@ -1627,7 +1627,7 @@ automatically be updated.
 C<$text> is in a special encoding: tabs and wide characters that use more
 than one cell when displayed are padded with C<$urxvt::NOCHAR> (chr 65535)
 characters. Characters with combining characters and other characters that
-do not fit into the normal tetx encoding will be replaced with characters
+do not fit into the normal text encoding will be replaced with characters
 in the private use area.
 
 You have to obey this encoding when changing text. The advantage is
@@ -1956,14 +1956,21 @@ sub show {
    delete $env->{LC_ALL};
    $env->{LC_CTYPE} = $self->{term}->locale;
 
-   urxvt::term->new ($env, "popup",
-                     "--perl-lib" => "", "--perl-ext-common" => "",
-                     "-pty-fd" => -1, "-sl" => 0,
-                     "-b" => 1, "-bd" => "grey80", "-bl", "-override-redirect",
-                     "--transient-for" => $self->{term}->parent,
-                     "-display" => $self->{term}->display_id,
-                     "-pe" => "urxvt-popup")
-      or die "unable to create popup window\n";
+   my $term = urxvt::term->new (
+      $env, "popup",
+      "--perl-lib" => "", "--perl-ext-common" => "",
+      "-pty-fd" => -1, "-sl" => 0,
+      "-b" => 1, "-bd" => "grey80", "-bl", "-override-redirect",
+      "--transient-for" => $self->{term}->parent,
+      "-display" => $self->{term}->display_id,
+      "-pe" => "urxvt-popup",
+   ) or die "unable to create popup window\n";
+
+   unless (delete $term->{urxvt_popup_init_done}) {
+      $term->ungrab;
+      $term->destroy;
+      die "unable to initialise popup window\n";
+   }
 }
 
 sub DESTROY {

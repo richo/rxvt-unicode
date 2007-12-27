@@ -27,7 +27,7 @@
  * Copyright (c) 2001      Marius Gedminas
  *				- Ctrl/Mod4+Tab works like Meta+Tab (options)
  * Copyright (c) 2003      Rob McMullen <robm@flipturn.org>
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -200,7 +200,7 @@ rxvt_term::iso14755_51 (unicode_t ch, rend_t r, int x, int y)
 
   int width = wcswidth (fname, wcslen (fname));
 
-  max_it (width, 8+5); // for char + hey
+  max_it (width, 8+5); // for char + hex
   max_it (width, strlen (attr));
 
   if (y >= 0)
@@ -1043,15 +1043,14 @@ rxvt_term::flush ()
   display->flush ();
 }
 
+/* checks wether a refresh is requested and starts the refresh timer */
 void
-rxvt_term::prepare_cb (ev::prepare &w, int revents)
+rxvt_term::refresh_check ()
 {
-  make_current ();
+  if (want_refresh && !flush_ev.is_active ())
+    flush_ev.start (1. / 60.); // refresh at max. 60 Hz normally
 
   display->flush ();
-
-  if (want_refresh && !flush_ev.active)
-    flush_ev.start (1. / 60.); // refresh at max. 60 Hz normally
 }
 
 void
@@ -1069,6 +1068,7 @@ rxvt_term::cursor_blink_cb (ev::timer &w, int revents)
 {
   hidden_cursor = !hidden_cursor;
   want_refresh = 1;
+  refresh_check ();
 }
 #endif
 
@@ -1080,7 +1080,10 @@ rxvt_term::text_blink_cb (ev::timer &w, int revents)
     {
       hidden_text = !hidden_text;
       want_refresh = 1;
+  refresh_check ();
     }
+  else
+    w.stop ();
 }
 #endif
 
@@ -1088,9 +1091,12 @@ rxvt_term::text_blink_cb (ev::timer &w, int revents)
 void
 rxvt_term::cont_scroll_cb (ev::timer &w, int revents)
 {
-  if ((scrollbar_isUp() || scrollbar_isDn()) &&
-      scr_page (scrollbar_isUp() ? UP : DN, 1))
-    want_refresh = 1;
+  if ((scrollbar_isUp () || scrollbar_isDn ())
+      && scr_page (scrollbar_isUp () ? UP : DN, 1))
+    {
+      want_refresh = 1;
+      refresh_check ();
+    }
   else
     w.stop ();
 }
@@ -1104,6 +1110,7 @@ rxvt_term::sel_scroll_cb (ev::timer &w, int revents)
     {
       selection_extend (selection_save_x, selection_save_y, selection_save_state);
       want_refresh = 1;
+      refresh_check ();
     }
   else
     w.stop ();
@@ -1114,17 +1121,17 @@ rxvt_term::sel_scroll_cb (ev::timer &w, int revents)
 void
 rxvt_term::slip_wheel_cb (ev::timer &w, int revents)
 {
-  if (mouse_slip_wheel_speed == 0
-      || mouse_slip_wheel_speed < 0 ? scr_page (DN, -mouse_slip_wheel_speed)
-                                    : scr_page (UP,  mouse_slip_wheel_speed))
+  if (scr_changeview (view_start - mouse_slip_wheel_speed))
     {
-      if (view_start == top_row || view_start == 0)
-        mouse_slip_wheel_speed = 0;
-
       want_refresh = 1;
+      refresh_check ();
     }
-  else
-    w.stop ();
+
+  if (view_start == top_row || view_start == 0 || mouse_slip_wheel_speed == 0)
+    {
+      mouse_slip_wheel_speed = 0;
+      w.stop ();
+    }
 }
 #endif
 
@@ -1206,6 +1213,8 @@ rxvt_term::pty_cb (ev::io &w, int revents)
 
   if (revents & ev::WRITE)
     pty_write ();
+
+  refresh_check ();
 }
 
 void
@@ -1450,6 +1459,7 @@ rxvt_term::x_cb (XEvent &ev)
                   update_background ();
 #endif
               }
+
             HOOK_INVOKE ((this, HOOK_CONFIGURE_NOTIFY, DT_XEVENT, &ev, DT_END));
           }
         break;
@@ -1478,7 +1488,7 @@ rxvt_term::x_cb (XEvent &ev)
       case MapNotify:
         mapped = 1;
 #ifdef TEXT_BLINK
-        text_blink_ev.start (TEXT_BLINK_INTERVAL);
+        text_blink_ev.start ();
 #endif
         HOOK_INVOKE ((this, HOOK_MAP_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
@@ -1509,6 +1519,7 @@ rxvt_term::x_cb (XEvent &ev)
                 scr_expose (ev.xexpose.x, ev.xexpose.y,
                             ev.xexpose.width, ev.xexpose.height, False);
               }
+
             want_refresh = 1;
           }
         else
@@ -1579,7 +1590,7 @@ rxvt_term::x_cb (XEvent &ev)
                         /* don't clobber the current delay if we are
                          * already in the middle of scrolling.
                          */
-                        if (!sel_scroll_ev.active)
+                        if (!sel_scroll_ev.is_active ())
                           sel_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
 
                         /* save the event params so we can highlight
@@ -1612,8 +1623,7 @@ rxvt_term::x_cb (XEvent &ev)
                         /* we are within the text window, so we
                          * shouldn't be scrolling
                          */
-                        if (sel_scroll_ev.active)
-                          sel_scroll_ev.stop();
+                        sel_scroll_ev.stop();
                       }
 #endif
 #ifdef MOUSE_THRESHOLD
@@ -1666,6 +1676,8 @@ rxvt_term::x_cb (XEvent &ev)
         pointer_blank ();
     }
 #endif
+
+  refresh_check ();
 }
 
 void
@@ -1687,7 +1699,7 @@ rxvt_term::focus_in ()
 #endif
 #if CURSOR_BLINK
       if (option (Opt_cursorBlink))
-        cursor_blink_ev.start (CURSOR_BLINK_INTERVAL, CURSOR_BLINK_INTERVAL);
+        cursor_blink_ev.again ();
 #endif
 #if OFF_FOCUS_FADING
       if (rs[Rs_fade])
@@ -1785,9 +1797,12 @@ rxvt_term::rootwin_cb (XEvent &ev)
             bgPixmap.set_root_pixmap ();
             update_background ();
           }
+
         break;
     }
 # endif
+
+  refresh_check ();
 }
 #endif
 
@@ -1959,7 +1974,7 @@ rxvt_term::button_press (XButtonEvent &ev)
 #endif /* NO_SCROLLBAR_REPORT */
 
         {
-          char            upordown = 0;
+          char upordown = 0;
 
           if (scrollBar.style == R_SB_NEXT)
             {
@@ -1975,10 +1990,12 @@ rxvt_term::button_press (XButtonEvent &ev)
               else if (scrollbarrxvt_dnButton (ev.y))
                 upordown = 1;	/* down */
             }
+
           if (upordown)
             {
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-              cont_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
+              if (!cont_scroll_ev.is_active ())
+                cont_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
 #endif
               if (scr_page (upordown < 0 ? UP : DN, 1))
                 {
@@ -2068,8 +2085,7 @@ rxvt_term::button_release (XButtonEvent &ev)
     }
 
 #ifdef SELECTION_SCROLLING
-  if (sel_scroll_ev.active)
-    sel_scroll_ev.stop();
+  sel_scroll_ev.stop();
 #endif
 
   if (ev.window == vt)
@@ -2151,7 +2167,8 @@ rxvt_term::button_release (XButtonEvent &ev)
                   if (mouse_slip_wheel_speed < -nrow) mouse_slip_wheel_speed = -nrow;
                   if (mouse_slip_wheel_speed > +nrow) mouse_slip_wheel_speed = +nrow;
 
-                  slip_wheel_ev.start (SCROLLBAR_CONTINUOUS_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
+                  if (!slip_wheel_ev.is_active ())
+                    slip_wheel_ev.start (SCROLLBAR_CONTINUOUS_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
                 }
               else
                 {
@@ -2753,7 +2770,8 @@ rxvt_term::process_csi_seq ()
   priv = 0;
   ch = cmd_getc ();
   if (ch >= '<' && ch <= '?')
-    {	/* '<' '=' '>' '?' */
+    {
+      /* '<' '=' '>' '?' */
       priv = ch;
       ch = cmd_getc ();
     }
@@ -3375,10 +3393,12 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
         process_color_seq (op, Color_tint, str, resp);
         {
           bool changed = false;
+
           if (ISSET_PIXCOLOR (Color_tint))
             changed = bgPixmap.set_tint (pix_colors_focused [Color_tint]);
           else
             changed = bgPixmap.unset_tint ();
+
           if (changed)
             update_background ();
         }
@@ -3411,6 +3431,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
                 if (str == NULL)
                   bgPixmap.set_defaultGeometry ();
               }
+
             while (str)
               {
                 str++;
@@ -3418,8 +3439,9 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
                   changed++;
                 str = strchr (str, ';');
               }
+
             if (changed)
-                update_background ();
+              update_background ();
           }
         break;
 #endif
@@ -3583,7 +3605,6 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
                   { 67, PrivMode_BackSpace },
 #endif
                   { 1000, PrivMode_MouseX11 },
-                 // 1001 Use Hilite Mouse Tracking. NYI, TODO
                   { 1002, PrivMode_MouseBtnEvent },
                   { 1003, PrivMode_MouseAnyEvent },
                   { 1010, PrivMode_TtyOutputInh }, // rxvt extension
@@ -3694,10 +3715,6 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
               if (state)		/* orthogonal */
                 priv_modes &= ~(PrivMode_MouseX10|PrivMode_MouseBtnEvent|PrivMode_MouseAnyEvent);
               break;
-#if 0
-            case 1001:
-              break;		/* X11 mouse highlighting */
-#endif
             case 1002:
             case 1003:
               if (state)
@@ -3896,7 +3913,8 @@ rxvt_term::process_graphics ()
   unicode_t ch, cmd = cmd_getc ();
 
   if (cmd == 'Q')
-    {		/* query graphics */
+    {
+      /* query graphics */
       tt_printf ("\033G0\012");	/* no graphics */
       return;
     }
