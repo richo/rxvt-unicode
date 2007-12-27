@@ -22,6 +22,11 @@ ifeq (,$(findstring nostrip,$(DEB_BUILD_OPTIONS)))
 	INSTALL_PROGRAM += -s
 endif
 
+ARCH=$(shell dpkg-architecture -qDEB_HOST_ARCH)
+ifeq ($(ARCH),powerpc)
+	CFLAGS += -DEV_USE_POLL=1
+endif
+
 cfgcommon = \
     --host=$(DEB_HOST_GNU_TYPE) \
     --build=$(DEB_BUILD_GNU_TYPE) \
@@ -43,13 +48,13 @@ config.status: configure
 	cp -f /usr/share/misc/config.guess config.guess
 
 conf-unicode-lite:
-	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	CXXFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
 	    --disable-xft \
 	    --disable-perl \
 	    --disable-iso14755
 
 conf-unicode:
-	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	CXXFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
 	    --enable-xft \
 	    --enable-font-styles \
 	    --enable-afterimage \
@@ -65,7 +70,7 @@ conf-unicode:
 	    --disable-iso14755
 
 conf-unicode-ml:
-	CFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
+	CXXFLAGS="$(CFLAGS)" ./configure $(cfgcommon) \
 	    --enable-unicode3 \
 	    --enable-combining \
 	    --enable-xft \

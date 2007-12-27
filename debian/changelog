@@ -1,3 +1,12 @@
+rxvt-unicode (8.7-2) unstable; urgency=high
+
+  * Set EV_USE_POLL to 1 on powerpc, to work around a particularly nasty
+    bug where libev would consistently abort with a failed assertion on
+    startup. Current versions are already fixed, but this patch is being
+    uploaded to replace the broken 8.7-1 in testing. (Closes: #457658)
+
+ -- Decklin Foster <decklin@red-bean.com>  Wed, 26 Dec 2007 20:19:17 -0500
+
 rxvt-unicode (8.7-1) unstable; urgency=low
 
   * New upstream release (Closes: #455541)
