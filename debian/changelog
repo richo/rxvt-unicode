@@ -1,3 +1,10 @@
+rxvt-unicode (8.9-2) unstable; urgency=low
+
+  * Add patch to prevent urxvtd crashing when urxvtc is passed an illegal
+    option. (Closes: #460560)
+
+ -- Decklin Foster <decklin@red-bean.com>  Tue, 15 Jan 2008 22:23:06 -0500
+
 rxvt-unicode (8.9-1) unstable; urgency=low
 
   * New upstream release.

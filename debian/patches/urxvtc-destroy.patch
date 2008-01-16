@@ -1,0 +1,18 @@
+Index: rxvt-unicode-8.9/src/main.C
+===================================================================
+--- rxvt-unicode-8.9.orig/src/main.C	2008-01-15 22:21:13.000000000 -0500
++++ rxvt-unicode-8.9/src/main.C	2008-01-15 22:21:20.000000000 -0500
+@@ -286,8 +286,11 @@
+ #ifdef HAVE_BG_PIXMAP
+   bgPixmap.destroy ();
+ #endif
+-  display->flush (); /* ideally .put should do this */
+-  displays.put (display);
++  if (display)
++    {
++      display->flush (); /* ideally .put should do this */
++      displays.put (display);
++    }
+ 
+   scr_release ();
+ 
