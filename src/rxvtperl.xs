@@ -3,7 +3,7 @@
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 2005-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2005-2008 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,11 +41,7 @@
 
 #include "perlxsi.c"
 
-#ifdef HAVE_SCROLLBARS
-# define GRAB_CURSOR THIS->leftptr_cursor
-#else
-# define GRAB_CURSOR None
-#endif
+#define GRAB_CURSOR THIS->scrollBar.leftptr_cursor
 
 #undef LINENO
 #define LINENO(n) MOD (THIS->term_start + int(n), THIS->total_rows)
@@ -302,7 +298,7 @@ void overlay::set (int x, int y, SV *text, SV *rend)
 
 #define IOM_CLASS "urxvt"
 #define IOM_WARN rxvt_warn
-#include <iom_perl.h>
+#include "iom_perl.h"
 
 /////////////////////////////////////////////////////////////////////////////
 

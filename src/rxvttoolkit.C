@@ -545,39 +545,42 @@ void rxvt_display::im_change_check ()
 
 void rxvt_display::x_cb (ev::io &w, int revents)
 {
-  while (XEventsQueued (dpy, QueuedAfterReading))
-    {
-      XEvent xev;
-      XNextEvent (dpy, &xev);
-
-#ifdef USE_XIM
-      if (!XFilterEvent (&xev, None))
-        {
-          if (xev.type == PropertyNotify
-              && xev.xany.window == root
-              && xev.xproperty.atom == xa[XA_XIM_SERVERS])
-            im_change_check ();
-#endif
-          if (xev.type == MappingNotify)
-            XRefreshKeyboardMapping (&xev.xmapping);
-
-          for (int i = xw.size (); i--; )
-            {
-              if (!xw[i])
-                xw.erase_unordered (i);
-              else if (xw[i]->window == xev.xany.window)
-                xw[i]->call (xev);
-            }
-#ifdef USE_XIM
-        }
-#endif
-    }
+  flush_ev.start ();
 }
 
 void rxvt_display::flush_cb (ev::prepare &w, int revents)
 {
+  while (XEventsQueued (dpy, QueuedAfterFlush))
+    do
+      {
+        XEvent xev;
+        XNextEvent (dpy, &xev);
+
+#ifdef USE_XIM
+        if (!XFilterEvent (&xev, None))
+          {
+            if (xev.type == PropertyNotify
+                && xev.xany.window == root
+                && xev.xproperty.atom == xa[XA_XIM_SERVERS])
+              im_change_check ();
+#endif
+            if (xev.type == MappingNotify)
+              XRefreshKeyboardMapping (&xev.xmapping);
+
+            for (int i = xw.size (); i--; )
+              {
+                if (!xw[i])
+                  xw.erase_unordered (i);
+                else if (xw[i]->window == xev.xany.window)
+                  xw[i]->call (xev);
+              }
+#ifdef USE_XIM
+          }
+#endif
+      }
+    while (XEventsQueued (dpy, QueuedAlready));
+
   w.stop ();
-  XFlush (dpy);
 }
 
 void rxvt_display::reg (xevent_watcher *w)
@@ -675,6 +678,9 @@ insert_component (unsigned int value, unsigned int mask, unsigned int shift)
 bool
 rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
 {
+  //TODO: only supports 24 bit
+  int alpha = color.a >= 0xff00 ? 0xffff : color.a;
+
 #if XFT
   XRenderPictFormat *format;
 
@@ -688,12 +694,12 @@ rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
       c.color.red   = color.r;
       c.color.green = color.g;
       c.color.blue  = color.b;
-      c.color.alpha = color.a;
+      c.color.alpha = alpha;
 
       c.pixel = insert_component (color.r, format->direct.redMask  , format->direct.red  )
               | insert_component (color.g, format->direct.greenMask, format->direct.green)
               | insert_component (color.b, format->direct.blueMask , format->direct.blue )
-              | insert_component (color.a, format->direct.alphaMask, format->direct.alpha);
+              | insert_component (alpha  , format->direct.alphaMask, format->direct.alpha);
 
       return true;
     }
@@ -704,7 +710,7 @@ rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
       d.red   = color.r;
       d.green = color.g;
       d.blue  = color.b;
-      d.alpha = color.a;
+      d.alpha = alpha;
 
       return XftColorAllocValue (screen->dpy, screen->visual, screen->cmap, &d, &c);
     }
@@ -739,29 +745,17 @@ rxvt_color::set (rxvt_screen *screen, const char *name)
   char eos;
   int skip;
 
+  c.a = rgba::MAX_CC;
+
   // parse the nonstandard "[alphapercent]" prefix
   if (1 <= sscanf (name, "[%hd]%n", &c.a, &skip))
     {
       c.a = lerp<int, int, int> (0, rgba::MAX_CC, c.a);
       name += skip;
     }
-  else
-    c.a = rgba::MAX_CC;
 
-  // parse the non-standard "#aarrggbb" format
-  if (name[0] == '#' && strlen (name) == 1+2+2+2+2 && 4 == sscanf (name+1, "%2hx%2hx%2hx%2hx%c", &c.a, &c.r, &c.g, &c.b, &eos))
-    {
-      if (c.r)
-        c.r = (c.r << 8) | 0x0ff;
-      if (c.g)
-        c.g = (c.g << 8) | 0x0ff;
-      if (c.b)
-        c.b = (c.b << 8) | 0x0ff;
-      if (c.a)
-        c.a = (c.a << 8) | 0x0ff;
-    }
   // parse the non-standard "rgba:rrrr/gggg/bbbb/aaaa" format
-  else if (strlen (name) != 4+5*4 || 4 != sscanf (name, "rgba:%4hx/%4hx/%4hx/%4hx%c", &c.r, &c.g, &c.b, &c.a, &eos))
+  if (strlen (name) != 4+5*4 || 4 != sscanf (name, "rgba:%4hx/%4hx/%4hx/%4hx%c", &c.r, &c.g, &c.b, &c.a, &eos))
     {
       XColor xc;
 

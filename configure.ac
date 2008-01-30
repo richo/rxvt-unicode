@@ -13,11 +13,9 @@ dnl RXVT version
 changequote(, )dnl
 VERSION=`sed -n -e 's/^.*[ \t]VERSION.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
 DATE=`sed -n -e 's/^.*[ \t]DATE.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
-dnl LIBVERSION=`sed -n -e 's/^.*[ \t]LIBVERSION.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
 changequote([, ])dnl
 AC_SUBST(VERSION)dnl
 AC_SUBST(DATE)dnl
-dnl AC_SUBST(LIBVERSION)dnl
 
 echo ""
 echo "configuring for rxvt $VERSION"
@@ -84,10 +82,6 @@ dnl# solaris needs to link libnsl and socket
 AC_CHECK_FUNC(gethostbyname, [], [AC_CHECK_LIB(nsl,    gethostbyname, [LIBS="$LIBS -lnsl"])])
 AC_CHECK_FUNC(socket,        [], [AC_CHECK_LIB(socket, socket,        [LIBS="$LIBS -lsocket"])])
 
-dnl AC_ENABLE_SHARED(no)dnl#	libtool
-dnl AC_ENABLE_STATIC(yes)dnl#	libtool
-dnl AC_PROG_LIBTOOL()dnl#		libtool
-
 support_frills=yes
 support_inheritpixmap=yes
 support_fading=yes
@@ -100,7 +94,6 @@ support_pointer_blank=yes
 support_scroll_rxvt=yes
 support_scroll_next=yes
 support_scroll_xterm=yes
-support_scroll_plain=yes
 support_xim=yes
 support_afterimage=yes
 support_afterstep=yes
@@ -117,15 +110,9 @@ dnl# --------------------------------------------------------------------------
 dnl# CHECKING COMMAND LINE OPTIONS
 dnl# --------------------------------------------------------------------------
 
-dnl if test "x$enable_shared" = xyes; then
-dnl     AC_DEFINE(LIBRXVT, 1, Build shared library version - specify via configure only)
-dnl     INSTALL_LIBRXVT=yes
-dnl fi
-dnl AC_SUBST(INSTALL_LIBRXVT)
-
 AC_ARG_ENABLE(everything,
   [  --enable-everything     enable standard non-multichoice features
-                     NOTE: this option is order dependent],
+                          NOTE: this option is order dependent],
   [
     if test x$enableval = xno; then
        support_frills=no
@@ -141,7 +128,6 @@ AC_ARG_ENABLE(everything,
        support_scroll_rxvt=no
        support_scroll_next=no
        support_scroll_xterm=no
-       support_scroll_plain=no
        support_utmp=no
        support_wtmp=no
        support_xim=no
@@ -170,7 +156,6 @@ AC_ARG_ENABLE(everything,
        support_scroll_rxvt=yes
        support_scroll_next=yes
        support_scroll_xterm=yes
-       support_scroll_plain=yes
        support_utmp=yes
        support_wtmp=yes
        support_xim=yes
@@ -228,7 +213,7 @@ AC_ARG_ENABLE(font-styles,
   fi])
 
 AC_ARG_ENABLE(afterimage,
-  [  --enable-afterimage enable integration with libAfterImage for background images],
+  [  --enable-afterimage     enable integration with libAfterImage for background images],
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_afterimage=$enableval
   fi])
@@ -273,12 +258,6 @@ AC_ARG_ENABLE(xterm-scroll,
   [  --enable-xterm-scroll   enable Xterm style scrollbar],
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_scroll_xterm=$enableval
-  fi])
-
-AC_ARG_ENABLE(plain-scroll,
-  [  --enable-plain-scroll   enable plain style scrollbar],
-  [if test x$enableval = xyes -o x$enableval = xno; then
-    support_scroll_plain=$enableval
   fi])
 
 AC_ARG_ENABLE(perl,
@@ -486,13 +465,6 @@ AC_CHECK_HEADERS( \
 	cwchar \
 )
 
-dnl# check to allow both <termios.h> and <sys/ioctl.h>
-AC_CACHE_CHECK(whether termios.h and sys/ioctl.h may both be included, rxvt_cv_header_sysioctl,
-[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <stdio.h>
-#include <sys/ioctl.h>
-#include <termios.h>
-]], [[int a = ECHO;]])],[rxvt_cv_header_sysioctl=yes],[rxvt_cv_header_sysioctl=no])])
-
 AC_CACHE_CHECK([for XPointer], rxvt_cv_xpointer,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <X11/Xlib.h>]], [[XPointer dummy;]])],[rxvt_cv_xpointer=yes],[rxvt_cv_xpointer=no])])
 if test x$rxvt_cv_xpointer = xyes; then
@@ -667,9 +639,12 @@ dnl if test x$support_afterstep = xyes; then
 dnl   AC_DEFINE(AFTERSTEP_INTEGRATION, 1, Define if you want to integrate with AfterStep window manager)
 dnl fi
 
+scrolltypes=plain
+AC_DEFINE(PLAIN_SCROLLBAR, 1, Support plain style scrollbars)
+
 if test x$support_scroll_rxvt = xyes; then
   AC_DEFINE(RXVT_SCROLLBAR, 1, Support Rxvt original style scrollbars)
-  scrolltypes="rxvt"
+  scrolltypes="$scrolltypes rxvt"
 fi
 if test x$support_scroll_next = xyes; then
   AC_DEFINE(NEXT_SCROLLBAR, 1, Support NeXT style scrollbars)
@@ -678,10 +653,6 @@ fi
 if test x$support_scroll_xterm = xyes; then
   AC_DEFINE(XTERM_SCROLLBAR, 1, Support Xterm style scrollbars)
   scrolltypes="$scrolltypes xterm"
-fi
-if test x$support_scroll_plain = xyes; then
-  AC_DEFINE(PLAIN_SCROLLBAR, 1, Support plain style scrollbars)
-  scrolltypes="$scrolltypes plain"
 fi
 if test x$support_pointer_blank = xyes; then
   AC_DEFINE(POINTER_BLANK, 1, Define if you want hide the pointer while typing)
@@ -769,25 +740,9 @@ AC_SUBST(AFTERIMAGE_LIBS)
 
 AC_ARG_PROGRAM
 
-dnl# test for "sun" or "__sun__" before include sys_ioctl
-
-dnl# revert HAVE_BLAH_H into a "#include <blah.h>"
-AC_DEFUN([RXVT_DEFINE_TO_INCLUDE], dnl
-[if test "$$3" = "$4" -o "$$5" = "$6"; then
-  $1="#include <$2>"
-else
-  $1="/* #include <$2> */"
-fi dnl
-AC_SUBST($1)])
-
-RXVT_DEFINE_TO_INCLUDE(include_stdint_h, stdint.h, ac_cv_header_stdint_h, yes, notset, dontmatch)
-RXVT_DEFINE_TO_INCLUDE(include_sys_ioctl_h, sys/ioctl.h, rxvt_cv_header_sysioctl, yes, notset, dontmatch)
-RXVT_DEFINE_TO_INCLUDE(include_sys_strredir_h, sys/strredir.h, ac_cv_header_sys_strredir_h, yes, notset, dontmatch)
-
 AC_CONFIG_FILES([Makefile \
 doc/Makefile \
 src/Makefile \
-src/rxvtlib.h \
 ])
 AC_OUTPUT
 

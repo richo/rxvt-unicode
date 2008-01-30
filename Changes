@@ -17,6 +17,41 @@ WISH: load system-wide config file even if we don't have one
 WISH: look into XAddConnectionWatch, does anybody need that?
 DUMB: support tex fonts
 
+9.02 Tue Jan 29 11:58:36 CET 2008
+	- the "exg makes everybody happy" release.
+	- fix build with !xft.
+	- always compile in plain style scrollbar.
+
+9.01 Sat Jan 26 20:49:27 CET 2008
+	- be more aggressive about handling X events, this seems to be required
+          with newer xlibs (should fix the "screen stays black until event is
+          received" problem, again :)
+	- add buffered resource to control xft double-buffering.
+
+9.0  Fri Jan 25 19:34:04 CET 2008
+	- fix a crash bug where urxvtd would crash when urxvtc was called
+          with wrong arguments (I wish debian maintainers in general would
+          report bugs and their proposed fixes to the original package maintaienrs
+          instead of sitting on them for good measure to see if anybody notices).
+        - drawing xft compose characters was causing garbage to be drawn.
+        - correctly clear xft character background in all cases.
+	- implement bracketed paste mode (xterm private mode 2004).
+        - improve documentation on alpha channel handling, make urxvt
+          work better on servers lacking the RENDER extension when alpha
+          channels or background images are used.
+        - check for refresh after initialising to avoid staying blank
+          till the first event arrives. or so.
+        - the FORCE_UNBUFFERED_XFT feature macro works again.
+	- continuously update transparency while moving/resizing now.
+	- OSC 39/49 are deprecated and aliased to OSC 10/11.
+        - cub1 now acts as advertised (and ignores the "wrapped" state).
+        - the 132/80 mode switch now forces a height of 24, too, and
+          resets the terminal.
+	- scrollbar code cleanups.
+        - stopping children is no longer confused with children exiting.
+        - removed (undocumented) #aarrggbb format.
+        - updated to libev 3.0.
+
 8.9  Mon Dec 24 07:51:40 CET 2007
 	- fix the issue where urxvtd would not immediately close a window
           when the command exited but only on the next X event.
@@ -1261,7 +1296,7 @@ DUMB: support tex fonts
 1.4  Fri Jan 16 23:03:22 CET 2004
 	- fix stupid segfault on esc-c
 	- small font tunings
-	- much better io manager, less bugs, higher speed
+	- much better io manager, fewer bugs, higher speed
 	- better error reporting for unknown options
 
 1.3  2003-12-26
@@ -1281,7 +1316,7 @@ DUMB: support tex fonts
 	- Support for non-utf-8-locales
 	- much improved font choosing
 
-1.0
+1.0  2003-12-18
 	- first release
 	- originally cloned from rxvt-CVS 2003-11-19 00:26
 	- removed rclock et al.

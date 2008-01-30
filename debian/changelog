@@ -1,3 +1,11 @@
+rxvt-unicode (9.02-1) unstable; urgency=low
+
+  * New upstream release, obsoletes urxvtc-destroy.patch
+  * Preserve EWMH state and desktop properties in the tabbed extension
+    (Closes: #459888)
+
+ -- Decklin Foster <decklin@red-bean.com>  Tue, 29 Jan 2008 22:39:18 -0500
+
 rxvt-unicode (8.9-2) unstable; urgency=low
 
   * Add patch to prevent urxvtd crashing when urxvtc is passed an illegal

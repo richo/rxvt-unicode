@@ -89,6 +89,8 @@
 #ifdef HAVE_BG_PIXMAP
 bgPixmap_t::bgPixmap_t ()
 {
+  // this is basically redundant as bgPixmap_t is only used in
+  // zero_initialised-derived structs
 #ifdef HAVE_AFTERIMAGE
   original_asim = NULL;
 #endif
@@ -98,6 +100,8 @@ bgPixmap_t::bgPixmap_t ()
 #endif
   flags = 0;
   pixmap = None;
+  valid_since = invalid_since = 0;
+  target = 0;
 }
 
 void
@@ -122,7 +126,7 @@ bgPixmap_t::window_size_sensitive ()
 
 # ifdef BG_IMAGE_FROM_FILE
 #  ifdef HAVE_AFTERIMAGE
-  if (original_asim != NULL)
+  if (original_asim)
 #  endif
     {
       if (h_scale != 0 || v_scale != 0
@@ -144,7 +148,7 @@ bgPixmap_t::window_position_sensitive ()
 
 # ifdef BG_IMAGE_FROM_FILE
 #  ifdef HAVE_AFTERIMAGE
-  if (original_asim != NULL)
+  if (original_asim)
 #  endif
     {
       if (h_align == rootAlign || v_align == rootAlign)
@@ -158,7 +162,7 @@ bgPixmap_t::window_position_sensitive ()
 bool bgPixmap_t::need_client_side_rendering ()
 {
 # ifdef HAVE_AFTERIMAGE
-  if (original_asim != NULL)
+  if (original_asim)
     return true;
 # endif
 # ifdef ENABLE_TRANSPARENCY
@@ -258,7 +262,7 @@ bgPixmap_t::set_geometry (const char *geom)
   unsigned int n;
   unsigned long new_flags = (flags & (~geometryFlags));
   char *p;
-#  define MAXLEN_GEOM		256 /* could be longer then regular geometry string */
+#  define MAXLEN_GEOM		256 /* could be longer than regular geometry string */
 
   if (geom == NULL)
     return false;
@@ -275,7 +279,7 @@ bgPixmap_t::set_geometry (const char *geom)
       char *ops;
       new_flags |= geometrySet;
 
-      strncpy (str, geom, n);
+      memcpy (str, geom, n);
       str[n] = '\0';
       if (str[0] == ':')
         ops = &str[0];
@@ -368,13 +372,14 @@ bgPixmap_t::set_geometry (const char *geom)
           while (*ops)
             {
               while (*ops == ':' || isspace(*ops)) ++ops;
-#  define CHECK_GEOM_OPS(op_str)  (strncasecmp (ops, (op_str), sizeof(op_str)-1) == 0)
-              if (CHECK_GEOM_OPS("tile"))
+
+#  define CHECK_GEOM_OPS(op_str)  (strncasecmp (ops, (op_str), sizeof (op_str) - 1) == 0)
+              if (CHECK_GEOM_OPS ("tile"))
                 {
                   w = h = noScale;
                   geom_flags |= WidthValue|HeightValue;
                 }
-              else if (CHECK_GEOM_OPS("propscale"))
+              else if (CHECK_GEOM_OPS ("propscale"))
                 {
                   if (w == 0 && h == 0)
                     {
@@ -383,53 +388,49 @@ bgPixmap_t::set_geometry (const char *geom)
                     }
                   new_flags |= propScale;
                 }
-              else if (CHECK_GEOM_OPS("hscale"))
+              else if (CHECK_GEOM_OPS ("hscale"))
                 {
-                  if (w == 0)
-                    w = windowScale;
+                  if (w == 0) w = windowScale;
+
                   h = noScale;
                   geom_flags |= WidthValue|HeightValue;
                 }
-              else if (CHECK_GEOM_OPS("vscale"))
+              else if (CHECK_GEOM_OPS ("vscale"))
                 {
-                  if (h == 0)
-                    h = windowScale;
+                  if (h == 0) h = windowScale;
+
                   w = noScale;
                   geom_flags |= WidthValue|HeightValue;
                 }
-              else if (CHECK_GEOM_OPS("scale"))
+              else if (CHECK_GEOM_OPS ("scale"))
                 {
-                  if (h == 0)
-                    h = windowScale;
-                  if (w == 0)
-                    w = windowScale;
+                  if (h == 0) h = windowScale;
+                  if (w == 0) w = windowScale;
+
                   geom_flags |= WidthValue|HeightValue;
                 }
-              else if (CHECK_GEOM_OPS("auto"))
+              else if (CHECK_GEOM_OPS ("auto"))
                 {
                   w = h = windowScale;
                   x = y = centerAlign;
                   geom_flags |= WidthValue|HeightValue|XValue|YValue;
                 }
-              else if (CHECK_GEOM_OPS("root"))
+              else if (CHECK_GEOM_OPS ("root"))
                 {
                   w = h = noScale;
                   x = y = rootAlign;
                   geom_flags |= WidthValue|HeightValue|XValue|YValue;
                 }
 #  undef CHECK_GEOM_OPS
+
               while (*ops != ':' && *ops != '\0') ++ops;
             } /* done parsing ops */
         }
 
-      if (check_set_scale_value (geom_flags, WidthValue, h_scale, w))
-        ++changed;
-      if (check_set_scale_value (geom_flags, HeightValue, v_scale, h))
-        ++changed;
-      if (check_set_align_value (geom_flags, XValue, h_align, x))
-        ++changed;
-      if (check_set_align_value (geom_flags, YValue, v_align, y))
-        ++changed;
+      if (check_set_scale_value (geom_flags, WidthValue, h_scale, w))  ++changed;
+      if (check_set_scale_value (geom_flags, HeightValue, v_scale, h)) ++changed;
+      if (check_set_align_value (geom_flags, XValue, h_align, x))      ++changed;
+      if (check_set_align_value (geom_flags, YValue, v_align, y))      ++changed;
     }
 
   if (new_flags != flags)
@@ -437,6 +438,7 @@ bgPixmap_t::set_geometry (const char *geom)
       flags = new_flags;
       changed++;
     }
+
 //fprintf (stderr, "flags = %lX, scale = %ux%u, align=%+d%+d\n",
 //         flags, h_scale, v_scale, h_align, v_align);
   return (changed > 0);
@@ -469,13 +471,15 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
           x = -x;
           y = -y;
         }
+
       if (h_align != rootAlign)
         x = make_align_position (h_align, target_width, w > 0 ? w : (int)original_asim->width);
+
       if (v_align != rootAlign)
         y = make_align_position (v_align, target_height, h > 0 ? h : (int)original_asim->height);
     }
 
-  if (original_asim == NULL
+  if (!original_asim
       || x >= target_width
       || y >= target_height
       || (w > 0 && x + w <= 0)
@@ -486,6 +490,7 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
           new_pmap_width = background->width;
           new_pmap_height = background->height;
           result = background;
+
           if (background_tint != TINT_LEAVE_SAME)
             {
               ASImage* tmp = tile_asimage (target->asv, background, 0, 0,
@@ -501,6 +506,7 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
   else
     {
       result = original_asim;
+
       if ((w > 0 && w != original_asim->width)
           || (h > 0 && h != original_asim->height))
         {
@@ -510,10 +516,11 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
                                   background ? ASA_ASImage : ASA_XImage,
                                   100, ASIMAGE_QUALITY_DEFAULT);
         }
+
       if (background == NULL)
         {
           /* if tiling - pixmap has to be sized exactly as the image,
-             but there is no need to make it bigger then the window! */
+             but there is no need to make it bigger than the window! */
           if (h_scale == 0)
             new_pmap_width = min (result->width, target_width);
           if (v_scale == 0)
@@ -522,16 +529,17 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
           if (h_scale == 0 || v_scale == 0)
             {
               ASImage *tmp = tile_asimage (target->asv, result,
-                                            (h_scale > 0) ? 0 : (int)result->width - x,
-                                            (v_scale > 0) ? 0 : (int)result->height - y,
-                                            new_pmap_width, 
-                                            new_pmap_height,
-                                            TINT_LEAVE_SAME, ASA_XImage,
-                                            100, ASIMAGE_QUALITY_DEFAULT);
+                                           (h_scale > 0) ? 0 : (int)result->width - x,
+                                           (v_scale > 0) ? 0 : (int)result->height - y,
+                                           new_pmap_width, 
+                                           new_pmap_height,
+                                           TINT_LEAVE_SAME, ASA_XImage,
+                                           100, ASIMAGE_QUALITY_DEFAULT);
               if (tmp)
                 {
                   if (result != original_asim)
                     destroy_asimage (&result);
+
                   result = tmp;
                 }
             }
@@ -547,6 +555,7 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
           layers[0].clip_height = target_height;
           layers[0].tint = background_tint;
           layers[1].im = result;
+
           if (w <= 0)
             {
               /* tile horizontally */
@@ -560,6 +569,7 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
               layers[1].dst_x = x;
               layers[1].clip_width = result->width;
             }
+
           if (h <= 0)
             {
               while (y > 0) y -= (int)result->height;
@@ -571,20 +581,25 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
               layers[1].dst_y = y;
               layers[1].clip_height = result->height;
             }
+
           if (target->rs[Rs_blendtype])
             {
               layers[1].merge_scanlines = blend_scanlines_name2func (target->rs[Rs_blendtype]);
               if (layers[1].merge_scanlines == NULL)
                 layers[1].merge_scanlines = alphablend_scanlines;
             }
+
           ASImage *tmp = merge_layers (target->asv, layers, 2, target_width, target_height,
                                        ASA_XImage, 0, ASIMAGE_QUALITY_DEFAULT);
+
           if (tmp)
             {
               if (result != original_asim)
                 destroy_asimage (&result);
+
               result = tmp;
             }
+
           free (layers);
         }
     }
@@ -623,17 +638,13 @@ bgPixmap_t::render_asim (ASImage *background, ARGB32 background_tint)
       int dst_width = result->width, dst_height = result->height;
       if (background == NULL)
         {
-          if (h_scale > 0)
-            src_x = make_clip_rectangle (x, result->width, new_pmap_width, dst_x, dst_width);
-          if (v_scale > 0)
-            src_y = make_clip_rectangle (y, result->height, new_pmap_height, dst_y, dst_height);
+          if (h_scale > 0) src_x = make_clip_rectangle (x, result->width , new_pmap_width , dst_x, dst_width );
+          if (v_scale > 0) src_y = make_clip_rectangle (y, result->height, new_pmap_height, dst_y, dst_height);
 
           if (dst_x > 0 || dst_y > 0
               || dst_x + dst_width < new_pmap_width
               || dst_y + dst_height < new_pmap_height)
-            {
-              XFillRectangle (target->dpy, pixmap, gc, 0, 0, new_pmap_width, new_pmap_height);
-            }
+            XFillRectangle (target->dpy, pixmap, gc, 0, 0, new_pmap_width, new_pmap_height);
         }
 
       /* put result on pixmap */
@@ -656,27 +667,30 @@ bgPixmap_t::set_file (const char *file)
 {
   char *f;
 
-  assert (file != NULL);
+  assert (file);
 
-  if (*file != '\0')
+  if (*file)
     {
 #  ifdef HAVE_AFTERIMAGE
       if (target->asimman == NULL)
         target->asimman = create_generic_imageman (target->rs[Rs_path]);
+
       if ((f = strchr (file, ';')) == NULL)
         original_asim = get_asimage (target->asimman, file, 0xFFFFFFFF, 100);
       else
         {
           size_t len = f - file;
           f = (char *)malloc (len + 1);
-          strncpy (f, file, len);
+          memcpy (f, file, len);
           f[len] = '\0';
           original_asim = get_asimage (target->asimman, f, 0xFFFFFFFF, 100);
           free (f);
         }
-      return (original_asim != NULL);
+
+      return original_asim;
 #  endif
     }
+
   return false;
 }
 
@@ -691,6 +705,7 @@ bgPixmap_t::set_transparent ()
       flags |= isTransparent;
       return true;
     }
+
   return false;
 }
 
@@ -902,7 +917,7 @@ bgPixmap_t::make_transparency_pixmap ()
           XSync (dpy, False);
 
           /* XSync should get window where it's properly exposed,
-           * but to be on the safe side - let's check for the actuall event to arrive : */
+           * but to be on the safe side - let's check for the actual event to arrive : */
           while (XCheckWindowEvent (dpy, src, ExposureMask, &event))
             ++ev_count;
 
@@ -1240,6 +1255,9 @@ bgPixmap_t::render ()
 
   apply ();
 
+  XSync (target->dpy, False);
+  valid_since = ev::now ();
+
   TIMING_TEST_PRINT_RESULT (tp);
 
   return true;
@@ -1274,10 +1292,8 @@ bgPixmap_t::apply ()
             {
               XSetWindowBackgroundPixmap (target->dpy, target->parent[0], pixmap);
               XSetWindowBackgroundPixmap (target->dpy, target->vt, ParentRelative);
-#  if HAVE_SCROLLBARS
               if (target->scrollBar.win)
                 XSetWindowBackgroundPixmap (target->dpy, target->scrollBar.win, ParentRelative);
-#  endif
             }
           else
 # endif
@@ -1287,10 +1303,8 @@ bgPixmap_t::apply ()
               XSetWindowBackground (target->dpy, target->parent[0], target->pix_colors[Color_border]);
               XSetWindowBackgroundPixmap (target->dpy, target->vt, pixmap);
               /* do we also need to set scrollbar's background here ? */
-# if HAVE_SCROLLBARS
               if (target->scrollBar.win)
                   XSetWindowBackground (target->dpy, target->scrollBar.win, target->pix_colors[Color_border]);
-# endif
             }
         }
       else
@@ -1299,22 +1313,18 @@ bgPixmap_t::apply ()
           XSetWindowBackground (target->dpy, target->parent[0], target->pix_colors[Color_border]);
           XSetWindowBackground (target->dpy, target->vt, target->pix_colors[Color_bg]);
           /* do we also need to set scrollbar's background here ? */
-# if HAVE_SCROLLBARS
           if (target->scrollBar.win)
               XSetWindowBackground (target->dpy, target->scrollBar.win, target->pix_colors[Color_border]);
-# endif
         }
       /* don't want Expose on the parent or vt. It is better to use
          scr_touch or we get a great deal of flicker otherwise: */
       XClearWindow (target->dpy, target->parent[0]);
 
-# if HAVE_SCROLLBARS
       if (target->scrollBar.win)
         {
           target->scrollBar.setIdle ();
           target->scrollbar_show (0);
         }
-# endif
 
       target->want_refresh = 1;
       flags |= hasChanged;

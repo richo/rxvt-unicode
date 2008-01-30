@@ -12,7 +12,7 @@
  * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  *                              - extensive modifications
- * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include "rxvt.h"               /* NECESSARY */
 #include "rxvtutil.h"
 #include "init.h"
+#include "keyboard.h"
 
 #include <limits>
 
@@ -268,10 +269,10 @@ const char *const def_colorName[] =
 #ifdef OPTION_HC
     NULL,
 #endif
-#ifdef KEEP_SCROLLCOLOR
     COLOR_SCROLLBAR,
+#ifdef RXVT_SCROLLBAR
     COLOR_SCROLLTROUGH,
-#endif /* KEEP_SCROLLCOLOR */
+#endif
 #if ENABLE_TRANSPARENCY
     NULL,
 #endif
@@ -283,11 +284,7 @@ const char *const def_colorName[] =
 void
 rxvt_term::init_vars ()
 {
-  pix_colors           = //
-  pix_colors_focused   = new rxvt_color [TOTAL_COLORS];
-#ifdef OFF_FOCUS_FADING
-  pix_colors_unfocused = new rxvt_color [TOTAL_COLORS];
-#endif
+  pix_colors = pix_colors_focused;
 
   MEvent.time = CurrentTime;
   MEvent.button = AnyButton;
@@ -303,7 +300,6 @@ rxvt_term::init_vars ()
   refresh_type = SLOW_REFRESH;
 
   oldcursor.row = oldcursor.col = -1;
-  last_bot = last_state = -1;
 
   set_option (Opt_scrollBar);
   set_option (Opt_scrollTtyOutput);
@@ -314,20 +310,16 @@ rxvt_term::init_vars ()
   set_option (Opt_pastableTabs);
   set_option (Opt_intensityStyles);
   set_option (Opt_iso14755_52);
+  set_option (Opt_buffered);
 }
 
-void
-rxvt_term::init_secondary ()
+static void
+init_secondary ()
 {
   int i;
 
-  /*
-   * Close all unused file descriptors
-   * We don't want them, we don't need them.
-   */
   if ((i = open ("/dev/null", O_RDONLY)) < 0)
     {
-      /* TODO: BOO HISS */
       dup2 (STDERR_FILENO, STDIN_FILENO);
     }
   else if (i != STDIN_FILENO)
@@ -337,17 +329,6 @@ rxvt_term::init_secondary ()
     }
 
   dup2 (STDERR_FILENO, STDOUT_FILENO);
-
-#if 0 // schmorp sayz closing filies is murder
-  for (i = STDERR_FILENO + 1; i < num_fds; i++)
-    {
-#ifdef __sgi                    /* Alex Coventry says we need 4 & 7 too */
-      if (i == 4 || i == 7)
-        continue;
-#endif
-      close (i);
-    }
-#endif
 }
 
 /*----------------------------------------------------------------------*/
@@ -506,9 +487,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 # endif
 #endif
 
-#ifdef HAVE_SCROLLBARS
   setup_scrollbar (rs[Rs_scrollBar_align], rs[Rs_scrollstyle], rs[Rs_scrollBar_thickness]);
-#endif
 
 #ifdef XTERM_REVERSE_VIDEO
   /* this is how xterm implements reverseVideo */
@@ -552,6 +531,121 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     rs[Rs_color + Color_border] = rs[Rs_color + Color_bg];
 
   return cmd_argv;
+}
+
+/*----------------------------------------------------------------------*/
+void
+rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
+{
+  this->envv = envv;
+
+  SET_R (this);
+  set_locale ("");
+  set_environ (envv); // few things in X do not call setlocale :(
+
+  init_vars ();
+
+  init_secondary ();
+
+  const char **cmd_argv = init_resources (argc, argv);
+
+#ifdef KEYSYM_RESOURCE
+  keyboard->register_done ();
+#endif
+
+  if (option (Opt_scrollBar))
+    scrollBar.setIdle ();    /* set existence for size calculations */
+
+  pty = ptytty::create ();
+
+  create_windows (argc, argv);
+
+  init_xlocale ();
+
+  scr_reset (); // initialize screen
+
+#if 0
+  XSynchronize (dpy, True);
+#endif
+
+  if (option (Opt_scrollBar))
+    resize_scrollbar ();      /* create and map scrollbar */
+#ifdef HAVE_BG_PIXMAP
+  {
+    bgPixmap.set_target (this);
+    bgPixmap.invalidate ();
+
+#ifdef ENABLE_TRANSPARENCY
+    if (option (Opt_transparent))
+      {
+        bgPixmap.set_transparent ();
+
+#ifdef HAVE_AFTERIMAGE
+        if (rs [Rs_blurradius])
+          bgPixmap.set_blur_radius (rs [Rs_blurradius]);
+#endif
+        if (ISSET_PIXCOLOR (Color_tint))
+          bgPixmap.set_tint (pix_colors_focused [Color_tint]);
+
+        if (rs [Rs_shade])
+          bgPixmap.set_shade (rs [Rs_shade]);
+
+        bgPixmap.set_root_pixmap ();
+        XSelectInput (dpy, display->root, PropertyChangeMask);
+        rootwin_ev.start (display, display->root);
+      }
+#endif
+
+#ifdef BG_IMAGE_FROM_FILE
+    if (rs[Rs_backgroundPixmap])
+      {
+        const char *p = rs[Rs_backgroundPixmap];
+
+        if ((p = strchr (p, ';')) != 0)
+          {
+            p++;
+            bgPixmap.set_geometry (p);
+          }
+        else
+          bgPixmap.set_defaultGeometry ();
+
+        if (bgPixmap.set_file (rs[Rs_backgroundPixmap]))
+          if (!bgPixmap.window_position_sensitive ())
+            update_background ();
+      }
+#endif
+  }
+#endif
+
+#if ENABLE_PERL
+  rootwin_ev.start (display, display->root);
+#endif
+
+  set_colorfgbg ();
+
+  init_command (cmd_argv);
+
+  free (cmd_argv);
+
+  if (pty->pty >= 0)
+    pty_ev.start (pty->pty, ev::READ);
+
+  HOOK_INVOKE ((this, HOOK_START, DT_END));
+
+#if ENABLE_XEMBED
+  if (rs[Rs_embed])
+    {
+      long info[2] = { 0, XEMBED_MAPPED };
+
+      XChangeProperty (dpy, parent[0], xa[XA_XEMBED_INFO], xa[XA_XEMBED_INFO],
+                       32, PropModeReplace, (unsigned char *)&info, 2);
+    }
+#endif
+
+  XMapWindow (dpy, vt);
+  XMapWindow (dpy, parent[0]);
+
+  refresh_check ();
 }
 
 /*----------------------------------------------------------------------*/
@@ -810,7 +904,7 @@ rxvt_term::Get_Colours ()
    * The calculations of topShadow/bottomShadow values are adapted
    * from the fvwm window manager.
    */
-#ifdef KEEP_SCROLLCOLOR
+#ifdef RXVT_SCROLLBAR
   if (depth <= 2)
     {
       /* Monochrome */
@@ -835,7 +929,7 @@ rxvt_term::Get_Colours ()
                        ))
         alias_color (Color_topShadow, Color_White);
     }
-#endif /* KEEP_SCROLLCOLOR */
+#endif
 
 #ifdef OFF_FOCUS_FADING
   for (i = 0; i < (depth <= 2 ? 2 : NRS_COLORS); i++)
@@ -1082,11 +1176,6 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   /* vt cursor: Black-on-White is standard, but this is more popular */
   TermWin_cursor = XCreateFontCursor (dpy, XC_xterm);
 
-#ifdef HAVE_SCROLLBARS
-  /* cursor scrollBar: Black-on-White */
-  leftptr_cursor = XCreateFontCursor (dpy, XC_left_ptr);
-#endif
-
   /* the vt window */
   vt = XCreateSimpleWindow (dpy, top,
                             window_vt_x, window_vt_y,
@@ -1120,15 +1209,6 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   drawable = new rxvt_drawable (this, vt);
 
-#ifdef RXVT_SCROLLBAR
-  gcvalue.foreground = pix_colors[Color_topShadow];
-  topShadowGC = XCreateGC (dpy, vt, GCForeground, &gcvalue);
-  gcvalue.foreground = pix_colors[Color_bottomShadow];
-  botShadowGC = XCreateGC (dpy, vt, GCForeground, &gcvalue);
-  gcvalue.foreground = pix_colors[ (depth <= 2 ? Color_fg : Color_scroll)];
-  scrollbarGC = XCreateGC (dpy, vt, GCForeground, &gcvalue);
-#endif
-
 #ifdef OFF_FOCUS_FADING
   // initially we are in unfocused state
   if (rs[Rs_fade])
@@ -1143,7 +1223,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
  *                            GET TTY CURRENT STATE                          *
  * ------------------------------------------------------------------------- */
 void
-rxvt_get_ttymode (ttymode_t *tio, int erase)
+rxvt_get_ttymode (struct termios *tio, int erase)
 {
   /*
    * standard System V termios interface
@@ -1152,7 +1232,7 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
     {
       // return error - use system defaults,
       // where possible, and zero elsewhere
-      memset (tio, 0, sizeof (ttymode_t));
+      memset (tio, 0, sizeof (struct termios));
 
       tio->c_cc[VINTR] = CINTR;
       tio->c_cc[VQUIT] = CQUIT;

@@ -89,24 +89,22 @@ static inline void fill_text (text_t *start, text_t value, int len)
  * CLEAR_CHARS: clear <num> chars starting from pixel position <x,y>
  * ERASE_ROWS : set <num> rows starting from row <row> to the foreground colour
  */
-#define drawBuffer      vt
-
 #define CLEAR_ROWS(row, num)                                           \
-    if (mapped)                                                \
-        XClearArea (dpy, drawBuffer, 0,                   \
-                    Row2Pixel (row), (unsigned int)width,      \
+    if (mapped)                                                        \
+        XClearArea (dpy, vt, 0,                                        \
+                    Row2Pixel (row), (unsigned int)width,              \
                     (unsigned int)Height2Pixel (num), False)
 
 #define CLEAR_CHARS(x, y, num)                                         \
-    if (mapped)                                                \
-        XClearArea (dpy, drawBuffer, x, y,                \
+    if (mapped)                                                        \
+        XClearArea (dpy, vt, x, y,                                     \
                     (unsigned int)Width2Pixel (num),                   \
                     (unsigned int)Height2Pixel (1), False)
 
 #define ERASE_ROWS(row, num)                                           \
-    XFillRectangle (dpy, drawBuffer, gc,          \
+    XFillRectangle (dpy, vt, gc,                                       \
                     0, Row2Pixel (row),                                \
-                    (unsigned int)width,                       \
+                    (unsigned int)width,                               \
                     (unsigned int)Height2Pixel (num))
 
 /* ------------------------------------------------------------------------- *
@@ -1013,23 +1011,20 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
 void
 rxvt_term::scr_backspace () NOTHROW
 {
-  want_refresh = 1;
-
   if (screen.cur.col == 0)
     {
       if (screen.cur.row > 0)
         {
 #ifdef TERMCAP_HAS_BW
           screen.cur.col = ncol - 1;
-          screen.cur.row--;
-          return;
+          --screen.cur.row;
+
+          want_refresh = 1;
 #endif
         }
     }
-  else if (!(screen.flags & Screen_WrapNext))
+  else
     scr_gotorc (0, -1, RELATIVE);
-
-  screen.flags &= ~Screen_WrapNext;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2380,7 +2375,7 @@ rxvt_term::scr_refresh () NOTHROW
 #endif
                 XSetForeground (dpy, gc, pix_colors[fore]);
 
-              XDrawLine (dpy, drawBuffer, gc,
+              XDrawLine (dpy, vt, gc,
                          xpixel, ypixel + font->ascent + 1,
                          xpixel + Width2Pixel (count) - 1, ypixel + font->ascent + 1);
             }
@@ -2428,7 +2423,7 @@ rxvt_term::scr_refresh () NOTHROW
 #endif
             XSetForeground (dpy, gc, pix_colors[ccol1]);
 
-          XDrawRectangle (dpy, drawBuffer, gc,
+          XDrawRectangle (dpy, vt, gc,
                           Col2Pixel (col),
                           Row2Pixel (oldcursor.row),
                           (unsigned int) (Width2Pixel (cursorwidth) - 1),
@@ -2481,14 +2476,12 @@ rxvt_term::scr_recolour () NOTHROW
   XClearWindow (dpy, parent[0]);
   XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
 
-# if HAVE_SCROLLBARS
   if (scrollBar.win)
    {
      XSetWindowBackground (dpy, scrollBar.win, pix_colors[Color_border]);
      scrollBar.setIdle ();
      scrollbar_show (0);
    }
-# endif
 
   scr_clear ();
   scr_touch (true);
@@ -2654,7 +2647,13 @@ rxvt_term::paste (char *data, unsigned int len) NOTHROW
     if (data[i] == C0_LF)
       data[i] = C0_CR;
 
+  if (priv_modes & PrivMode_BracketPaste)
+    tt_printf ("\e[200~");
+
   tt_write (data, len);
+
+  if (priv_modes & PrivMode_BracketPaste)
+    tt_printf ("\e[201~");
 }
 
 /* ------------------------------------------------------------------------- */

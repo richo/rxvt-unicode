@@ -2,4 +2,4 @@ sarge-warnings.patch
 generate-docs.patch
 app-defaults.patch
 select-quoted.patch
-urxvtc-destroy.patch
+tabbed-deskprop.patch

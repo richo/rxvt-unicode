@@ -31,7 +31,6 @@
 
 #include "ev_cpp.h"
 
-#include "rxvtlib.h"
 #include "rxvtutil.h"
 
 #include "callback.h"
@@ -76,7 +75,7 @@ enum {
   XA_XEMBED_INFO,
 #endif
 #if !ENABLE_MINIMAL
-  // these are usually allocated by other subsystens, but we do it
+  // these are usually allocated by other subsystems, but we do it
   // here to avoid a server roundtrip.
   XA_SCREEN_RESOURCES,
   XA_XDCCC_LINEAR_RGB_CORRECTION,
@@ -331,6 +330,15 @@ struct rxvt_color
 
   bool operator == (const rxvt_color &b) const { return Pixel (*this) == Pixel (b); }
   bool operator != (const rxvt_color &b) const { return Pixel (*this) != Pixel (b); }
+
+  bool is_opaque () const
+  {
+#if XFT
+    return c.color.alpha == rgba::MAX_CC;
+#else
+    return 1;
+#endif
+  }
 
   bool alloc (rxvt_screen *screen, const rgba &color);
   void free (rxvt_screen *screen);

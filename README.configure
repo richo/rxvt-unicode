@@ -36,13 +36,12 @@ CONFIGURE OPTIONS
         about 700kB), but it doesn't increase memory usage unless you use a
         font requiring one of these encodings.
 
-           all             all available codeset groups 
-           zh              common chinese encodings 
-           zh_ext          rarely used but very big chinese encodings 
-           jp              common japanese encodings 
-           jp_ext          rarely used but big japanese encodings 
-           kr              korean encodings 
-
+   all             all available codeset groups 
+   zh              common chinese encodings 
+   zh_ext          rarely used but very big chinese encodings 
+   jp              common japanese encodings 
+   jp_ext          rarely used but big japanese encodings 
+   kr              korean encodings 
     --enable-xim (default: on)
         Add support for XIM (X Input Method) protocol. This allows using
         alternative input methods (e.g. kinput2) and will also correctly set
@@ -88,7 +87,7 @@ CONFIGURE OPTIONS
         Use the given name as default application name when reading
         resources. Specify --with-res-name=rxvt to replace rxvt.
 
-    --with-res-class=CLASS /default: URxvt)
+    --with-res-class=CLASS (default: URxvt)
         Use the given class as default application class when reading
         resources. Specify --with-res-class=Rxvt to replace rxvt.
 
@@ -138,15 +137,6 @@ CONFIGURE OPTIONS
 
     --enable-xterm-scroll (default: on)
         Add support for an Xterm-like scrollbar.
-
-    --enable-plain-scroll (default: on)
-        Add support for a very unobtrusive, plain-looking scrollbar that is
-        the favourite of the rxvt-unicode author, having used it for many
-        years.
-
-    --enable-ttygid (default: off)
-        Change tty device setting to group "tty" - only use this if your
-        system uses this type of security.
 
     --disable-backspace-key
         Removes any handling of the backspace key by us - let the X server
@@ -229,6 +219,9 @@ CONFIGURE OPTIONS
         Add smart growth/shrink behaviour when resizing. This should keep
         the window corner which is closest to a corner of the screen in a
         fixed position.
+
+    --enable-text-blink (default: on)
+        Add support for blinking text.
 
     --enable-pointer-blank (default: on)
         Add support to have the pointer disappear when typing or inactive.

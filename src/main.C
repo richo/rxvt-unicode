@@ -13,7 +13,7 @@
  * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  *                              - extensive modifications
- * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -174,9 +174,7 @@ rxvt_term::rxvt_term ()
 #if ENABLE_TRANSPARENCY || ENABLE_PERL
   rootwin_ev.set          <rxvt_term, &rxvt_term::rootwin_cb> (this),
 #endif
-#ifdef HAVE_SCROLLBARS
   scrollbar_ev.set        <rxvt_term, &rxvt_term::x_cb>       (this),
-#endif
 #ifdef USE_XIM
   im_ev.set               <rxvt_term, &rxvt_term::im_cb>      (this),
 #endif
@@ -228,6 +226,10 @@ rxvt_term::~rxvt_term ()
 #endif
   delete fontset[0];
 
+#ifdef HAVE_BG_PIXMAP
+  bgPixmap.destroy ();
+#endif
+
   if (display)
     {
       selection_clear ();
@@ -276,18 +278,10 @@ rxvt_term::~rxvt_term ()
           }
 
       clear ();
+
+      display->flush (); /* ideally .put should do this */
+      displays.put (display);
     }
-
-  delete [] pix_colors_focused;
-#if OFF_FOCUS_FADING
-  delete [] pix_colors_unfocused;
-#endif
-
-#ifdef HAVE_BG_PIXMAP
-  bgPixmap.destroy ();
-#endif
-  display->flush (); /* ideally .put should do this */
-  displays.put (display);
 
   scr_release ();
 
@@ -343,9 +337,7 @@ rxvt_term::destroy ()
 #if USE_XIM
       im_ev.stop (display);
 #endif
-#if HAVE_SCROLLBARS
       scrollbar_ev.stop (display);
-#endif
 #if ENABLE_TRANSPARENCY || ENABLE_PERL
       rootwin_ev.stop (display);
 #endif
@@ -472,122 +464,6 @@ rxvt_xioerror_handler (Display *display)
              DisplayString (display));
   rxvt_emergency_cleanup ();
   _exit (EXIT_FAILURE);
-}
-
-/*----------------------------------------------------------------------*/
-void
-rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
-{
-  this->envv = envv;
-
-  SET_R (this);
-  set_locale ("");
-  set_environ (envv); // few things in X do not call setlocale :(
-
-  init_vars ();
-
-  init_secondary ();
-
-  const char **cmd_argv = init_resources (argc, argv);
-
-#ifdef KEYSYM_RESOURCE
-  keyboard->register_done ();
-#endif
-
-#ifdef HAVE_SCROLLBARS
-  if (option (Opt_scrollBar))
-    scrollBar.setIdle ();    /* set existence for size calculations */
-#endif
-
-  pty = ptytty::create ();
-
-  create_windows (argc, argv);
-
-  init_xlocale ();
-
-  scr_reset (); // initialize screen
-
-#if 0
-  XSynchronize (dpy, True);
-#endif
-
-#ifdef HAVE_SCROLLBARS
-  if (option (Opt_scrollBar))
-    resize_scrollbar ();      /* create and map scrollbar */
-#endif
-#ifdef HAVE_BG_PIXMAP
-  {
-    bgPixmap.set_target (this);
-
-#ifdef ENABLE_TRANSPARENCY
-    if (option (Opt_transparent))
-      {
-        bgPixmap.set_transparent ();
-
-#ifdef HAVE_AFTERIMAGE
-        if (rs [Rs_blurradius])
-          bgPixmap.set_blur_radius (rs [Rs_blurradius]);
-#endif
-        if (ISSET_PIXCOLOR (Color_tint))
-          bgPixmap.set_tint (pix_colors_focused [Color_tint]);
-
-        if (rs [Rs_shade])
-          bgPixmap.set_shade (rs [Rs_shade]);
-
-        bgPixmap.set_root_pixmap ();
-        XSelectInput (dpy, display->root, PropertyChangeMask);
-        rootwin_ev.start (display, display->root);
-      }
-#endif
-
-#ifdef BG_IMAGE_FROM_FILE
-    if (rs[Rs_backgroundPixmap])
-      {
-        const char *p = rs[Rs_backgroundPixmap];
-
-        if ((p = strchr (p, ';')) != 0)
-          {
-            p++;
-            bgPixmap.set_geometry (p);
-          }
-        else
-          bgPixmap.set_defaultGeometry ();
-
-        if (bgPixmap.set_file (rs[Rs_backgroundPixmap]))
-          if (!bgPixmap.window_position_sensitive ())
-            update_background ();
-      }
-#endif
-  }
-#endif
-
-#if ENABLE_PERL
-  rootwin_ev.start (display, display->root);
-#endif
-
-  set_colorfgbg ();
-
-  init_command (cmd_argv);
-
-  free (cmd_argv);
-
-  if (pty->pty >= 0)
-    pty_ev.start (pty->pty, ev::READ);
-
-  HOOK_INVOKE ((this, HOOK_START, DT_END));
-
-#if ENABLE_XEMBED
-  if (rs[Rs_embed])
-    {
-      long info[2] = { 0, XEMBED_MAPPED };
-
-      XChangeProperty (dpy, parent[0], xa[XA_XEMBED_INFO], xa[XA_XEMBED_INFO],
-                       32, PropModeReplace, (unsigned char *)&info, 2);
-    }
-#endif
-
-  XMapWindow (dpy, vt);
-  XMapWindow (dpy, parent[0]);
 }
 
 static struct sig_handlers
@@ -1698,10 +1574,9 @@ rxvt_term::get_pixmap_property (int prop_id)
                                          0L, 1L, False, XA_PIXMAP, &atype, &aformat,
                                          &nitems, &bytes_after, &prop);
         if (result == Success && prop && atype == XA_PIXMAP)
-          {
-            return *(Pixmap *)prop;
-          }
+          return *(Pixmap *)prop;
       }
+
   return None;
 }
 
@@ -1719,34 +1594,25 @@ rxvt_term::trace_update_background (const char *file, int line)
 void
 rxvt_term::update_background ()
 {
+  if (update_background_ev.is_active ())
+    return;
+
   bgPixmap.invalidate ();
 
-  /* no chance of real time refresh if we are blurring! */
-  if (bgPixmap.invalid_since + 0.50 < ev::now ()
-      && !(bgPixmap.flags & bgPixmap_t::blurNeeded))
-    {
-      update_background_ev.stop ();
-      bgPixmap.render ();
-    }
+  ev_tstamp to_wait = 0.5 - (ev::now () - bgPixmap.valid_since);
+
+  if (to_wait <= 0.)
+    bgPixmap.render ();
   else
-    {
-      ev_tstamp refresh;
-
-      if (!bgPixmap.need_client_side_rendering ())
-        refresh = .05;
-      else if (bgPixmap.flags & bgPixmap_t::blurNeeded)
-        refresh = .20; /* very slow !!! */
-      else
-        refresh = .07;
-
-      update_background_ev.start (refresh);
-    }
+    update_background_ev.start (to_wait);
 }
 
 void
 rxvt_term::update_background_cb (ev::timer &w, int revents)
 {
   make_current ();
+
+  update_background_ev.stop ();
   bgPixmap.render ();
   refresh_check ();
 }
