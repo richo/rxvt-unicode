@@ -1,3 +1,9 @@
+rxvt-unicode (9.05-1) unstable; urgency=low
+
+  * New Upstream Version
+
+ -- Decklin Foster <decklin@red-bean.com>  Mon, 16 Jun 2008 21:15:27 -0400
+
 rxvt-unicode (9.02-1) unstable; urgency=low
 
   * New upstream release, obsoletes urxvtc-destroy.patch

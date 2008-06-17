@@ -1093,7 +1093,7 @@ work.
 
 =cut
 
-our $VERSION = 1;
+our $VERSION = '3.4';
 
 $INC{"urxvt/anyevent.pm"} = 1; # mark us as there
 push @AnyEvent::REGISTRY, [urxvt => urxvt::anyevent::];
@@ -1132,20 +1132,6 @@ sub io {
 
 sub DESTROY {
    $_[0][1]->stop;
-}
-
-sub condvar {
-   bless \my $flag, urxvt::anyevent::
-}
-
-sub broadcast {
-   ${$_[0]}++;
-}
-
-sub wait {
-   unless (${$_[0]}) {
-      Carp::croak "AnyEvent->condvar blocking wait unsupported in urxvt, use a non-blocking API";
-   }
 }
 
 sub one_event {
@@ -1278,7 +1264,7 @@ are supported in every build, please see the source file F</src/rsinc.h>
 to see the actual list:
 
   answerbackstring backgroundPixmap backspace_key boldFont boldItalicFont
-  borderLess color cursorBlink cursorUnderline cutchars delete_key
+  borderLess chdir color cursorBlink cursorUnderline cutchars delete_key
   display_name embed ext_bwidth fade font geometry hold iconName
   imFont imLocale inputMethod insecure int_bwidth intensityStyles
   italicFont jumpScroll lineSpace loginShell mapAlert meta8 modifier
@@ -1296,7 +1282,7 @@ to see the actual list:
 sub resource($$;$) {
    my ($self, $name) = (shift, shift);
    unshift @_, $self, $name, ($name =~ s/\s*\+\s*(\d+)$// ? $1 : 0);
-   &urxvt::term::_resource
+   goto &urxvt::term::_resource
 }
 
 =item $value = $term->x_resource ($pattern)
@@ -1613,10 +1599,9 @@ Used after changing terminal contents to display them.
 
 =item $text = $term->ROW_t ($row_number[, $new_text[, $start_col]])
 
-Returns the text of the entire row with number C<$row_number>. Row C<0>
-is the topmost terminal line, row C<< $term->$ncol-1 >> is the bottommost
-terminal line. The scrollback buffer starts at line C<-1> and extends to
-line C<< -$term->nsaved >>. Nothing will be returned if a nonexistent line
+Returns the text of the entire row with number C<$row_number>. Row C<< $term->top_row >>
+is the topmost terminal line, row C<< $term->nrow-1 >> is the bottommost
+terminal line. Nothing will be returned if a nonexistent line
 is requested.
 
 If C<$new_text> is specified, it will replace characters in the current
@@ -1824,7 +1809,7 @@ the session.
 
 =item ($type,$format,$octets) = $term->XGetWindowProperty ($window, $property)
 
-=item $term->XChangeWindowProperty ($window, $property, $type, $format, $octets)
+=item $term->XChangeProperty ($window, $property, $type, $format, $octets)
 
 =item $term->XDeleteProperty ($window, $property)
 

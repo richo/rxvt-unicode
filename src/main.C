@@ -237,30 +237,7 @@ rxvt_term::~rxvt_term ()
 #ifdef USE_XIM
       im_destroy ();
 #endif
-#ifdef XTERM_SCROLLBAR
-      if (xscrollbarGC) XFreeGC (dpy, xscrollbarGC);
-      if (ShadowGC)     XFreeGC (dpy, ShadowGC);
-#endif
-#ifdef PLAIN_SCROLLBAR
-      if (pscrollbarGC) XFreeGC (dpy, pscrollbarGC);
-#endif
-#ifdef NEXT_SCROLLBAR
-      if (blackGC)      XFreeGC (dpy, blackGC);
-      if (whiteGC)      XFreeGC (dpy, whiteGC);
-      if (grayGC)       XFreeGC (dpy, grayGC);
-      if (darkGC)       XFreeGC (dpy, darkGC);
-      if (stippleGC)    XFreeGC (dpy, stippleGC);
-      if (dimple)       XFreePixmap (dpy, dimple);
-      if (upArrow)      XFreePixmap (dpy, upArrow);
-      if (downArrow)    XFreePixmap (dpy, downArrow);
-      if (upArrowHi)    XFreePixmap (dpy, upArrowHi);
-      if (downArrowHi)  XFreePixmap (dpy, downArrowHi);
-#endif
-#ifdef RXVT_SCROLLBAR
-      if (topShadowGC)  XFreeGC (dpy, topShadowGC);
-      if (botShadowGC)  XFreeGC (dpy, botShadowGC);
-      if (scrollbarGC)  XFreeGC (dpy, scrollbarGC);
-#endif
+      scrollBar.destroy ();
       if (gc)   XFreeGC (dpy, gc);
 
       delete drawable;
@@ -527,7 +504,7 @@ void
 rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
 {
   short recalc_x, recalc_y;
-  int x, y, sb_w, flags;
+  int x, y, flags;
   unsigned int w, h;
   unsigned int max_width, max_height;
 
@@ -547,13 +524,19 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
 
       if (flags & WidthValue)
         {
-          ncol = clamp (w, 0, std::numeric_limits<int16_t>::max ());
+          if (!w)
+            rxvt_fatal ("illegal window geometry (width and height must be non-zero), aborting.\n");
+
+          ncol = clamp (w, 1, std::numeric_limits<int16_t>::max ());
           szHint.flags |= USSize;
         }
 
       if (flags & HeightValue)
         {
-          nrow = clamp (h, 0, std::numeric_limits<int16_t>::max ());
+          if (!h)
+            rxvt_fatal ("illegal window geometry (width and height must be non-zero), aborting.\n");
+
+          nrow = clamp (h, 1, std::numeric_limits<int16_t>::max ());
           szHint.flags |= USSize;
         }
 
@@ -594,12 +577,11 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
 
   szHint.base_width = szHint.base_height = 2 * int_bwidth;
 
-  sb_w = 0;
   window_vt_x = window_vt_y = int_bwidth;
 
   if (scrollBar.state)
     {
-      sb_w = scrollbar_TotalWidth ();
+      int sb_w = scrollBar.total_width ();
       szHint.base_width += sb_w;
 
       if (!option (Opt_scrollBar_right))
@@ -632,9 +614,6 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
       min_it (height, max_height);
       szHint.height = szHint.base_height + height;
     }
-
-  if (scrollBar.state && option (Opt_scrollBar_right))
-    window_sb_x = szHint.width - sb_w;
 
   if (recalc_x)
     szHint.x += DisplayWidth  (dpy, display->screen) - szHint.width  - 2 * ext_bwidth;
@@ -803,7 +782,6 @@ rxvt_term::set_window_color (int idx, const char *color)
 {
 #ifdef XTERM_COLOR_CHANGE
   rxvt_color xcol;
-  int i;
 
   if (color == NULL || *color == '\0')
     return;
@@ -815,7 +793,7 @@ rxvt_term::set_window_color (int idx, const char *color)
   /* handle color aliases */
   if (isdigit (*color))
     {
-      i = atoi (color);
+      int i = atoi (color);
 
       if (i >= 8 && i <= 15)
         {
@@ -985,12 +963,7 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
   if (fix_screen || newwidth != old_width || newheight != old_height)
     {
       if (scrollBar.state)
-        {
-          XMoveResizeWindow (dpy, scrollBar.win,
-                             window_sb_x, 0,
-                             scrollbar_TotalWidth (), szHint.height);
-          resize_scrollbar ();
-        }
+        scrollBar.resize ();
 
       XMoveResizeWindow (dpy, vt,
                          window_vt_x, window_vt_y,

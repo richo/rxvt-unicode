@@ -10,66 +10,6 @@ struct rxvt_term;
 #define R_SB_PLAIN              4
 #define R_SB_RXVT               8
 
-struct scrollBar_t {
-  char            state;        /* scrollbar state                          */
-  char            init;         /* scrollbar has been initialised           */
-  unsigned int    beg;          /* slider sub-window begin height           */
-  unsigned int    end;          /* slider sub-window end height             */
-  unsigned int    top;          /* slider top position                      */
-  unsigned int    bot;          /* slider bottom position                   */
-  unsigned int    style;        /* style: rxvt, xterm, next                 */
-  unsigned int    width;        /* scrollbar width                          */
-  int             shadow;       /* scrollbar shadow width                   */
-  int             last_bot;     /* scrollbar last bottom position           */
-  int             last_top;     /* scrollbar last top position              */
-  int             last_state;   /* scrollbar last state                     */
-  int             len;
-  unsigned char   align;
-  Window          win;
-  Cursor          leftptr_cursor;
-  int             (rxvt_term::*update)(int, int, int, int);
-
-  void setIdle()   { state =  1 ; }
-  void setMotion() { state = 'm'; }
-  void setUp()     { state = 'U'; }
-  void setDn()     { state = 'D'; }
-
-  bool upButton (int y)
-  {
-    if (style == R_SB_NEXT)
-      return y > end && y <= end + width + 1;
-    if (style == R_SB_RXVT)
-      return y < beg;
-    return false;
-  }
-  bool dnButton (int y)
-  {
-    if (style == R_SB_NEXT)
-      return y > end + width + 1;
-    if (style == R_SB_RXVT)
-      return y > end;
-    return false;
-  }
-};
-
-#define scrollbar_TotalWidth()  (scrollBar.width + scrollBar.shadow * 2)
-#define scrollbar_isMotion()    (scrollBar.state == 'm')
-#define scrollbar_isUp()        (scrollBar.state == 'U')
-#define scrollbar_isDn()        (scrollBar.state == 'D')
-#define scrollbar_isUpDn()      (scrollbar_isUp () || scrollbar_isDn ())
-
-#define SCROLLNEXT_MINHEIGHT    SB_THUMB_MIN_HEIGHT
-#define SCROLLRXVT_MINHEIGHT    10
-
-#define scrollbar_minheight()   (scrollBar.style == R_SB_NEXT        \
-                                 ? SCROLLNEXT_MINHEIGHT                 \
-                                 : SCROLLRXVT_MINHEIGHT)
-#define scrollbar_above_slider(y)       ((y) < scrollBar.top)
-#define scrollbar_below_slider(y)       ((y) > scrollBar.bot)
-#define scrollbar_position(y)           ((y) - scrollBar.beg)
-#define scrollbar_size()                (scrollBar.end - scrollBar.beg \
-                                         - scrollbar_minheight ())
-
 #define R_SB_ALIGN_CENTRE       0
 #define R_SB_ALIGN_TOP          1
 #define R_SB_ALIGN_BOTTOM       2
@@ -98,6 +38,115 @@ struct scrollBar_t {
 #define SB_BUTTON_BEVEL_X       (SB_LEFT_PADDING)
 #define SB_BUTTON_FACE_X        (SB_BUTTON_BEVEL_X + SB_BEVEL_WIDTH_UPPER_LEFT)
 #define SB_THUMB_MIN_HEIGHT     (SB_BUTTON_WIDTH - (SB_PADDING * 2))
+
+enum sb_state {
+  STATE_IDLE = 1,
+  STATE_MOTION,
+  STATE_UP,
+  STATE_DOWN,
+};
+
+struct scrollBar_t {
+  rxvt_term *term;
+  char            state;        /* scrollbar state                          */
+  char            init;         /* scrollbar has been initialised           */
+  unsigned int    beg;          /* slider sub-window begin height           */
+  unsigned int    end;          /* slider sub-window end height             */
+  unsigned int    top;          /* slider top position                      */
+  unsigned int    bot;          /* slider bottom position                   */
+  unsigned int    style;        /* style: rxvt, xterm, next                 */
+  unsigned int    width;        /* scrollbar width                          */
+  int             shadow;       /* scrollbar shadow width                   */
+  int             last_bot;     /* scrollbar last bottom position           */
+  int             last_top;     /* scrollbar last top position              */
+  int             last_state;   /* scrollbar last state                     */
+  unsigned char   align;
+  Window          win;
+  Cursor          leftptr_cursor;
+  int             (scrollBar_t::*update)(int);
+  void setup (rxvt_term *);
+  void resize ();
+  int map (int);
+  int show (int);
+  void destroy ();
+
+  bool upButton (int y)
+  {
+    if (style == R_SB_NEXT)
+      return y > end && y <= end + width + 1;
+    if (style == R_SB_RXVT)
+      return y < beg;
+    return false;
+  }
+  bool dnButton (int y)
+  {
+    if (style == R_SB_NEXT)
+      return y > end + width + 1;
+    if (style == R_SB_RXVT)
+      return y > end;
+    return false;
+  }
+  unsigned min_height ()
+  {
+    return style == R_SB_NEXT ? SB_THUMB_MIN_HEIGHT : 10;
+  }
+  unsigned size ()
+  {
+    return end - beg - min_height ();
+  }
+  unsigned total_width ()
+  {
+    return width + shadow * 2;
+  }
+
+#if defined(NEXT_SCROLLBAR)
+  GC              blackGC,
+                  whiteGC,
+                  grayGC,
+                  darkGC,
+                  stippleGC;
+  Pixmap          dimple,
+                  upArrow,
+                  downArrow,
+                  upArrowHi,
+                  downArrowHi;
+#endif
+
+#if defined(RXVT_SCROLLBAR)
+  GC              scrollbarGC,
+                  topShadowGC,
+                  botShadowGC;
+#endif
+
+#if defined(XTERM_SCROLLBAR)
+  GC              xscrollbarGC,
+                  ShadowGC;
+#endif
+
+#if defined(PLAIN_SCROLLBAR)
+  GC              pscrollbarGC;
+#endif
+
+private:
+  // update style dependent data
+  void update_data ();
+
+  // scrollbar-next.C
+  int show_next (int);
+  // scrollbar-rxvt.C
+  int show_rxvt (int);
+  // scrollbar-xterm.C
+  int show_xterm (int);
+  // scrollbar-plain.C
+  int show_plain (int);
+
+  void init_next ();
+};
+
+#define scrollbar_above_slider(y)       ((y) < scrollBar.top)
+#define scrollbar_below_slider(y)       ((y) > scrollBar.bot)
+#define scrollbar_position(y)           ((y) - scrollBar.beg)
+
  /*
   *    +-------------+
   *    |             | <---< SB_PADDING

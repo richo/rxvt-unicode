@@ -1227,6 +1227,7 @@ rxvt_term::scr_index (enum page_dirn direction) NOTHROW
  * XTERM_SEQ: Clear line to right: ESC [ 0 K
  * XTERM_SEQ: Clear line to left : ESC [ 1 K
  * XTERM_SEQ: Clear whole line   : ESC [ 2 K
+ * extension: clear to right unless wrapped: ESC [ 3 K
  */
 void
 rxvt_term::scr_erase_line (int mode) NOTHROW
@@ -1245,21 +1246,31 @@ rxvt_term::scr_erase_line (int mode) NOTHROW
 
   switch (mode)
     {
+      case 3:
+        if (screen.flags & Screen_WrapNext)
+          return;
+
+        /* fall through */
+
       case 0:                     /* erase to end of line */
         col = screen.cur.col;
         num = ncol - col;
         min_it (line.l, col);
+
         if (ROWCOL_IN_ROW_AT_OR_AFTER (selection.beg, screen.cur)
             || ROWCOL_IN_ROW_AT_OR_AFTER (selection.end, screen.cur))
           CLEAR_SELECTION ();
         break;
+
       case 1:                     /* erase to beginning of line */
         col = 0;
         num = screen.cur.col + 1;
+
         if (ROWCOL_IN_ROW_AT_OR_BEFORE (selection.beg, screen.cur)
             || ROWCOL_IN_ROW_AT_OR_BEFORE (selection.end, screen.cur))
           CLEAR_SELECTION ();
         break;
+
       case 2:                     /* erase whole line */
         col = 0;
         num = ncol;
@@ -1994,11 +2005,11 @@ rxvt_term::scr_refresh () NOTHROW
   /*
    * A: set up vars
    */
-  have_bg = 0;
   refresh_count = 0;
 
+  have_bg = 0;
 #ifdef HAVE_BG_PIXMAP
-  have_bg |= bgPixmap.pixmap != None;
+  have_bg = bgPixmap.pixmap != None;
 #endif
   ocrow = oldcursor.row; /* is there an old outline cursor on screen? */
 
@@ -2479,15 +2490,16 @@ rxvt_term::scr_recolour () NOTHROW
   if (scrollBar.win)
    {
      XSetWindowBackground (dpy, scrollBar.win, pix_colors[Color_border]);
-     scrollBar.setIdle ();
-     scrollbar_show (0);
+     scrollBar.state = STATE_IDLE;
+     scrollBar.show (0);
    }
 
+#endif
+
+  /* bgPixmap.apply () does not do the following : */
   scr_clear ();
   scr_touch (true);
   want_refresh = 1;
-
-#endif
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2586,7 +2598,7 @@ rxvt_term::scr_dump (int fd) NOTHROW
   unsigned int    width, towrite;
   char            r1[] = "\n";
 
-  for (row = saveLines - nsaved;
+  for (row = saveLines + top_row;
        row < saveLines + nrow - 1; row++)
     {
       width = row_buf[row].l >= 0 ? row_buf[row].l

@@ -93,6 +93,7 @@ optList[] = {
               SWCH ("C", Opt_console, 0, "intercept console messages"),
               SWCH ("iconic", Opt_iconic, 0, "start iconic"),
               SWCH ("ic", Opt_iconic, 0, NULL),	/* short form */
+              STRG (Rs_chdir, "chdir", "cd", "string", "start shell in this directory"),
               BOOL (Rs_reverseVideo, "reverseVideo", "rv", Opt_reverseVideo, 0, "reverse video"),
               BOOL (Rs_loginShell, "loginShell", "ls", Opt_loginShell, 0, "login shell"),
               BOOL (Rs_jumpScroll, "jumpScroll", "j", Opt_jumpScroll, 0, "jump scrolling"),
@@ -245,9 +246,7 @@ optList[] = {
               RSTRG (Rs_print_pipe, "print-pipe", "string"),
 #endif
               STRG (Rs_modifier, "modifier", "mod", "modifier", "meta modifier = alt|meta|hyper|super|mod1|...|mod5"),
-#ifdef CUTCHAR_RESOURCE
               RSTRG (Rs_cutchars, "cutchars", "string"),
-#endif /* CUTCHAR_RESOURCE */
               RSTRG (Rs_answerbackstring, "answerbackString", "string"),
 #ifndef NO_SECONDARY_SCREEN
               BOOL (Rs_secondaryScreen, "secondaryScreen", "ssc", Opt_secondaryScreen, 0, "enable secondary screen"),

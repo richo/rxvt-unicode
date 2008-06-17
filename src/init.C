@@ -487,7 +487,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 # endif
 #endif
 
-  setup_scrollbar (rs[Rs_scrollBar_align], rs[Rs_scrollstyle], rs[Rs_scrollBar_thickness]);
+    scrollBar.setup (this);
 
 #ifdef XTERM_REVERSE_VIDEO
   /* this is how xterm implements reverseVideo */
@@ -541,7 +541,7 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 
   SET_R (this);
   set_locale ("");
-  set_environ (envv); // few things in X do not call setlocale :(
+  set_environ (envv); // a few things in X do not call setlocale :(
 
   init_vars ();
 
@@ -553,8 +553,18 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
   keyboard->register_done ();
 #endif
 
+  if (const char *path = rs[Rs_chdir])
+    if (*path) // ignored if empty
+      {
+        if (*path != '/')
+          rxvt_fatal ("specified shell working directory must start with a slash, aborting.\n");
+
+        if (chdir (path))
+          rxvt_fatal ("unable to change into specified shell working directory, aborting.\n");
+      }
+
   if (option (Opt_scrollBar))
-    scrollBar.setIdle ();    /* set existence for size calculations */
+    scrollBar.state = STATE_IDLE;    /* set existence for size calculations */
 
   pty = ptytty::create ();
 
@@ -569,7 +579,7 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 #endif
 
   if (option (Opt_scrollBar))
-    resize_scrollbar ();      /* create and map scrollbar */
+    scrollBar.resize ();      /* create and map scrollbar */
 #ifdef HAVE_BG_PIXMAP
   {
     bgPixmap.set_target (this);
@@ -834,7 +844,7 @@ rxvt_term::init_command (const char *const *argv)
 
 /*----------------------------------------------------------------------*/
 void
-rxvt_term::Get_Colours ()
+rxvt_term::get_colours ()
 {
   int i;
 
@@ -1061,7 +1071,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   dLocal (Display *, dpy);
 
   /* grab colors before netscape does */
-  Get_Colours ();
+  get_colours ();
 
   if (!set_fonts ())
     rxvt_fatal ("unable to load base fontset, please specify a valid one using -fn, aborting.\n");
@@ -1525,11 +1535,6 @@ rxvt_term::run_child (const char *const *argv)
   signal (SIGTTIN, SIG_IGN);
   signal (SIGTTOU, SIG_IGN);
 #endif /* SIGTSTP */
-
-  // unblock signals (signals are blocked by iom.C
-  sigset_t ss;
-  sigemptyset (&ss);
-  sigprocmask (SIG_SETMASK, &ss, 0);
 
   /* command interpreter path */
   if (argv)

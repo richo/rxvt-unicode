@@ -1,7 +1,7 @@
-Index: rxvt-unicode-8.9/doc/rxvt.7.pod
+Index: pkg-rxvt-unicode/doc/rxvt.7.pod
 ===================================================================
---- rxvt-unicode-8.9.orig/doc/rxvt.7.pod	2007-12-26 19:56:30.000000000 -0500
-+++ rxvt-unicode-8.9/doc/rxvt.7.pod	2007-12-26 19:56:46.000000000 -0500
+--- pkg-rxvt-unicode.orig/doc/rxvt.7.pod	2008-06-16 21:15:27.000000000 -0400
++++ pkg-rxvt-unicode/doc/rxvt.7.pod	2008-06-16 21:19:07.000000000 -0400
 @@ -529,12 +529,9 @@
  
  =head3 My numerical keypad acts weird and generates differing output?
@@ -18,7 +18,7 @@ Index: rxvt-unicode-8.9/doc/rxvt.7.pod
  
  =head3 My Compose (Multi_key) key is no longer working.
  
-@@ -932,25 +929,6 @@
+@@ -912,25 +909,6 @@
  
  to your C<.profile> or C<.bashrc>.
  
@@ -44,7 +44,7 @@ Index: rxvt-unicode-8.9/doc/rxvt.7.pod
  
  =head2 Encoding / Locale / Input Method Issues
  
-@@ -1109,14 +1087,11 @@
+@@ -1089,14 +1067,11 @@
  
  =head3 I am using Debian GNU/Linux and have a problem...
  

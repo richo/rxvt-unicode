@@ -281,8 +281,8 @@ rxvt_term::commit_iso14755 ()
   iso14755buf = 0;
 }
 
-int
-rxvt_term::hex_keyval (XKeyEvent &ev)
+static int
+hex_keyval (XKeyEvent &ev)
 {
   // check wether this event corresponds to a hex digit
   // if the modifiers had not been pressed.
@@ -300,11 +300,105 @@ rxvt_term::hex_keyval (XKeyEvent &ev)
 }
 #endif
 
+static inline KeySym
+translate_keypad (KeySym keysym, bool kp)
+{
+#ifdef XK_KP_Home
+  static const KeySym keypadtrans[] = {
+    XK_KP_7, // XK_KP_Home
+    XK_KP_4, // XK_KP_Left
+    XK_KP_8, // XK_KP_Up
+    XK_KP_6, // XK_KP_Right
+    XK_KP_2, // XK_KP_Down
+# ifndef UNSHIFTED_SCROLLKEYS
+    XK_KP_9, // XK_KP_Prior
+    XK_KP_3, // XK_KP_Next
+# else
+    XK_Prior,
+    XK_Next,
+# endif
+    XK_KP_1, // XK_KP_End
+    XK_KP_5, // XK_KP_Begin
+  };
+
+  if (IN_RANGE_INC (keysym, XK_KP_Home, XK_KP_Begin))
+    {
+      unsigned int index = keysym - XK_KP_Home;
+      keysym = kp ? keypadtrans[index] : XK_Home + index;
+    }
+  else if (keysym == XK_KP_Insert)
+    keysym = kp ? XK_KP_0 : XK_Insert;
+# ifndef NO_DELETE_KEY
+  else if (keysym == XK_KP_Delete)
+    keysym = kp ? XK_KP_Decimal : XK_Delete;
+# endif
+#endif
+  return keysym;
+}
+
+static inline int
+map_function_key (KeySym keysym)
+{
+  int param = 0;
+
+  if (IN_RANGE_INC (keysym, XK_F1, XK_F35))
+    {
+      param = 11 + keysym - XK_F1;
+      if (keysym >= XK_F17)
+        param += 4;
+      else if (keysym >= XK_F15)
+        param += 3;
+      else if (keysym >= XK_F11)
+        param += 2;
+      else if (keysym >= XK_F6)
+        param += 1;
+    }
+  else
+    switch (keysym)
+      {
+        case XK_Find:
+          param = 1;
+          break;
+        case XK_Insert:
+          param = 2;
+          break;
+#ifdef DXK_Remove
+        case DXK_Remove:
+#endif
+        case XK_Execute:
+          param = 3;
+          break;
+        case XK_Select:
+          param = 4;
+          break;
+#ifndef UNSHIFTED_SCROLLKEYS
+        case XK_Prior:
+          param = 5;
+          break;
+        case XK_Next:
+          param = 6;
+          break;
+        case XK_Home:
+          param = 7;
+          break;
+        case XK_End:
+          param = 8;
+          break;
+#endif
+        case XK_Help:
+          param = 28;
+          break;
+        case XK_Menu:
+          param = 29;
+          break;
+      }
+  return param;
+}
+
 void
 rxvt_term::key_press (XKeyEvent &ev)
 {
   int ctrl, meta, shft, len;
-  unsigned int newlen;
   KeySym keysym;
   int valid_keysym;
   char kbuf[KBUFSZ];
@@ -327,7 +421,7 @@ rxvt_term::key_press (XKeyEvent &ev)
   if (numlock_state || (ev.state & ModNumLockMask))
     {
       numlock_state = (ev.state & ModNumLockMask);
-      PrivMode ((!numlock_state), PrivMode_aplKP);
+      set_privmode (PrivMode_aplKP, !numlock_state);
     }
 
   kbuf[0] = 0;
@@ -549,249 +643,137 @@ rxvt_term::key_press (XKeyEvent &ev)
 
       if (keysym >= 0xFF00 && keysym <= 0xFFFF)
         {
-            {
-              bool kp = priv_modes & PrivMode_aplKP ? !shft : shft;
-              newlen = 1;
-#ifdef XK_KP_Home
-              static const KeySym keypadtrans[] = {
-                XK_KP_7, // XK_KP_Home
-                XK_KP_4, // XK_KP_Left
-                XK_KP_8, // XK_KP_Up
-                XK_KP_6, // XK_KP_Right
-                XK_KP_2, // XK_KP_Down
-#ifndef UNSHIFTED_SCROLLKEYS
-                XK_KP_9, // XK_KP_Prior
-                XK_KP_3, // XK_KP_Next
-#else
-                XK_Prior,
-                XK_Next,
-#endif
-                XK_KP_1, // XK_KP_End
-                XK_KP_5, // XK_KP_Begin
-              };
+          bool kp = priv_modes & PrivMode_aplKP ? !shft : shft;
+          unsigned int newlen = 1;
 
-              if (IN_RANGE_INC (keysym, XK_KP_Home, XK_KP_Begin))
-                {
-                  unsigned int index = keysym - XK_KP_Home;
-                  keysym = kp ? keypadtrans[index] : XK_Home + index;
-                }
-              else if (keysym == XK_KP_Insert)
-                keysym = kp ? XK_KP_0 : XK_Insert;
-#ifndef NO_DELETE_KEY
-              else if (keysym == XK_KP_Delete)
-                keysym = kp ? XK_KP_Decimal : XK_Delete;
-#endif
-#endif
-              switch (keysym)
-                {
+          switch (translate_keypad (keysym, kp))
+            {
 #ifndef NO_BACKSPACE_KEY
-                  case XK_BackSpace:
-                    if (priv_modes & PrivMode_HaveBackSpace)
-                      {
-                        kbuf[0] = (!! (priv_modes & PrivMode_BackSpace)
-                                   ^ !!ctrl) ? '\b' : '\177';
-                        kbuf[1] = '\0';
-                      }
-                    else
-                      strcpy (kbuf, rs[Rs_backspace_key]);
-                    break;
+              case XK_BackSpace:
+                if (priv_modes & PrivMode_HaveBackSpace)
+                  {
+                    kbuf[0] = (!! (priv_modes & PrivMode_BackSpace)
+                               ^ !!ctrl) ? '\b' : '\177';
+                    kbuf[1] = '\0';
+                  }
+                else
+                  strcpy (kbuf, rs[Rs_backspace_key]);
+                break;
 #endif
 #ifndef NO_DELETE_KEY
-                  case XK_Delete:
-                    strcpy (kbuf, rs[Rs_delete_key]);
-                    break;
+              case XK_Delete:
+                strcpy (kbuf, rs[Rs_delete_key]);
+                break;
 #endif
-                  case XK_Tab:
-                    if (shft)
-                      strcpy (kbuf, "\033[Z");
-                    else
-                      {
+              case XK_Tab:
+                if (shft)
+                  strcpy (kbuf, "\033[Z");
+                else
+                  {
 #ifdef CTRL_TAB_MAKES_META
-                        if (ctrl)
-                          meta = 1;
+                    if (ctrl)
+                      meta = 1;
 #endif
 #ifdef MOD4_TAB_MAKES_META
-                        if (ev.state & Mod4Mask)
-                          meta = 1;
+                    if (ev.state & Mod4Mask)
+                      meta = 1;
 #endif
-                        newlen = 0;
-                      }
-                    break;
-
-                  case XK_Up:	/* "\033[A" */
-                  case XK_Down:	/* "\033[B" */
-                  case XK_Right:	/* "\033[C" */
-                  case XK_Left:	/* "\033[D" */
-                    strcpy (kbuf, "\033[Z");
-                    kbuf[2] = "DACB"[keysym - XK_Left];
-                    /* do Shift first */
-                    if (shft)
-                      kbuf[2] = "dacb"[keysym - XK_Left];
-                    else if (ctrl)
-                      {
-                        kbuf[1] = 'O';
-                        kbuf[2] = "dacb"[keysym - XK_Left];
-                      }
-                    else if (priv_modes & PrivMode_aplCUR)
-                      kbuf[1] = 'O';
-                    break;
-
-#ifndef UNSHIFTED_SCROLLKEYS
-                  case XK_Prior:
-                    strcpy (kbuf, "\033[5~");
-                    break;
-                  case XK_Next:
-                    strcpy (kbuf, "\033[6~");
-                    break;
-#endif
-                  case XK_KP_Enter:
-                    /* allow shift to override */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033OM");
-                        break;
-                      }
-
-                    /* FALLTHROUGH */
-
-                  case XK_Return:
-                    if (priv_modes & PrivMode_LFNL)
-                      {
-                        kbuf[0] = '\015';
-                        kbuf[1] = '\012';
-                        kbuf[2] = '\0';
-                      }
-                    else
-                      {
-                        kbuf[0] = '\015';
-                        kbuf[1] = '\0';
-                      }
-                    break;
-
-                  case XK_KP_F1:	/* "\033OP" */
-                  case XK_KP_F2:	/* "\033OQ" */
-                  case XK_KP_F3:	/* "\033OR" */
-                  case XK_KP_F4:	/* "\033OS" */
-                    strcpy (kbuf, "\033OP");
-                    kbuf[2] += (keysym - XK_KP_F1);
-                    break;
-
-                  case XK_KP_Multiply:	/* "\033Oj" : "*" */
-                  case XK_KP_Add:	/* "\033Ok" : "+" */
-                  case XK_KP_Separator:	/* "\033Ol" : "," */
-                  case XK_KP_Subtract:	/* "\033Om" : "-" */
-                  case XK_KP_Decimal:	/* "\033On" : "." */
-                  case XK_KP_Divide:	/* "\033Oo" : "/" */
-                  case XK_KP_0:		/* "\033Op" : "0" */
-                  case XK_KP_1:		/* "\033Oq" : "1" */
-                  case XK_KP_2:		/* "\033Or" : "2" */
-                  case XK_KP_3:		/* "\033Os" : "3" */
-                  case XK_KP_4:		/* "\033Ot" : "4" */
-                  case XK_KP_5:		/* "\033Ou" : "5" */
-                  case XK_KP_6:		/* "\033Ov" : "6" */
-                  case XK_KP_7:		/* "\033Ow" : "7" */
-                  case XK_KP_8:		/* "\033Ox" : "8" */
-                  case XK_KP_9:		/* "\033Oy" : "9" */
-                    /* allow shift to override */
-                    if (kp)
-                      {
-                        strcpy (kbuf, "\033Oj");
-                        kbuf[2] += (keysym - XK_KP_Multiply);
-                      }
-                    else
-                      {
-                        kbuf[0] = ('*' + (keysym - XK_KP_Multiply));
-                        kbuf[1] = '\0';
-                      }
-                    break;
-
-                  case XK_Find:
-                    strcpy (kbuf, "\033[1~");
-                    break;
-
-                  case XK_Insert:
-                    strcpy (kbuf, "\033[2~");
-                    break;
-#ifdef DXK_Remove		/* support for DEC remove like key */
-                  case DXK_Remove:
-                    /* FALLTHROUGH */
-#endif
-                  case XK_Execute:
-                    strcpy (kbuf, "\033[3~");
-                    break;
-                  case XK_Select:
-                    strcpy (kbuf, "\033[4~");
-                    break;
-                  case XK_End:
-                    strcpy (kbuf, KS_END);
-                    break;
-                  case XK_Home:
-                    strcpy (kbuf, KS_HOME);
-                    break;
-
-#define FKEY(n, fkey)							\
-    sprintf ((char *)kbuf,"\033[%2d~", (int) ((n) + (keysym - fkey)))
-
-                  case XK_F1:	/* "\033[11~" */
-                  case XK_F2:	/* "\033[12~" */
-                  case XK_F3:	/* "\033[13~" */
-                  case XK_F4:	/* "\033[14~" */
-                  case XK_F5:	/* "\033[15~" */
-                    FKEY (11, XK_F1);
-                    break;
-                  case XK_F6:	/* "\033[17~" */
-                  case XK_F7:	/* "\033[18~" */
-                  case XK_F8:	/* "\033[19~" */
-                  case XK_F9:	/* "\033[20~" */
-                  case XK_F10:	/* "\033[21~" */
-                    FKEY (17, XK_F6);
-                    break;
-                  case XK_F11:	/* "\033[23~" */
-                  case XK_F12:	/* "\033[24~" */
-                  case XK_F13:	/* "\033[25~" */
-                  case XK_F14:	/* "\033[26~" */
-                    FKEY (23, XK_F11);
-                    break;
-                  case XK_F15:	/* "\033[28~" */
-                  case XK_F16:	/* "\033[29~" */
-                    FKEY (28, XK_F15);
-                    break;
-                  case XK_Help:	/* "\033[28~" */
-                    FKEY (28, XK_Help);
-                    break;
-                  case XK_Menu:	/* "\033[29~" */
-                    FKEY (29, XK_Menu);
-                    break;
-                  case XK_F17:	/* "\033[31~" */
-                  case XK_F18:	/* "\033[32~" */
-                  case XK_F19:	/* "\033[33~" */
-                  case XK_F20:	/* "\033[34~" */
-                  case XK_F21:	/* "\033[35~" */
-                  case XK_F22:	/* "\033[36~" */
-                  case XK_F23:	/* "\033[37~" */
-                  case XK_F24:	/* "\033[38~" */
-                  case XK_F25:	/* "\033[39~" */
-                  case XK_F26:	/* "\033[40~" */
-                  case XK_F27:	/* "\033[41~" */
-                  case XK_F28:	/* "\033[42~" */
-                  case XK_F29:	/* "\033[43~" */
-                  case XK_F30:	/* "\033[44~" */
-                  case XK_F31:	/* "\033[45~" */
-                  case XK_F32:	/* "\033[46~" */
-                  case XK_F33:	/* "\033[47~" */
-                  case XK_F34:	/* "\033[48~" */
-                  case XK_F35:	/* "\033[49~" */
-                    FKEY (31, XK_F17);
-                    break;
-#undef FKEY
-                  default:
                     newlen = 0;
-                    break;
-                }
+                  }
+                break;
 
-              if (newlen)
-                len = strlen (kbuf);
+              case XK_Up:	/* "\033[A" */
+              case XK_Down:	/* "\033[B" */
+              case XK_Right:	/* "\033[C" */
+              case XK_Left:	/* "\033[D" */
+                strcpy (kbuf, "\033[Z");
+                kbuf[2] = "DACB"[keysym - XK_Left];
+                /* do Shift first */
+                if (shft)
+                  kbuf[2] = "dacb"[keysym - XK_Left];
+                else if (ctrl)
+                  {
+                    kbuf[1] = 'O';
+                    kbuf[2] = "dacb"[keysym - XK_Left];
+                  }
+                else if (priv_modes & PrivMode_aplCUR)
+                  kbuf[1] = 'O';
+                break;
+
+              case XK_KP_Enter:
+                /* allow shift to override */
+                if (kp)
+                  {
+                    strcpy (kbuf, "\033OM");
+                    break;
+                  }
+
+                /* FALLTHROUGH */
+
+              case XK_Return:
+                if (priv_modes & PrivMode_LFNL)
+                  {
+                    kbuf[0] = '\015';
+                    kbuf[1] = '\012';
+                    kbuf[2] = '\0';
+                  }
+                else
+                  {
+                    kbuf[0] = '\015';
+                    kbuf[1] = '\0';
+                  }
+                break;
+
+              case XK_KP_F1:	/* "\033OP" */
+              case XK_KP_F2:	/* "\033OQ" */
+              case XK_KP_F3:	/* "\033OR" */
+              case XK_KP_F4:	/* "\033OS" */
+                strcpy (kbuf, "\033OP");
+                kbuf[2] += (keysym - XK_KP_F1);
+                break;
+
+              case XK_KP_Multiply:	/* "\033Oj" : "*" */
+              case XK_KP_Add:		/* "\033Ok" : "+" */
+              case XK_KP_Separator:	/* "\033Ol" : "," */
+              case XK_KP_Subtract:	/* "\033Om" : "-" */
+              case XK_KP_Decimal:	/* "\033On" : "." */
+              case XK_KP_Divide:	/* "\033Oo" : "/" */
+              case XK_KP_0:		/* "\033Op" : "0" */
+              case XK_KP_1:		/* "\033Oq" : "1" */
+              case XK_KP_2:		/* "\033Or" : "2" */
+              case XK_KP_3:		/* "\033Os" : "3" */
+              case XK_KP_4:		/* "\033Ot" : "4" */
+              case XK_KP_5:		/* "\033Ou" : "5" */
+              case XK_KP_6:		/* "\033Ov" : "6" */
+              case XK_KP_7:		/* "\033Ow" : "7" */
+              case XK_KP_8:		/* "\033Ox" : "8" */
+              case XK_KP_9:		/* "\033Oy" : "9" */
+                /* allow shift to override */
+                if (kp)
+                  {
+                    strcpy (kbuf, "\033Oj");
+                    kbuf[2] += (keysym - XK_KP_Multiply);
+                  }
+                else
+                  {
+                    kbuf[0] = ('*' + (keysym - XK_KP_Multiply));
+                    kbuf[1] = '\0';
+                  }
+                break;
+
+              default:
+                {
+                  int param = map_function_key (keysym);
+                  if (param > 0)
+                    sprintf (kbuf,"\033[%d~", param);
+                  else
+                    newlen = 0;
+                }
+                break;
             }
+
+          if (newlen)
+            len = strlen (kbuf);
 
           /*
            * Pass meta for all function keys, if 'meta' option set
@@ -1035,7 +1017,7 @@ rxvt_term::flush ()
         }
 
       scr_refresh ();
-      scrollbar_show (1);
+      scrollBar.show (1);
 #ifdef USE_XIM
       IMSendSpot ();
 #endif
@@ -1092,8 +1074,8 @@ rxvt_term::text_blink_cb (ev::timer &w, int revents)
 void
 rxvt_term::cont_scroll_cb (ev::timer &w, int revents)
 {
-  if ((scrollbar_isUp () || scrollbar_isDn ())
-      && scr_page (scrollbar_isUp () ? UP : DN, 1))
+  if ((scrollBar.state == STATE_UP || scrollBar.state == STATE_DOWN)
+      && scr_page (scrollBar.state == STATE_UP ? UP : DN, 1))
     {
       want_refresh = 1;
       refresh_check ();
@@ -1555,8 +1537,8 @@ rxvt_term::x_cb (XEvent &ev)
 
             if (scrollBar.state && ev.xany.window == scrollBar.win)
               {
-                scrollBar.setIdle ();
-                scrollbar_show (0);
+                scrollBar.state = STATE_IDLE;
+                scrollBar.show (0);
               }
           }
         break;
@@ -1653,7 +1635,7 @@ rxvt_term::x_cb (XEvent &ev)
 #endif
               }
           }
-        else if (scrollbar_isMotion () && ev.xany.window == scrollBar.win)
+        else if (scrollBar.state == STATE_MOTION && ev.xany.window == scrollBar.win)
           {
             while (XCheckTypedWindowEvent (dpy, scrollBar.win,
                                            MotionNotify, &ev))
@@ -1665,9 +1647,9 @@ rxvt_term::x_cb (XEvent &ev)
                           &ev.xbutton.x, &ev.xbutton.y,
                           &unused_mask);
             scr_move_to (scrollbar_position (ev.xbutton.y) - csrO,
-                         scrollbar_size ());
+                         scrollBar.size ());
             want_refresh = 1;
-            scrollbar_show (1);
+            scrollBar.show (1);
           }
         break;
     }
@@ -1949,14 +1931,14 @@ rxvt_term::button_press (XButtonEvent &ev)
    */
   if (scrollBar.state && ev.window == scrollBar.win)
     {
-      int upordown = 0;
+      page_dirn direction = NO_DIR;
 
       if (scrollBar.upButton (ev.y))
-        upordown = -1; /* up */
+        direction = UP; /* up */
       else if (scrollBar.dnButton (ev.y))
-        upordown = 1;  /* down */
+        direction = DN;  /* down */
 
-      scrollBar.setIdle ();
+      scrollBar.state = STATE_IDLE;
       /*
        * Rxvt-style scrollbar:
        * move up if mouse is above slider
@@ -1975,9 +1957,9 @@ rxvt_term::button_press (XButtonEvent &ev)
            * arrow buttons - send up/down
            * click on scrollbar - send pageup/down
            */
-          if (upordown < 0)
+          if (direction == UP)
             tt_printf ("\033[A");
-          else if (upordown > 0)
+          else if (direction == DN)
             tt_printf ("\033[B");
           else
             switch (ev.button)
@@ -1995,20 +1977,19 @@ rxvt_term::button_press (XButtonEvent &ev)
         }
       else
 #endif /* NO_SCROLLBAR_REPORT */
-
         {
-          if (upordown)
+          if (direction != NO_DIR)
             {
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
               if (!cont_scroll_ev.is_active ())
                 cont_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
 #endif
-              if (scr_page (upordown < 0 ? UP : DN, 1))
+              if (scr_page (direction, 1))
                 {
-                  if (upordown < 0)
-                    scrollBar.setUp ();
+                  if (direction == UP)
+                    scrollBar.state = STATE_UP;
                   else
-                    scrollBar.setDn ();
+                    scrollBar.state = STATE_DOWN;
                 }
             }
           else
@@ -2031,9 +2012,9 @@ rxvt_term::button_press (XButtonEvent &ev)
                   if (scrollBar.style == R_SB_XTERM
                       || scrollbar_above_slider (ev.y)
                       || scrollbar_below_slider (ev.y))
-                    scr_move_to (scrollbar_position (ev.y) - csrO, scrollbar_size ());
+                    scr_move_to (scrollbar_position (ev.y) - csrO, scrollBar.size ());
 
-                  scrollBar.setMotion ();
+                  scrollBar.state = STATE_MOTION;
                   break;
 
                 case Button1:
@@ -2057,14 +2038,14 @@ rxvt_term::button_press (XButtonEvent &ev)
                         scr_page (DN, nrow / 4);
 # endif
                       else
-                        scrollBar.setMotion ();
+                        scrollBar.state = STATE_MOTION;
                     }
                   else
                     {
                       scr_page ((ev.button == Button1 ? DN : UP),
                                 (nrow
                                  * scrollbar_position (ev.y)
-                                 / scrollbar_size ()));
+                                 / scrollBar.size ()));
                     }
 
                   break;
@@ -2084,10 +2065,10 @@ rxvt_term::button_release (XButtonEvent &ev)
   if (!bypass_keystate)
     reportmode = !! (priv_modes & PrivMode_mouse_report);
 
-  if (scrollbar_isUpDn ())
+  if (scrollBar.state == STATE_UP || scrollBar.state == STATE_DOWN)
     {
-      scrollBar.setIdle ();
-      scrollbar_show (0);
+      scrollBar.state = STATE_IDLE;
+      scrollBar.show (0);
     }
 
 #ifdef SELECTION_SCROLLING
@@ -2180,7 +2161,7 @@ rxvt_term::button_release (XButtonEvent &ev)
 # endif
                 {
                   scr_page (v, i);
-                  scrollbar_show (1);
+                  scrollBar.show (1);
                 }
             }
             break;
@@ -2345,7 +2326,10 @@ rxvt_term::next_char () NOTHROW
         }
 
       if (len == (size_t)-1)
-        return (unsigned char)*cmdbuf_ptr++; // the _occasional_ latin1 character is allowed to slip through
+        {
+          mbrtowc (0, 0, 0, mbstate); // reset now undefined conversion state
+          return (unsigned char)*cmdbuf_ptr++; // the _occasional_ latin1 character is allowed to slip through
+        }
 
       // assume wchar == unicode
       cmdbuf_ptr += len;
@@ -2585,7 +2569,7 @@ rxvt_term::process_escape_vt52 (unicode_t ch)
         tt_printf ("\033/Z");	/* I am a VT100 emulating a VT52 */
         break;
       case '<':		/* turn off VT52 mode */
-        PrivMode (0, PrivMode_vt52);
+        set_privmode (PrivMode_vt52, 0);
         break;
       case 'F':     	/* use special graphics character set */
       case 'G':           /* use regular character set */
@@ -2649,7 +2633,7 @@ rxvt_term::process_escape_seq ()
 #endif
       case '=':
       case '>':
-        PrivMode ((ch == '='), PrivMode_aplKP);
+        set_privmode (PrivMode_aplKP, ch == '=');
         break;
 
       case C1_40:
@@ -2712,7 +2696,7 @@ rxvt_term::process_escape_seq ()
       case 'c':
         mbstate.reset ();
         scr_poweron ();
-        scrollbar_show (1);
+        scrollBar.show (1);
         break;
 
         /* 8.3.79: LOCKING-SHIFT TWO (see ISO2022) */
@@ -3562,7 +3546,7 @@ rxvt_term::privcases (int mode, unsigned long bit)
         state = (SavedModes & bit) ? 1 : 0;	/* no overlapping */
       else
         state = (mode == 't') ? ! (priv_modes & bit) : mode;
-      PrivMode (state, bit);
+      set_privmode (bit, state);
     }
 
   return state;
@@ -3670,7 +3654,7 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
                * parameter.  Return from VT52 mode with an ESC < from
                * within VT52 mode
                */
-              PrivMode (1, PrivMode_vt52);
+              set_privmode (PrivMode_vt52, 1);
               break;
             case 3:			/* 80/132 */
               if (priv_modes & PrivMode_132OK)
@@ -3698,7 +3682,7 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
               break;
 #ifdef scrollBar_esc
             case scrollBar_esc:
-              if (scrollbar_mapping (state))
+              if (scrollBar.map (state))
                 {
                   resize_all_windows (0, 0, 0);
                   scr_touch (true);
