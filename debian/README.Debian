@@ -140,8 +140,8 @@ Known Problems
    performance reasons (see man page). You may need some experimenting
    with the fonts, e.g. "xft:Lucida Console" has good consistent
    Cyrillic support but no bold chars. "xft:Courier New" has both,
-   Cyrillic and bold chars but its look is a matter of taste. For Latin
-   environment, Bitstream Vera Sans Mono looks good (Package:
-   ttf-bitstream-vera). Mixtures are possible, e.g. "xft:Bitstream Vera
-   Sans Mono:pixelsize=12,xft:Lucida Console:pixelsize=12" but they do
-   not always look good together.
+   Cyrillic and bold chars but its look is a matter of taste.
+   For Latin environment, DejaVu Sans Mono looks good (package:
+   ttf-dejavu). Mixtures are possible, e.g. "xft:DejaVu Sans
+   Mono:pixelsize=12,xft:Lucida Console:pixelsize=12" but they do not
+   always look good together.

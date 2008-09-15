@@ -321,13 +321,15 @@ rxvt_display::get_resources (bool refresh)
   // 6. System wide per application default file.
 
   /* Add in $XAPPLRESDIR/Rxvt only; not bothering with XUSERFILESEARCHPATH */
-  if ((xe = getenv ("XAPPLRESDIR")))
+  if (!(xe = getenv ("XAPPLRESDIR")))
     {
-      snprintf (fname, sizeof (fname), "%s/%s", xe, RESCLASS);
-
-      if ((rdb1 = XrmGetFileDatabase (fname)))
-        XrmMergeDatabases (rdb1, &database);
+      // Debian-specific; see #348697 and Policy
+      xe = "/etc/X11/app-defaults";
     }
+  snprintf (fname, sizeof (fname), "%s/%s", xe, RESCLASS);
+
+  if ((rdb1 = XrmGetFileDatabase (fname)))
+    XrmMergeDatabases (rdb1, &database);
 
   // 5. User's per application default file.
   // none

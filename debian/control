@@ -2,7 +2,7 @@ Source: rxvt-unicode
 Section: x11
 Priority: optional
 Maintainer: Decklin Foster <decklin@red-bean.com>
-Build-Depends: debhelper (>= 4.0.0), libxt-dev, libxrender-dev, libx11-dev, libxpm-dev, groff-base, autotools-dev, xutils, libxft-dev (>= 2.1.8.2-5.1), quilt, chrpath, libperl-dev, libafterimage-dev
+Build-Depends: debhelper (>= 4.0.0), libxt-dev, libxrender-dev, libx11-dev, libxpm-dev, groff-base, autotools-dev, xutils, libxft-dev (>= 2.1.8.2-5.1), chrpath, libperl-dev, libafterimage-dev
 Standards-Version: 3.7.2
 
 Package: rxvt-unicode

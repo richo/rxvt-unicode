@@ -1898,7 +1898,7 @@ rxvt_term::scr_bell () NOTHROW
 # endif
 
 # if ENABLE_FRILLS
-  if (option (Opt_urgentOnBell))
+  if (option (Opt_urgentOnBell) && !focus)
     {
       if (XWMHints *h = XGetWMHints(dpy, parent[0]))
         {

@@ -83,17 +83,8 @@ conf-unicode-ml:
 	    --enable-slipwheeling \
 	    --enable-smart-resize
 
-patch: patch-stamp
-patch-stamp:
-	QUILT_PATCHES=debian/patches quilt push -a || test $$? = 2
-	touch patch-stamp
-
-unpatch:
-	QUILT_PATCHES=debian/patches quilt pop -a -R || test $$? = 2
-	rm -rf .pc patch-stamp
-
 build: build-stamp
-build-stamp: patch-stamp config.status
+build-stamp: config.status
 	dh_testdir
 
 	mkdir -p tmp
@@ -123,10 +114,10 @@ build-stamp: patch-stamp config.status
 
 	touch build-stamp
 
-clean: unpatch
+clean:
 	dh_testdir
 	dh_testroot
-	dh_clean patch-stamp build-stamp
+	dh_clean build-stamp
 
 	# Add here commands to clean up after the build process.
 	-$(MAKE) distclean

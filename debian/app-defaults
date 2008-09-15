@@ -43,3 +43,8 @@
 !URxvt.keysym.KP_Multiply: *
 !URxvt.keysym.KP_Divide: /
 !URxvt.keysym.KP_Enter: ^M
+
+! Uncomment for aterm-like scrolling keys
+
+!URxvt.keysym.Shift-Up: command:\033]720;1\007
+!URxvt.keysym.Shift-Down: command:\033]721;1\007

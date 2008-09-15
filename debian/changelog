@@ -1,9 +1,17 @@
-rxvt-unicode (9.05-1+lenny1) testing-proposed-updates; urgency=low
+rxvt-unicode (9.05-2) unstable; urgency=low
 
-  * Remove urxvtcd alternative in prerm
-    - Also, install its manual page as a slave.
+  * Remove quilt, put the following it git:
+    - Elide very obsolete documentation of problems with sarge .deb
+    - Fix sed and podselect invocations so that docs are generated
+      correctly
+    - Enable checking of app-defaults resources by default
+    - Perl ext: set default cutchars, fix double-click word selection
+  * Add example for shift-up/down arrow scrolling (suggested by Nico
+    Golde)
+  * Bitstream Vera -> DejaVu (code only! not in docs.) (Closes: #461289)
+  * Don't set urgency hint if focused (Closes: #493981)
 
- -- Decklin Foster <decklin@red-bean.com>  Sat, 25 Oct 2008 23:33:03 -0400
+ -- Decklin Foster <decklin@red-bean.com>  Mon, 15 Sep 2008 18:36:06 -0400
 
 rxvt-unicode (9.05-1) unstable; urgency=low
 
