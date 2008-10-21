@@ -9,7 +9,7 @@ Package: rxvt-unicode
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
 Provides: x-terminal-emulator
-Suggests: ttf-bitstream-vera
+Suggests: ttf-dejavu
 Description: RXVT-like terminal emulator with Unicode support
  rxvt-unicode is a modern, Unicode-aware color xterm replacement that uses
  significantly less memory than a conventional xterm and many other Unicode

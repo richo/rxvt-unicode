@@ -1603,7 +1603,7 @@ If set and accessible, gives the name of a X resource file to be loaded by
 
 =over 4
 
-=item B</usr/lib/X11/rgb.txt>
+=item B</etc/X11/rgb.txt>
 
 Color names.
 
