@@ -1,3 +1,10 @@
+rxvt-unicode (9.05-1+lenny1) testing-proposed-updates; urgency=low
+
+  * Remove urxvtcd alternative in prerm
+    - Also, install its manual page as a slave.
+
+ -- Decklin Foster <decklin@red-bean.com>  Sat, 25 Oct 2008 23:33:03 -0400
+
 rxvt-unicode (9.05-1) unstable; urgency=low
 
   * New Upstream Version
