@@ -1,3 +1,10 @@
+rxvt-unicode (9.05-4) unstable; urgency=low
+
+  * Remove urxvtcd alternative in prerm (Closes: #503137)
+    - Also, install its manual page as a slave.
+
+ -- Decklin Foster <decklin@red-bean.com>  Sat, 25 Oct 2008 22:53:39 -0400
+
 rxvt-unicode (9.05-3) unstable; urgency=low
 
   * Correct location of rgb.txt (Closes: #501728)
