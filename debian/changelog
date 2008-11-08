@@ -1,3 +1,11 @@
+rxvt-unicode (9.06-1) unstable; urgency=low
+
+  * New upstream version
+    - Uses PERL_SYS_INIT3 (Closes: #495066)
+  * Disable libafterimage in -lite flavor (Closes: #493480)
+
+ -- Decklin Foster <decklin@red-bean.com>  Sat, 08 Nov 2008 18:32:29 -0500
+
 rxvt-unicode (9.05-4) unstable; urgency=low
 
   * Remove urxvtcd alternative in prerm (Closes: #503137)

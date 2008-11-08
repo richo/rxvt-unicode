@@ -61,6 +61,7 @@ enum {
   XA_NET_WM_NAME,
   XA_NET_WM_ICON_NAME,
   XA_NET_WM_PING,
+  XA_NET_WM_ICON,
 #endif
 #if USE_XIM
   XA_WM_LOCALE_NAME,
@@ -269,7 +270,8 @@ struct rxvt_display : refcounted
 };
 
 #ifdef USE_XIM
-struct im_watcher : rxvt_watcher, callback<void (void)> {
+struct im_watcher : rxvt_watcher, callback<void (void)>
+{
   void start (rxvt_display *display)
   {
     display->reg (this);

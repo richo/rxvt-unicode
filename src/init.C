@@ -394,16 +394,16 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     select_visual (strtol (rs[Rs_depth], 0, 0));
 #endif
 
-#ifdef HAVE_AFTERIMAGE
-  set_application_name ((char*)rs[Rs_name]);
-  set_output_threshold (OUTPUT_LEVEL_WARNING);
-  asv = create_asvisual_for_id (dpy, display->screen, depth, XVisualIDFromVisual (visual), cmap, NULL);
-#endif
   free (r_argv);
 
   for (int i = NUM_RESOURCES; i--; )
     if (rs [i] == resval_undef)
       rs [i] = 0;
+
+#ifdef HAVE_AFTERIMAGE
+  set_application_name ((char *)rs[Rs_name]);
+  set_output_threshold (OUTPUT_LEVEL_WARNING);
+#endif
 
 #if ENABLE_PERL
   if (!rs[Rs_perl_ext_1])
@@ -425,6 +425,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     {
       if (!rs[Rs_title])
         rs[Rs_title] = rxvt_basename (cmd_argv[0]);
+
       if (!rs[Rs_iconName])
         rs[Rs_iconName] = rs[Rs_title];
     }
@@ -432,6 +433,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     {
       if (!rs[Rs_title])
         rs[Rs_title] = rs[Rs_name];
+
       if (!rs[Rs_iconName])
         rs[Rs_iconName] = rs[Rs_name];
     }
@@ -460,11 +462,6 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   /* no point having a scrollbar without having any scrollback! */
   if (!saveLines)
     set_option (Opt_scrollBar, 0);
-
-#ifdef PRINTPIPE
-  if (!rs[Rs_print_pipe])
-    rs[Rs_print_pipe] = PRINTPIPE;
-#endif
 
   if (!rs[Rs_cutchars])
     rs[Rs_cutchars] = CUTCHARS;
@@ -572,7 +569,7 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 
   init_xlocale ();
 
-  scr_reset (); // initialize screen
+  scr_poweron (); // initialize screen
 
 #if 0
   XSynchronize (dpy, True);
@@ -1142,6 +1139,56 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   XmbSetWMProperties (dpy, top, NULL, NULL, (char **)argv, argc,
                       &szHint, &wmHint, &classHint);
+#if ENABLE_EWMH 
+# ifdef HAVE_AFTERIMAGE
+  /*
+   * set up icon hint
+   * rs [Rs_iconfile] is path to icon, asv has been created in init_resources
+   */
+
+  if (rs [Rs_iconfile])
+    {
+      init_asv ();
+
+      ASImage *im = file2ASImage (rs [Rs_iconfile], 0xFFFFFFFF, SCREEN_GAMMA, 0, NULL);
+      if (asv && im)
+        {
+          int w = im->width;
+          int h = im->height;
+          long* buffer = (long *)malloc ((2 + w * h) * sizeof (long));
+          ASImage *result = scale_asimage (asv, im,
+                                           w, h, ASA_ARGB32,
+                                           100, ASIMAGE_QUALITY_DEFAULT);
+          destroy_asimage (&im);
+
+          if (buffer && result)
+            {
+              ARGB32 *asbuf = result->alt.argb32;
+              buffer [0] = w;
+              buffer [1] = h;
+
+              for (unsigned int i = 0; i < w * h; ++i)
+                buffer [i + 2] = asbuf [i];
+
+              destroy_asimage (&result);
+              XChangeProperty (dpy, top, xa[XA_NET_WM_ICON], XA_CARDINAL, 32,
+                               PropModeReplace, (const unsigned char*) buffer, 2 + w * h);
+              free (buffer);
+            }
+          else
+            {
+              if (!buffer)
+                rxvt_warn ("Memory allocation for icon hint failed, continuing without.\n");
+
+              if (!result)
+                rxvt_warn ("Icon image transformation to ARGB failed, continuing without.\n");
+            }
+        }
+      else
+        rxvt_warn ("Loading image icon failed, continuing without.\n");
+    }
+# endif
+#endif
 
 #if ENABLE_FRILLS
   if (mwmhints.flags)

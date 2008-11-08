@@ -15,9 +15,17 @@ using namespace std;
 
 #if __GNUC__ >= 4
 # define rxvt_attribute(x) __attribute__(x)
+# define expect(expr,value)         __builtin_expect ((expr),(value))
 #else
 # define rxvt_attribute(x)
+# define expect(expr,value)         (expr)
 #endif
+
+// put into ifs if you are very sure that the expression
+// is mostly true or mosty false. note that these return
+// booleans, not the expression.
+#define expect_false(expr) expect ((expr) != 0, 0)
+#define expect_true(expr)  expect ((expr) != 0, 1)
 
 #define NORETURN rxvt_attribute ((noreturn))
 #define UNUSED   rxvt_attribute ((unused))
@@ -105,7 +113,8 @@ int popcount (unsigned int x) CONST;
 #define MOD(m,n) (((m) + (n)) % (n))
 
 // makes dynamically allocated objects zero-initialised
-struct zero_initialized {
+struct zero_initialized
+{
   void *operator new (size_t s);
   void operator delete (void *p, size_t s);
 };
@@ -116,7 +125,8 @@ struct zero_initialized {
  *  Copyright (C) 1997-98 Kay Roemer & Arno Puder
  */
 template<class T>
-struct simplevec {
+struct simplevec
+{
     typedef T* iterator;
     typedef const T* const_iterator;
     typedef unsigned long size_type;
@@ -381,7 +391,8 @@ struct stringvec : simplevec<char *>
 
 #if 0
 template<typename T>
-struct rxvt_vec : simplevec<void *> {
+struct rxvt_vec : simplevec<void *>
+{
   typedef T *iterator;
 
   void push_back (T d) { simplevec<void *>::push_back ((void *)d); }
@@ -396,7 +407,8 @@ struct rxvt_vec : simplevec<void *> {
 #endif
 
 template<typename T>
-struct auto_ptr {
+struct auto_ptr
+{
   T *p;
 
   auto_ptr () : p (0) { }

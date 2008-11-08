@@ -44,6 +44,7 @@ config.status: configure
 conf-unicode-lite:
 	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
 	    --disable-xft \
+	    --disable-afterimage \
 	    --disable-perl \
 	    --disable-iso14755
 
