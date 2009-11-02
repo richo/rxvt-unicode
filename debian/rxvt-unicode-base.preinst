@@ -1,0 +1,8 @@
+#!/bin/sh -e
+
+if [ "$1" = upgrade ]; then
+    # clean up after old versions
+    update-alternatives --remove x-terminal-emulator /usr/bin/urxvtcd
+fi
+
+#DEBHELPER#

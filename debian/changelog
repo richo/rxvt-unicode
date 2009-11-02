@@ -1,3 +1,9 @@
+rxvt-unicode (9.06-2) unstable; urgency=medium
+
+  * Don't install an alternative for urxvtcd (due to #481123)
+
+ -- Decklin Foster <decklin@red-bean.com>  Mon, 02 Nov 2009 11:11:44 -0500
+
 rxvt-unicode (9.06-1) unstable; urgency=low
 
   * New upstream version

@@ -93,6 +93,7 @@ build-stamp: config.status
 
 	set -e; \
 	for x in unicode unicode-lite unicode-ml; do \
+		cp -f debian/rxvt-unicode-base.preinst debian/rxvt-$$x.preinst; \
 		cp -f debian/rxvt-unicode-base.postinst debian/rxvt-$$x.postinst; \
 		cp -f debian/rxvt-unicode-base.prerm debian/rxvt-$$x.prerm; \
 		y=$(CURDIR)/debian/rxvt-$$x ; z=$(CURDIR)/tmp/$$x; \
