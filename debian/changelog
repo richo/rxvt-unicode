@@ -1,3 +1,10 @@
+rxvt-unicode (9.06-3) unstable; urgency=low
+
+  * Don't remove urxvtcd alternative if selected (Closes: #555310)
+  * Fix x-terminal-emulator priority for urxvt
+
+ -- Decklin Foster <decklin@red-bean.com>  Sun, 29 Nov 2009 22:00:45 -0500
+
 rxvt-unicode (9.06-2) unstable; urgency=medium
 
   * Don't install an alternative for urxvtcd (due to #481123)
