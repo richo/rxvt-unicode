@@ -153,7 +153,7 @@ wchar_t *        rxvt_mbstowcs                    (const char *str, int len = -1
 char *           rxvt_wcstoutf8                   (const wchar_t *str, int len = -1);
 wchar_t *        rxvt_utf8towcs                   (const char *str, int len = -1);
 
-char *           rxvt_basename                    (const char *str) NOTHROW;
+const char *     rxvt_basename                    (const char *str) NOTHROW;
 void             rxvt_vlog                        (const char *fmt, va_list arg_ptr) NOTHROW;
 void             rxvt_log                         (const char *fmt,...) NOTHROW;
 void             rxvt_warn                        (const char *fmt,...) NOTHROW;
@@ -849,6 +849,7 @@ struct TermWin_t
   int            int_bwidth;    /* internal border width                    */
   int            ext_bwidth;    /* external border width                    */
   int            lineSpace;     /* number of extra pixels between rows      */
+  int            letterSpace;   /* number of extra pixels between columns   */
   int            saveLines;     /* number of lines that fit in scrollback   */
   int            total_rows;    /* total number of rows in this terminal    */
   int            term_start;    /* term lines start here                    */
@@ -977,16 +978,16 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
                   current_screen:1,	/* primary or secondary              */
                   num_scr_allow:1,
                   bypass_keystate:1,
-#ifdef ENABLE_FRILLS
+#if ENABLE_FRILLS
                   urgency_hint:1,
 #endif
-#ifdef CURSOR_BLINK
+#if CURSOR_BLINK
                   hidden_cursor:1,
 #endif
-#ifdef TEXT_BLINK
+#if TEXT_BLINK
                   hidden_text:1,
 #endif
-#ifdef POINTER_BLANK
+#if POINTER_BLANK
                   hidden_pointer:1,
 #endif
                   enc_utf8:1,		/* wether locale uses utf-8 */
@@ -1236,7 +1237,11 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void button_release (XButtonEvent &ev);
   void focus_in ();
   void focus_out ();
+#if ENABLE_FRILLS
   void set_urgency (bool enable);
+#else
+  void set_urgency (bool enable) { }
+#endif
   void update_fade_color (unsigned int idx);
 #ifdef PRINTPIPE
   FILE *popen_printer ();
@@ -1252,7 +1257,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void process_dcs_seq ();
   void process_osc_seq ();
   void process_color_seq (int report, int color, const char *str, char resp);
-  void process_xterm_seq (int op, const char *str, char resp);
+  void process_xterm_seq (int op, char *str, char resp);
   int privcases (int mode, unsigned long bit);
   void process_terminal_mode (int mode, int priv, unsigned int nargs, const int *arg);
   void process_sgr_mode (unsigned int nargs, const int *arg);

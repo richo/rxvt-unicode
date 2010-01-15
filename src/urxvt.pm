@@ -375,6 +375,20 @@ the double C</> characters as comment start. Use C<\057\057> instead,
 which works regardless of wether xrdb is used to parse the resource file
 or not.
 
+=item macosx-pastebin and macosx-pastebin-native
+
+These two modules implement an extended clipboard for Mac OS X. They are
+used like this:
+
+   URxvt.perl-ext-common: default,macosx-clipboard
+   URxvt.keysym.M-c: perl:macosx-clipboard:copy
+   URxvt.keysym.M-v: perl:macosx-clipboard:paste
+
+The difference between them is that the native variant requires a
+perl from apple's devkit or so, and C<maxosx-pastebin> requires the
+C<Mac::Pasteboard> module, works with other perls, has fewer bugs, is
+simpler etc. etc.
+
 =item example-refresh-hooks
 
 Displays a very simple digital clock in the upper right corner of the
@@ -1112,7 +1126,7 @@ work.
 
 =cut
 
-our $VERSION = '3.4';
+our $VERSION = '5.23';
 
 $INC{"urxvt/anyevent.pm"} = 1; # mark us as there
 push @AnyEvent::REGISTRY, [urxvt => urxvt::anyevent::];
@@ -1124,8 +1138,8 @@ sub timer {
 
    urxvt::timer
       ->new
-      ->start (urxvt::NOW + $arg{after})
-      ->cb (sub {
+      ->after ($arg{after}, $arg{interval})
+      ->cb ($arg{interval} ? $cb : sub {
         $_[0]->stop; # need to cancel manually
         $cb->();
       })
@@ -1135,18 +1149,42 @@ sub io {
    my ($class, %arg) = @_;
 
    my $cb = $arg{cb};
+   my $fd = fileno $arg{fh};
+   defined $fd or $fd = $arg{fh};
 
    bless [$arg{fh}, urxvt::iow
              ->new
-             ->fd (fileno $arg{fh})
+             ->fd ($fd)
              ->events (($arg{poll} =~ /r/ ? 1 : 0)
                      | ($arg{poll} =~ /w/ ? 2 : 0))
              ->start
-             ->cb (sub {
-                $cb->(($_[1] & 1 ? 'r' : '')
-                    . ($_[1] & 2 ? 'w' : ''));
-             })],
-         urxvt::anyevent::
+             ->cb ($cb)
+         ], urxvt::anyevent::
+}
+
+sub idle {
+   my ($class, %arg) = @_;
+
+   my $cb = $arg{cb};
+
+   urxvt::iw
+      ->new
+      ->start
+      ->cb ($cb)
+}
+
+sub child {
+   my ($class, %arg) = @_;
+
+   my $cb = $arg{cb};
+
+   urxvt::pw
+      ->new
+      ->start ($arg{pid})
+      ->cb (sub {
+        $_[0]->stop; # need to cancel manually
+        $cb->($_[0]->rpid, $_[0]->rstatus);
+      })
 }
 
 sub DESTROY {
@@ -1286,9 +1324,9 @@ to see the actual list:
   borderLess chdir color cursorBlink cursorUnderline cutchars delete_key
   display_name embed ext_bwidth fade font geometry hold iconName
   imFont imLocale inputMethod insecure int_bwidth intensityStyles
-  italicFont jumpScroll lineSpace loginShell mapAlert meta8 modifier
-  mouseWheelScrollPage name override_redirect pastableTabs path perl_eval
-  perl_ext_1 perl_ext_2 perl_lib pointerBlank pointerBlankDelay
+  italicFont jumpScroll lineSpace letterSpace loginShell mapAlert meta8
+  modifier mouseWheelScrollPage name override_redirect pastableTabs path
+  perl_eval perl_ext_1 perl_ext_2 perl_lib pointerBlank pointerBlankDelay
   preeditType print_pipe pty_fd reverseVideo saveLines scrollBar
   scrollBar_align scrollBar_floating scrollBar_right scrollBar_thickness
   scrollTtyKeypress scrollTtyOutput scrollWithBuffer scrollstyle
@@ -1336,8 +1374,15 @@ set it (which is usually bad as applications don't expect that).
 
 =item ($row, $col) = $term->selection_end ([$row, $col])
 
-Return the current values of the selection mark, begin or end positions,
-and optionally set them to new values.
+Return the current values of the selection mark, begin or end positions.
+
+When arguments are given, then the selection coordinates are set to
+C<$row> and C<$col>, and the selection screen is set to the current
+screen.
+
+=item $screen = $term->selection_screen ([$screen])
+
+Returns the current selection screen, and then optionally sets it.
 
 =item $term->selection_make ($eventtime[, $rectangular])
 
@@ -2017,17 +2062,14 @@ immediately.
 
 Set the callback to be called when the timer triggers.
 
-=item $tstamp = $timer->at
+=item $timer = $timer->set ($tstamp[, $interval])
 
-Return the time this watcher will fire next.
-
-=item $timer = $timer->set ($tstamp)
-
-Set the time the event is generated to $tstamp.
+Set the time the event is generated to $tstamp (and optionally specifies a
+new $interval).
 
 =item $timer = $timer->interval ($interval)
 
-Normally (and when C<$interval> is C<0>), the timer will automatically
+By default (and when C<$interval> is C<0>), the timer will automatically
 stop after it has fired once. If C<$interval> is non-zero, then the timer
 is automatically rescheduled at the given intervals.
 
@@ -2035,11 +2077,12 @@ is automatically rescheduled at the given intervals.
 
 Start the timer.
 
-=item $timer = $timer->start ($tstamp)
+=item $timer = $timer->start ($tstamp[, $interval])
 
-Set the event trigger time to C<$tstamp> and start the timer.
+Set the event trigger time to C<$tstamp> and start the timer. Optionally
+also replaces the interval.
 
-=item $timer = $timer->after ($delay)
+=item $timer = $timer->after ($delay[, $interval])
 
 Like C<start>, but sets the expiry timer to c<urxvt::NOW + $delay>.
 

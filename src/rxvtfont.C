@@ -81,8 +81,8 @@ const struct rxvt_fallback_font {
 #if ENCODING_JP || ENCODING_JP_EXT
 # if XFT
   // prefer xft for complex scripts
-  { CS_JIS0208_1990_0, "xft:Kochi Gothic:antialias=false"          },
   { CS_JIS0208_1990_0, "xft:Sazanami Mincho:antialias=false"       },
+  { CS_JIS0208_1990_0, "xft:Kochi Gothic:antialias=false"          },
   { CS_JIS0208_1990_0, "xft:Mincho:antialias=false"                },
   { CS_JIS0208_1990_0, "xft::lang=ja:antialias=false"              },
 # endif
@@ -218,13 +218,13 @@ rxvt_font::rxvt_font ()
 }
 
 void
-rxvt_font::set_name (char *name)
+rxvt_font::set_name (char *name_)
 {
-  if (this->name == name)
+  if (name == name_)
     return;
 
-  if (this->name) free (this->name); // let the compiler optimize
-  this->name = name;
+  if (name) free (name); // let the compiler optimize
+  name = name_;
 }
 
 void
@@ -794,14 +794,23 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
   char *registry = get_property (f, term->xa [XA_CHARSET_REGISTRY], 0);
   char *encoding = get_property (f, term->xa [XA_CHARSET_ENCODING], 0);
 
+  cs = CS_UNKNOWN;
+
   if (registry && encoding)
     {
       char charset[64];
       snprintf (charset, 64, "%s-%s", registry, encoding);
 
       cs = codeset_from_name (charset);
+
+      if (cs == CS_UNKNOWN)
+        rxvt_warn ("%s: cannot deduce encoding from registry/encoding properties \"%s\", ignoring font.\n", name, charset);
     }
-  else
+
+  free (registry);
+  free (encoding);
+
+  if (cs == CS_UNKNOWN)
     {
       const char *charset = get_property (f, XA_FONT, 0);
 
@@ -814,10 +823,15 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
           break;
 
       cs = codeset_from_name (charset);
+      if (cs == CS_UNKNOWN)
+        rxvt_warn ("%s: cannot deduce encoding from font name property \"%s\", ignoring font.\n", name, charset);
     }
 
-  free (registry);
-  free (encoding);
+  if (cs == CS_UNKNOWN)
+    {
+      clear ();
+      return false;
+    }
 
   if (cs == CS_UNICODE)
     cs = CS_UNICODE_16; // X11 can have a max. of 65536 chars per font
@@ -872,14 +886,6 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
       if (wcw > 0) g.width = (g.width + wcw - 1) / wcw;
 
       if (width < g.width) width = g.width;
-    }
-
-  if (cs == CS_UNKNOWN)
-    {
-      fprintf (stderr, "unable to deduce codeset, ignoring font '%s'\n", name);
-
-      clear ();
-      return false;
     }
 
 #if 0 // do it per-character

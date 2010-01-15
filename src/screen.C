@@ -288,9 +288,7 @@ rxvt_term::scr_reset ()
           do
             {
               p = MOD (p - 1, prev_total_rows);
-#ifdef DEBUG_STRICT
               assert (old_buf [MOD (p, prev_total_rows)].t);
-#endif
               int plines = 1;
               int llen = old_buf [MOD (p, prev_total_rows)].l;
 
@@ -512,10 +510,8 @@ rxvt_term::scr_cursor (cursor_mode mode) NOTHROW
   /* boundary check in case screen size changed between SAVE and RESTORE */
   min_it (s->cur.row, nrow - 1);
   min_it (s->cur.col, ncol - 1);
-#ifdef DEBUG_STRICT
   assert (s->cur.row >= 0);
   assert (s->cur.col >= 0);
-#endif
 }
 
 void
@@ -785,11 +781,9 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
         }
     }
 
-#ifdef DEBUG_STRICT
   assert (screen.cur.col < ncol);
   assert (screen.cur.row < nrow
           && screen.cur.row >= top_row);
-#endif
   int row = screen.cur.row;
 
   checksel = selection.op && current_screen == selection.screen ? 1 : 0;
@@ -1003,9 +997,7 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
 
   max_it (line->l, screen.cur.col);
 
-#ifdef DEBUG_STRICT
   assert (screen.cur.row >= 0);
-#endif
 }
 
 /* ------------------------------------------------------------------------- */
@@ -1971,7 +1963,7 @@ rxvt_term::scr_printscreen (int fullhist) NOTHROW
 
   wctomb (0, 0);
 
-  for (int r1 = 0; r1 < nrows; r1++)
+  for (int r1 = row_start; r1 < row_start + nrows; r1++)
     {
       text_t *tp = ROW(r1).t;
       int len    = ROW(r1).l;
@@ -2252,7 +2244,8 @@ rxvt_term::scr_refresh () NOTHROW
               if (stp[col] == NOCHAR)
                 {
                   dtp[col] = stp[col];
-                  drp[col] = rend;
+                  drp[col] = srp[col];
+
                   count++;
                   i++;
 

@@ -1057,40 +1057,42 @@ rxvt_term::locale ()
 
 #define TERM_OFFSET(sym) offsetof (TermWin_t, sym)
 
-#define TERM_OFFSET_width      TERM_OFFSET(width)
-#define TERM_OFFSET_height     TERM_OFFSET(height)
-#define TERM_OFFSET_fwidth     TERM_OFFSET(fwidth)
-#define TERM_OFFSET_fheight    TERM_OFFSET(fheight)
-#define TERM_OFFSET_fbase      TERM_OFFSET(fbase)
-#define TERM_OFFSET_nrow       TERM_OFFSET(nrow)
-#define TERM_OFFSET_ncol       TERM_OFFSET(ncol)
-#define TERM_OFFSET_focus      TERM_OFFSET(focus)
-#define TERM_OFFSET_mapped     TERM_OFFSET(mapped)
-#define TERM_OFFSET_int_bwidth TERM_OFFSET(int_bwidth)
-#define TERM_OFFSET_ext_bwidth TERM_OFFSET(ext_bwidth)
-#define TERM_OFFSET_lineSpace  TERM_OFFSET(lineSpace)
-#define TERM_OFFSET_saveLines  TERM_OFFSET(saveLines)
-#define TERM_OFFSET_total_rows TERM_OFFSET(total_rows)
-#define TERM_OFFSET_top_row    TERM_OFFSET(top_row)
+#define TERM_OFFSET_width       TERM_OFFSET(width)
+#define TERM_OFFSET_height      TERM_OFFSET(height)
+#define TERM_OFFSET_fwidth      TERM_OFFSET(fwidth)
+#define TERM_OFFSET_fheight     TERM_OFFSET(fheight)
+#define TERM_OFFSET_fbase       TERM_OFFSET(fbase)
+#define TERM_OFFSET_nrow        TERM_OFFSET(nrow)
+#define TERM_OFFSET_ncol        TERM_OFFSET(ncol)
+#define TERM_OFFSET_focus       TERM_OFFSET(focus)
+#define TERM_OFFSET_mapped      TERM_OFFSET(mapped)
+#define TERM_OFFSET_int_bwidth  TERM_OFFSET(int_bwidth)
+#define TERM_OFFSET_ext_bwidth  TERM_OFFSET(ext_bwidth)
+#define TERM_OFFSET_lineSpace   TERM_OFFSET(lineSpace)
+#define TERM_OFFSET_letterSpace TERM_OFFSET(letterSpace)
+#define TERM_OFFSET_saveLines   TERM_OFFSET(saveLines)
+#define TERM_OFFSET_total_rows  TERM_OFFSET(total_rows)
+#define TERM_OFFSET_top_row     TERM_OFFSET(top_row)
 
 int
 rxvt_term::width ()
 	ALIAS:
-           width      = TERM_OFFSET_width
-           height     = TERM_OFFSET_height
-           fwidth     = TERM_OFFSET_fwidth
-           fheight    = TERM_OFFSET_fheight
-           fbase      = TERM_OFFSET_fbase
-           nrow       = TERM_OFFSET_nrow
-           ncol       = TERM_OFFSET_ncol
-           focus      = TERM_OFFSET_focus
-           mapped     = TERM_OFFSET_mapped
-           int_bwidth = TERM_OFFSET_int_bwidth
-           ext_bwidth = TERM_OFFSET_ext_bwidth
-           lineSpace  = TERM_OFFSET_lineSpace
-           saveLines  = TERM_OFFSET_saveLines
-           total_rows = TERM_OFFSET_total_rows
-           top_row    = TERM_OFFSET_top_row
+           width       = TERM_OFFSET_width
+           height      = TERM_OFFSET_height
+           fwidth      = TERM_OFFSET_fwidth
+           fheight     = TERM_OFFSET_fheight
+           fbase       = TERM_OFFSET_fbase
+           nrow        = TERM_OFFSET_nrow
+           ncol        = TERM_OFFSET_ncol
+           focus       = TERM_OFFSET_focus
+           mapped      = TERM_OFFSET_mapped
+           int_bwidth  = TERM_OFFSET_int_bwidth
+           ext_bwidth  = TERM_OFFSET_ext_bwidth
+           lineSpace   = TERM_OFFSET_lineSpace
+           letterSpace = TERM_OFFSET_letterSpace
+           saveLines   = TERM_OFFSET_saveLines
+           total_rows  = TERM_OFFSET_total_rows
+           top_row     = TERM_OFFSET_top_row
 	CODE:
         RETVAL = *(int *)((char *)THIS + ix);
         OUTPUT:
@@ -1550,7 +1552,7 @@ rxvt_term::screen_cur (...)
             PUSHs (sv_2mortal (newSViv (rc.col)));
           }
 
-        if (items == 3)
+        if (items >= 3)
           {
             rc.row = SvIV (ST (1));
             rc.col = SvIV (ST (2));
@@ -1576,17 +1578,21 @@ rxvt_term::screen_cur (...)
 
             if (ix)
               {
+                THIS->selection.screen = THIS->current_screen;
+
                 THIS->want_refresh = 1;
                 THIS->refresh_check ();
               }
           }
 }
 
-char
-rxvt_term::cur_charset ()
+int
+rxvt_term::selection_screen (int screen = -1)
 	CODE:
-        RETVAL = THIS->charsets [THIS->screen.charset];
-	OUTPUT:
+        RETVAL = THIS->selection.screen;
+        if (screen >= 0)
+          THIS->selection.screen = screen;
+        OUTPUT:
         RETVAL
 
 void
@@ -1619,6 +1625,13 @@ rxvt_term::selection (SV *newtext = 0)
             THIS->selection.len = wcslen (THIS->selection.text);
           }
 }
+
+char
+rxvt_term::cur_charset ()
+	CODE:
+        RETVAL = THIS->charsets [THIS->screen.charset];
+	OUTPUT:
+        RETVAL
 
 void
 rxvt_term::scr_xor_rect (int beg_row, int beg_col, int end_row, int end_col, U32 rstyle1 = RS_RVid, U32 rstyle2 = RS_RVid | RS_Uline)

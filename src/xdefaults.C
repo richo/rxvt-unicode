@@ -229,6 +229,7 @@ optList[] = {
               STRG (Rs_int_bwidth, "internalBorder", "b", "number", "internal border in pixels"),
               BOOL (Rs_borderLess, "borderLess", "bl", Opt_borderLess, 0, "borderless window"),
               STRG (Rs_lineSpace, "lineSpace", "lsp", "number", "number of extra pixels between rows"),
+              STRG (Rs_letterSpace, "letterSpace", "letsp", "number", "letter spacing adjustment"),
 #endif
 #ifdef BUILTIN_GLYPHS
               BOOL (Rs_skipBuiltinGlyphs, "skipBuiltinGlyphs", "sbg", Opt_skipBuiltinGlyphs, 0, "do not use internal glyphs"),
@@ -265,7 +266,7 @@ optList[] = {
               STRG (Rs_blendtype, "blendType", "blt", "string", "background image blending type - alpha, tint, etc..."),
               STRG (Rs_blurradius, "blurRadius", "blr", "HxV", "gaussian blur radii to apply to the root background"),
 # if ENABLE_EWMH
-              STRG (Rs_iconfile, "iconFile", "icon", "file", "path to aplication icon image"),
+              STRG (Rs_iconfile, "iconFile", "icon", "file", "path to application icon image"),
 # endif
 #endif
               INFO ("e", "command arg ...", "command to execute")
@@ -402,9 +403,7 @@ rxvt_usage (int type)
 
               if (optList[i].arg)
                 len = strlen (optList[i].arg) + 1;
-#ifdef DEBUG_STRICT
               assert (optList[i].opt != NULL);
-#endif
               len += 4 + strlen (optList[i].opt) + (optList_isBool (i) ? 2: 0);
               col += len;
               if (col > 79)
@@ -428,9 +427,7 @@ rxvt_usage (int type)
         for (i = 0; i < optList_size; i++)
           if (optList[i].desc != NULL)
             {
-#ifdef DEBUG_STRICT
               assert (optList[i].opt != NULL);
-#endif
               rxvt_log ("  %s%s %-*s%s%s\n",
                          (optList_isBool (i) ? "-/+" : "-"), optList[i].opt,
                          (INDENT - strlen (optList[i].opt)

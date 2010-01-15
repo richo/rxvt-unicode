@@ -1,7 +1,7 @@
 /*
  * libev win32 compatibility cruft (_not_ a backend)
  *
- * Copyright (c) 2007,2008 Marc Alexander Lehmann <libev@schmorp.de>
+ * Copyright (c) 2007,2008,2009 Marc Alexander Lehmann <libev@schmorp.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifica-
@@ -54,6 +54,8 @@ ev_pipe (int filedes [2])
 {
   struct sockaddr_in addr = { 0 };
   int addr_size = sizeof (addr);
+  struct sockaddr_in adr2;
+  int adr2_size = sizeof (adr2);
   SOCKET listener;
   SOCKET sock [2] = { -1, -1 };
 
@@ -67,7 +69,7 @@ ev_pipe (int filedes [2])
   if (bind (listener, (struct sockaddr *)&addr, addr_size))
     goto fail;
 
-  if (getsockname(listener, (struct sockaddr *)&addr, &addr_size))
+  if (getsockname (listener, (struct sockaddr *)&addr, &addr_size))
     goto fail;
 
   if (listen (listener, 1))
@@ -76,17 +78,41 @@ ev_pipe (int filedes [2])
   if ((sock [0] = socket (AF_INET, SOCK_STREAM, 0)) == INVALID_SOCKET) 
     goto fail;
 
-  if (connect (sock[0], (struct sockaddr *)&addr, addr_size))
+  if (connect (sock [0], (struct sockaddr *)&addr, addr_size))
     goto fail;
 
-  if ((sock[1] = accept (listener, 0, 0)) < 0)
+  if ((sock [1] = accept (listener, 0, 0)) < 0)
+    goto fail;
+
+  /* windows vista returns fantasy port numbers for sockets:
+   * example for two interconnected tcp sockets:
+   *
+   * (Socket::unpack_sockaddr_in getsockname $sock0)[0] == 53364
+   * (Socket::unpack_sockaddr_in getpeername $sock0)[0] == 53363
+   * (Socket::unpack_sockaddr_in getsockname $sock1)[0] == 53363
+   * (Socket::unpack_sockaddr_in getpeername $sock1)[0] == 53365
+   *
+   * wow! tridirectional sockets!
+   *
+   * this way of checking ports seems to work:
+   */
+  if (getpeername (sock [0], (struct sockaddr *)&addr, &addr_size))
+    goto fail;
+
+  if (getsockname (sock [1], (struct sockaddr *)&adr2, &adr2_size))
+    goto fail;
+
+  errno = WSAEINVAL;
+  if (addr_size != adr2_size
+      || addr.sin_addr.s_addr != adr2.sin_addr.s_addr /* just to be sure, I mean, it's windows */
+      || addr.sin_port        != adr2.sin_port)
     goto fail;
 
   closesocket (listener);
 
 #if EV_SELECT_IS_WINSOCKET
-  filedes [0] = _open_osfhandle (sock [0], 0);
-  filedes [1] = _open_osfhandle (sock [1], 0);
+  filedes [0] = EV_WIN32_HANDLE_TO_FD (sock [0]);
+  filedes [1] = EV_WIN32_HANDLE_TO_FD (sock [1]);
 #else
   /* when select isn't winsocket, we also expect socket, connect, accept etc.
    * to work on fds */
@@ -107,22 +133,21 @@ fail:
 
 #undef pipe
 #define pipe(filedes) ev_pipe (filedes)
-
-static int
-ev_gettimeofday (struct timeval *tv, struct timezone *tz)
+  
+#define EV_HAVE_EV_TIME 1
+ev_tstamp
+ev_time (void)
 {
-  struct _timeb tb;
+  FILETIME ft;
+  ULARGE_INTEGER ui;
 
-  _ftime (&tb);
+  GetSystemTimeAsFileTime (&ft);
+  ui.u.LowPart  = ft.dwLowDateTime;
+  ui.u.HighPart = ft.dwHighDateTime;
 
-  tv->tv_sec  = (long)tb.time;
-  tv->tv_usec = ((long)tb.millitm) * 1000;
-
-  return 0;
+  /* msvc cannot convert ulonglong to double... yes, it is that sucky */
+  return (LONGLONG)(ui.QuadPart - 116444736000000000) * 1e-7;
 }
-
-#undef gettimeofday
-#define gettimeofday(tv,tz) ev_gettimeofday (tv, tz)
 
 #endif
 

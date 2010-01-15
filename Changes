@@ -1,23 +1,49 @@
 rxvt-unicode changelog <= google-friendly title
 
-TODO: init_secondary serves what purpose? maybe move it to earlier startup phase and re-think
-TODO: xcopyarea pass broken, fix and improve
-TODO: event mechanism that replaces on_keyboard_command with something more scalable.
-TODO: slipwheeling needs a keyboard grab to get key release events.
-TODO: overlays collide with the way the out-of-focus cursor is being drawn
-TODO: "slow" rendering mode for bidi and scripts, pango!
-TODO: read property sequence is broken with respect to utf-8 etc.
-TODO: slow drag selection on remote display - other things seem fast (rxvt illness, motion hints?)
-TODO: better resource handling for tabbar in -pe tabbed.
-WISH: investigate -pe tabbed -g 80x25 being 23 not 24 or 25 lines
-      => when setting the constraints, the wm might (correctly)
-         resize the outer window, which might result in a smaller window overall.
-         or something like that. guys, send me a patch.
-WISH: coloured pastebin
-WISH: selection-color-pair instead of reverse video
-WISH: load system-wide config file even if we don't have one
-WISH: look into XAddConnectionWatch, does anybody need that?
-DUMB: support tex fonts
+9.07 Wed Dec 30 07:07:18 CET 2009
+	- port to glibc-2.10 changes (strchr etc. returning const char *
+          in C++), based on patches by Milos Jakubicek and Oliver Mader.
+        - the binary search algorithm to find precomposed characters
+          was faulty, skipping some possible combinations (found by
+          Mikachu).
+        - new -letterspace option, patch by Mark H. Wilkinson.
+	- enable --mlock option for urxvt with frills on
+          systems supporting it (patch by Russell Harmon).
+	- urxvt did not compile without frills enabled
+          (analysed by Matthew Rosewarne).
+        - correctly reset the mbstate after an illegal
+          input sequence when handling terminal output (Emanuele Giaquinta).
+        - avoid redrawing wide characters with combining enabled on every
+          refresh (reported by Mikachu).
+        - fix a typo preventing the ISO-646.1991 character set from being
+          recognized (http://achurch.org/patch-pile/).
+        - better warning for x11 font encoding detection failures, also,
+          try to deduce encoding from both font properties and name
+          (adapted from http://achurch.org/patch-pile/).
+        - resizing the window with the scrollbar disabled via the escapes
+          sequence could make the window bigger again (Mikachu).
+        - make sure the alignment for fd passing control messages
+          is correct and work around some NetBSD issues (Taylor R Campbell).
+        - update to libptytty 1.3.
+        - replace maxosc-pastebin by a nicer version by Reza Jelveh, and move
+          the old version to macosx-pastebin-native.
+        - document the -uc option (Emanuele Giaquinta).
+        - assertions in libev are now enabled depending on frills.
+        - update AnyEvent implementation to version 5.23 API.
+        - work around arrogant bsd idiocies again: netbsd spills the default
+          namespace with lots of symbols "for gnu/gcc compatibility" even
+          though neither of them does it, and then calls the rest of the world
+          in need of fixing. go figure.
+        - on_keyboard_command is on_user_command (patch by Michael Witten).
+        - setting the selection from perl will now reset the selection screen
+          to the current screen. the srceen can be manipulated using
+          the new ->selection_screen method.
+        - implement --enable-assert configure option and get rid of DEBUG_STRICT
+          (based on patch by Emanuele Giaquinta).
+        - fix printpipe data output (patch by Emanuele Giaquinta).
+        - allow `xxx' quoting style for perl selection.
+        - upgrade to libev-3.9 prerelease.
+        - updated compose tables to unicode 5.2.0.
 
 9.06 Sat Nov  8 17:47:18 CET 2008
 	- NOTICE: this release updates terminfo/termcap.
@@ -70,7 +96,7 @@ DUMB: support tex fonts
         - tabbed extension now starts in the "correct" working directory.
 	- work around fedora 9 providing isastream but not the relevant
           header file for it (report by Tuncer Ayaz).
-	- upgrade libev, fixing a bug in the select backend
+	- upgrade libev, fixing a bug in the select backend.
           with more than 31 file descriptors on non-linux 64 bit systems.
 	- correctly reset the multibyte state to the initial one
           after EILSEQ (patch by Neil Booth). This fixes the
@@ -521,7 +547,7 @@ DUMB: support tex fonts
           as kwin puts our windows behind the terminal (what a shoddy wm).
         - fixed struct utmp check in configure for OpenBSD.
         - complete overhaul of the pty/utmp management stuff and configure
-          (Emanuele Giaquinta).
+          (Emanuele Giaquinta=exg).
 	- add tsl/fsl and related capabilities to the terminfo description,
           to set the window title.
         - swap the environment in some more cases. This hopefully fixes
@@ -742,7 +768,7 @@ DUMB: support tex fonts
 	  in Perl/Gtk2.
 	- fix assertion failure ("crash") on mousewheel-scrolling
 	  when the terminal height is small, by removing the assert.
-	  (reported by Mikael Magnusson).
+	  (reported by Mikael Magnusson=Mikachu).
 	- SYNCCVS. backported bugfixes done to rxvt
 	  (sourceforge bugs #1028739, #1028732), except for
 	  pts/%s fix as it seems to collide with freebsd,

@@ -648,7 +648,7 @@ rxvt_term::tt_winch ()
   ws.ws_row = nrow;
   ws.ws_xpixel = width;
   ws.ws_ypixel = height;
-  (void)ioctl (pty->pty, TIOCSWINSZ, &ws);
+  ioctl (pty->pty, TIOCSWINSZ, &ws);
 
 #if 0
   // TIOCSWINSZ is supposed to do this automatically and correctly
@@ -690,6 +690,7 @@ rxvt_term::set_fonts ()
 
   prop = (*fs)[1]->properties ();
   prop.height += lineSpace;
+  prop.width += letterSpace;
 
   fs->set_prop (prop, false);
 
@@ -1077,18 +1078,17 @@ rxvt_term::im_set_preedit_area (XRectangle &preedit_rect,
 bool
 rxvt_term::IMisRunning ()
 {
-  char *p;
   Atom atom;
   Window win;
   char server[IMBUFSIZ];
 
   /* get current locale modifier */
-  if ((p = XSetLocaleModifiers (NULL)) != NULL)
+  if (char *p = XSetLocaleModifiers (0))
     {
       strcpy (server, "@server=");
-      strncat (server, & (p[4]), IMBUFSIZ - 9); /* skip "@im=" */
+      strncat (server, p + 4, IMBUFSIZ - 9); /* skip "@im=" */
 
-      if ((p = strchr (server + 1, '@')) != NULL)      /* first one only */
+      if (p = strchr (server + 1, '@'))      /* first one only */
         *p = '\0';
 
       atom = XInternAtom (dpy, server, False);
