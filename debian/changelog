@@ -1,3 +1,16 @@
+rxvt-unicode (9.07-2) unstable; urgency=low
+
+  [ Jakub Wilk ]
+  * Disable use of epoll on Alpha and SPARC, as it is not properly
+    supported by (Closes: #576826)
+
+  [ Decklin Foster ]
+  * Change xutils build-dep to xutils-dev (Closes: #575859)
+  * Fix copyright notice
+  * Use "Terminal Emulators" menu section
+
+ -- Decklin Foster <decklin@red-bean.com>  Sun, 18 Apr 2010 21:55:23 -0400
+
 rxvt-unicode (9.07-1) unstable; urgency=low
 
   * New upstream version

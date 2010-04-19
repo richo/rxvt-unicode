@@ -1,13 +1,140 @@
-This package was debianized by Eduard Bloch <blade@debian.org> on
-Tue, 24 Feb 2004 09:03:51 +0100.
+This package was debianized by Eduard Bloch <blade@debian.org> on Tue,
+24 Feb 2004 09:03:51 +0100. It is currently maintained by Decklin Foster
+<decklin@red-bean.com>.
 
-It was downloaded from http://rxvt-unicode-dist.plan9.de/ or
-http://sourceforge.net/projects/rxvt-unicode/.
+It was downloaded from <http://dist.schmorp.de/rxvt-unicode/>.
 
-Upstream Author: Marc Lehmann <pcg@schmorp.de>
-                 and others, see changelog.gz for details
+Upstream Author: Marc Lehmann <pcg@schmorp.de> and others
 
 Copyright:
+
+    [background.C]
+    Copyright (c) 2005-2008 Marc Lehmann <pcg@goof.com>
+    Copyright (c) 2007      Sasha Vasko <sasha@aftercode.net>
+
+    [command.C]
+    Copyright (c) 1992      John Bovey, University of Kent at Canterbury <jdb@ukc.ac.uk>
+   				- original version
+    Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
+    				- extensive modifications
+    Copyright (c) 1995      Garrett D'Amore <garrett@netcom.com>
+   				- vt100 printing
+    Copyright (c) 1995      Steven Hirsch <hirsch@emba.uvm.edu>
+   				- X11 mouse report mode and support for
+   				  DEC "private mode" save/restore functions.
+    Copyright (c) 1995      Jakub Jelinek <jj@gnu.ai.mit.edu>
+   				- key-related changes to handle Shift+function
+   				  keys properly.
+    Copyright (c) 1997      MJ Olesen <olesen@me.queensu.ca>
+   				- extensive modifications
+    Copyright (c) 1997      Raul Garcia Garcia <rgg@tid.es>
+   				- modification and cleanups for Solaris 2.x
+   				  and Linux 1.2.x
+    Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
+    Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
+    				- extensive modifications
+    Copyright (c) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
+    Copyright (c) 2001      Marius Gedminas
+   				- Ctrl/Mod4+Tab works like Meta+Tab (options)
+    Copyright (c) 2003      Rob McMullen <robm@flipturn.org>
+    Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
+    Copyright (c) 2007      Emanuele Giaquinta <e.giaquinta@glauco.it>
+
+    [encoding.C, salloc.C, rxvtc.C, rxvt.C]
+    Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+
+    [fdpass.C]
+    Copyright (c) 2005-2006 Marc Lehmann <pcg@goof.com>
+
+    [init.C]
+    Copyright (c) 1992      John Bovey, University of Kent at Canterbury <jdb@ukc.ac.uk>
+                                 - original version
+    Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
+                                 - extensive modifications
+    Copyright (c) 1996      Chuck Blake <cblake@BBN.COM>
+    Copyright (c) 1997      mj olesen <olesen@me.queensu.ca>
+    Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
+    Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
+                                 - extensive modifications
+    Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
+
+    [keyboard.C]
+    Copyright (c) 2005      WU Fengguang
+    Copyright (c) 2005-2006 Marc Lehmann <pcg@goof.com>
+
+    [logging.C]
+    Copyright (c) 1992      John Bovey <jdb@ukc.ac.uk>
+   				- original version
+    Copyright (c) 1993      lipka
+    Copyright (c) 1993      Brian Stempien <stempien@cs.wmich.edu>
+    Copyright (c) 1995      Raul Garcia Garcia <rgg@tid.es>
+    Copyright (c) 1995      Piet W. Plomp <piet@idefix.icce.rug.nl>
+    Copyright (c) 1997      Raul Garcia Garcia <rgg@tid.es>
+    Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
+    				- extensive modifications
+    Copyright (c) 1999      D J Hawkey Jr <hawkeyd@visi.com>
+   				- lastlog support
+    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+    Copyright (c) 2006      Emanuele Giaquinta <e.giaquinta@glauco.it>
+
+    [main.C]
+    Copyright (c) 1992      John Bovey, University of Kent at Canterbury <jdb@ukc.ac.uk>
+                                 - original version
+    Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
+                                 - extensive modifications
+    Copyright (c) 1995      Garrett D'Amore <garrett@netcom.com>
+    Copyright (c) 1997      mj olesen <olesen@me.QueensU.CA>
+                                 - extensive modifications
+    Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
+    Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
+                                 - extensive modifications
+    Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
+
+    [misc.C]
+    Copyright (c) 1996      mj olesen <olesen@me.QueensU.CA> Queen's Univ at Kingston
+    Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
+    Copyright (c) 1998-2000 Geoff Wing <gcw@pobox.com>
+    Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+
+    [proxy.C]
+    Copyright (c) 2006      Marc Lehmann <pcg@goof.com>
+
+    [ptytty.C]
+    Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
+    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+    Copyright (c) 2006      Emanuele Giaquinta <e.giaquinta@glauco.it>
+
+    [rxvtfont.C]
+    Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
+
+    [rxvttoolkit.C, rxvtdaemon.C, rxvtd.C]
+    Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
+
+    [rxvtutil.C]
+    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+
+    [screen.C]
+    Copyright (c) 1997-2001 Geoff Wing <gcw@pobox.com>
+    Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
+
+    [scrollbar-plain.C, scrollbar-rxvt.C, scrollbar-xterm.C]
+    Copyright (c) 1997,1998 mj olesen <olesen@me.QueensU.CA>
+    Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
+    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+
+    [scrollbar.C, scrollbar-next.C]
+    Copyright (c) 1997,1998 mj olesen <olesen@me.QueensU.CA>
+    Copyright (c) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
+   				- N*XTstep like scrollbars
+    Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
+    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+
+    [xdefaults.C]
+    Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
+                                 - original version
+    Copyright (c) 1997,1998 mj olesen <olesen@me.queensu.ca>
+    Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+    Copyright (c) 2007      Emanuele Giaquinta <e.giaquinta@glauco.it>
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by

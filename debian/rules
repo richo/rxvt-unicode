@@ -99,6 +99,9 @@ build-stamp: config.status
 		y=$(CURDIR)/debian/rxvt-$$x ; z=$(CURDIR)/tmp/$$x; \
 		$(MAKE) $(MFLAGS) -f debian/rules conf-$$x && \
 			perl -pe s,..tag.CXX,, -i src/Makefile; \
+		if expr $(DEB_HOST_GNU_TYPE) : 'alpha-linux-gnu\|sparc-linux-gnu' > /dev/null; then \
+			echo "#define EV_USE_EPOLL 0" >> config.h; \
+		fi; \
 		$(MAKE); \
 		mkdir -p tmp/$$x; \
 		$(MAKE) -C doc; \
