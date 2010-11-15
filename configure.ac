@@ -34,7 +34,7 @@ AC_GNU_SOURCE
 AC_ISC_POSIX
 AC_LANG(C++)
 
-dnl check wether we can link with gcc -lsupc++
+dnl check whether we can link with gcc -lsupc++
 if test x$GCC = xyes && test x$GXX = xyes; then
    dnl FreeBSD (at least up to 5.3) has a broken GCC, workaround it
    AC_MSG_CHECKING([for working libsupc++])
@@ -76,11 +76,11 @@ case $host in
 esac
 
 dnl# FreeBSD needs to link libxpg4
-AC_CHECK_FUNC(setlocale,     [], [AC_CHECK_LIB(xpg4,   setlocale,     [LIBS="$LIBS -lxpg4"])])
+AC_SEARCH_LIBS(setlocale,     xpg4)
 
 dnl# solaris needs to link libnsl and socket
-AC_CHECK_FUNC(gethostbyname, [], [AC_CHECK_LIB(nsl,    gethostbyname, [LIBS="$LIBS -lnsl"])])
-AC_CHECK_FUNC(socket,        [], [AC_CHECK_LIB(socket, socket,        [LIBS="$LIBS -lsocket"])])
+AC_SEARCH_LIBS(gethostbyname, nsl)
+AC_SEARCH_LIBS(socket,        socket)
 
 support_frills=yes
 support_inheritpixmap=yes
@@ -96,7 +96,6 @@ support_scroll_next=yes
 support_scroll_xterm=yes
 support_xim=yes
 support_afterimage=yes
-support_afterstep=yes
 support_xft=yes
 support_unicode3=no
 support_combining=yes
@@ -132,7 +131,6 @@ AC_ARG_ENABLE(everything,
        support_wtmp=no
        support_xim=no
        support_afterimage=no
-       support_afterstep=no
        support_xft=no
        support_unicode3=no
        support_combining=no
@@ -160,7 +158,6 @@ AC_ARG_ENABLE(everything,
        support_wtmp=yes
        support_xim=yes
        support_afterimage=yes
-       support_afterstep=yes
        support_xft=yes
        support_unicode3=yes
        support_combining=yes
@@ -196,6 +193,16 @@ if test x$GXX = xyes; then
   else
     CXXFLAGS="$CXXFLAGS -w"
   fi
+fi
+
+support_256_color=no
+AC_ARG_ENABLE(256-color,
+  [  --enable-256-color      enable 256-color support],
+  [if test x$enableval = xyes; then
+    support_256_color=yes
+  fi])
+if test x$support_256_color = xyes; then
+  AC_DEFINE(USE_256_COLORS, 1, Define if you want 256-color support)
 fi
 
 AC_ARG_ENABLE(unicode3,
@@ -234,11 +241,11 @@ AC_ARG_WITH(afterimage_config,
     afterimage_config=$withval/afterimage-config
   fi])
 
-dnl AC_ARG_ENABLE(afterstep,
-dnl   [  --enable-afterstep enable integration with AfterStep window manager],
-dnl   [if test x$enableval = xyes -o x$enableval = xno; then
-dnl     support_afterstep=$enableval
-dnl   fi])
+AC_ARG_ENABLE(pixbuf,
+  [  --enable-pixbuf         enable integration with gdk-pixbuf for background images],
+  [if test x$enableval = xyes -o x$enableval = xno; then
+    support_pixbuf=$enableval
+  fi])
 
 AC_ARG_ENABLE(transparency,
   [  --enable-transparency   enable transparent backgrounds],
@@ -341,7 +348,6 @@ AC_ARG_WITH(name,
   [RXVTNAME="$withval"])
 AC_DEFINE_UNQUOTED(RXVTNAME,"$RXVTNAME", [Binary base name])
 
-RXVTNAME=`echo "$RXVTNAME"|sed "$program_transform_name"`
 AC_SUBST(RXVTNAME)
 
 AC_ARG_ENABLE(swapscreen,
@@ -399,7 +405,7 @@ AC_ARG_ENABLE(text-blink,
   fi])
 
 AC_ARG_ENABLE(pointer-blank,
-  [  --enable-pointer-blank  enable pointer blank when typing or inactive pointer],
+  [  --enable-pointer-blank  enable pointer blanking when typing or inactive],
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_pointer_blank=$enableval
   fi])
@@ -426,6 +432,35 @@ dnl# --------------------------------------------------------------------------
 AC_PATH_PROG(TIC, tic, :)
 
 AC_PATH_XTRA
+
+image_lib=none
+
+PIXBUF_CFLAGS=
+PIXBUF_LIBS=
+
+if test x$support_pixbuf = xyes; then
+  support_pixbuf=no
+  AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
+  AC_MSG_CHECKING(for gdk-pixbuf)
+  if test $PKG_CONFIG != no && $PKG_CONFIG --exists gdk-pixbuf-xlib-2.0; then
+    PIXBUF_CFLAGS="`$PKG_CONFIG gdk-pixbuf-xlib-2.0 --cflags`"
+    PIXBUF_LIBS="`$PKG_CONFIG gdk-pixbuf-xlib-2.0 --libs`"
+    support_pixbuf=yes
+  fi
+
+  if test x$support_pixbuf = xyes; then
+    AC_MSG_RESULT(ok)
+    image_lib=gdk-pixbuf
+    support_afterimage=no
+    AC_DEFINE(HAVE_PIXBUF, 1, Define if you want to use gdk-pixbuf for image processing)
+    AC_DEFINE(BG_IMAGE_FROM_FILE, 1, Define if you want to have sexy-looking background pixmaps.)
+  else
+    AC_MSG_RESULT(no)
+  fi
+fi
+
+AC_SUBST(PIXBUF_CFLAGS)
+AC_SUBST(PIXBUF_LIBS)
 
 AFTERIMAGE_CFLAGS=
 AFTERIMAGE_LIBS=
@@ -456,11 +491,17 @@ if test x$support_afterimage = xyes; then
     fi
     if test "x$support_afterimage" = "xyes"; then
       AC_MSG_RESULT($AFTERIMAGE_LIBS)
+      image_lib=libafterimage
+      AC_DEFINE(HAVE_AFTERIMAGE, 1, Define if you want to use libAfterImage for image processing)
+      AC_DEFINE(BG_IMAGE_FROM_FILE, 1, Define if you want to have sexy-looking background pixmaps.)
     else
       AC_MSG_RESULT(no)
     fi
   fi
 fi
+
+AC_SUBST(AFTERIMAGE_CFLAGS)
+AC_SUBST(AFTERIMAGE_LIBS)
 
 dnl# --------------------------------------------------------------------------
 dnl# CHECKING FOR HEADER FILES
@@ -481,7 +522,7 @@ if test x$rxvt_cv_xpointer = xyes; then
   AC_DEFINE(HAVE_XPOINTER, 1, Define if you have XPointer typedef)
 fi
 
-AC_CACHE_CHECK([for XLIB_ILLEGAL_ACCESS], rxvt_xlib_illegal_access,
+AC_CACHE_CHECK([for XLIB_ILLEGAL_ACCESS], rxvt_cv_xlib_illegal_access,
 [AC_COMPILE_IFELSE(
    [AC_LANG_PROGRAM([
 #define XLIB_ILLEGAL_ACCESS
@@ -490,9 +531,9 @@ AC_CACHE_CHECK([for XLIB_ILLEGAL_ACCESS], rxvt_xlib_illegal_access,
       Display *dpy;
       dpy->xdefaults = (char *)0;
    ])],
-   [rxvt_xlib_illegal_access=yes],[rxvt_xlib_illegal_access=no]
+   [rxvt_cv_xlib_illegal_access=yes],[rxvt_cv_xlib_illegal_access=no]
 )])
-if test x$rxvt_xlib_illegal_access = xyes; then
+if test x$rxvt_cv_xlib_illegal_access = xyes; then
    AC_DEFINE(XLIB_ILLEGAL_ACCESS, 1, Define ONLY iff Xlib.h supports it)
 fi
 
@@ -539,7 +580,7 @@ if test x$support_xim = xyes; then
     :])])
   if test x$rxvt_cv_func_xlocale = xyes; then
     AC_DEFINE(USE_XIM, 1, Define if you want to have XIM (X Input Method) protocol support - required for multibyte characters input)
-    AC_CACHE_CHECK(for broken XIM callback, rxvt_broken_ximcb,
+    AC_CACHE_CHECK(for broken XIM callback, rxvt_cv_broken_ximcb,
     [AC_COMPILE_IFELSE([
     #include <X11/Xlib.h>
 
@@ -549,9 +590,9 @@ if test x$support_xim = xyes; then
       XIMCallback cb;
       cb.callback = im_destroy_cb;
     }
-    ],rxvt_broken_ximcb=yes,rxvt_broken_ximcb=no)])
+    ],rxvt_cv_broken_ximcb=yes,rxvt_cv_broken_ximcb=no)])
 
-    if test x$rxvt_broken_ximcb = xyes; then
+    if test x$rxvt_cv_broken_ximcb = xyes; then
        AC_DEFINE(XIMCB_PROTO_BROKEN, 1, Define if your XIMCallback specifies XIC as first type.)
     fi
   fi
@@ -610,6 +651,25 @@ if test x$support_xft = xyes; then
     AC_DEFINE(XFT, 1, Define to enable xft support)
   fi
 fi
+if test x$support_inheritpixmap = xyes; then
+  support_xrender=yes
+  AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
+  if test $PKG_CONFIG != no && $PKG_CONFIG --exists xrender; then
+    X_LIBS="`$PKG_CONFIG xrender --libs` $X_LIBS"
+    CPPFLAGS="$CPPFLAGS `$PKG_CONFIG xrender --cflags`"
+
+    save_LIBS="$LIBS"
+    LIBS="$LIBS $X_LIBS"
+    AC_CHECK_HEADER(X11/extensions/Xrender.h,,[support_xrender=no])
+    AC_CHECK_FUNC(XRenderFindStandardFormat,,[support_xrender=no])
+    LIBS="$save_LIBS"
+  fi
+
+  if test x$support_xrender = xyes; then
+    LIBS="$LIBS -lm"
+    AC_DEFINE(XRENDER, 1, Define to enable xrender support)
+  fi
+fi
 if test x$support_styles = xyes; then
   AC_DEFINE(ENABLE_STYLES, 1, Define if you want bold and italic support)
 fi
@@ -640,14 +700,6 @@ fi
 if test x$support_mouseslipwheel = xyes; then
   AC_DEFINE(MOUSE_SLIP_WHEELING, 1, Define to have CTRL cause wheel events to accelerate scrolling. Release CTRL to halt scrolling)
 fi
-if test x$support_afterimage = xyes; then
-  AC_DEFINE(HAVE_AFTERIMAGE, 1, Define if you want to use libAfterImage for image processing)
-  AC_DEFINE(BG_IMAGE_FROM_FILE, 1, Define if you want to have sexy-looking background pixmaps. Needs libAfterImage)
-fi
-
-dnl if test x$support_afterstep = xyes; then
-dnl   AC_DEFINE(AFTERSTEP_INTEGRATION, 1, Define if you want to integrate with AfterStep window manager)
-dnl fi
 
 scrolltypes=plain
 AC_DEFINE(PLAIN_SCROLLBAR, 1, Support plain style scrollbars)
@@ -665,7 +717,7 @@ if test x$support_scroll_xterm = xyes; then
   scrolltypes="$scrolltypes xterm"
 fi
 if test x$support_pointer_blank = xyes; then
-  AC_DEFINE(POINTER_BLANK, 1, Define if you want hide the pointer while typing)
+  AC_DEFINE(POINTER_BLANK, 1, Define if you want to hide the pointer while typing)
 fi
 if test x$support_text_blink = xyes; then
   AC_DEFINE(TEXT_BLINK, 1, Define if you want blinking text support)
@@ -735,20 +787,6 @@ AC_SUBST(PERL)
 AC_SUBST(IF_PERL)
 AC_SUBST(PERL_O)
 
-AC_SUBST(CFLAGS)
-AC_SUBST(CPPFLAGS)
-AC_SUBST(LDFLAGS)
-AC_SUBST(X_CFLAGS)
-
-dnl# Attack the libs
-AC_SUBST(LIBS)
-AC_SUBST(X_LIBS)
-AC_SUBST(X_EXTRA_LIBS)
-
-AC_SUBST(AFTERIMAGE_CFLAGS)
-AC_SUBST(AFTERIMAGE_LIBS)
-
-AC_ARG_PROGRAM
 
 AC_CONFIG_FILES([Makefile \
 doc/Makefile \
@@ -778,8 +816,7 @@ if test x$RESFALLBACK != x; then
 fi
 echo
 echo "  embedded perl:              $support_perl"
-echo "  libafterimage:              $support_afterimage"
-dnl echo "  AfterStep integration:      $support_afterstep"
+echo "  image library:              $image_lib"
 echo
 if test x$support_xim = xyes -a x$rxvt_cv_func_xlocale = xno; then
   echo ".----------------------------------------------------------------."

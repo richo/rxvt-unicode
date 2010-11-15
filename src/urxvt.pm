@@ -343,7 +343,7 @@ The defaults (which are likely useless to you) use rsh and cat:
 
 =item selection-pastebin
 
-This is a little rarely useful extension that Uploads the selection as
+This is a little rarely useful extension that uploads the selection as
 textfile to a remote site (or does other things). (The implementation is
 not currently secure for use in a multiuser environment as it writes to
 F</tmp> directly.).
@@ -372,10 +372,10 @@ for the filename):
 
 I<Note to xrdb users:> xrdb uses the C preprocessor, which might interpret
 the double C</> characters as comment start. Use C<\057\057> instead,
-which works regardless of wether xrdb is used to parse the resource file
+which works regardless of whether xrdb is used to parse the resource file
 or not.
 
-=item macosx-pastebin and macosx-pastebin-native
+=item macosx-clipboard and macosx-clipboard-native
 
 These two modules implement an extended clipboard for Mac OS X. They are
 used like this:
@@ -385,7 +385,7 @@ used like this:
    URxvt.keysym.M-v: perl:macosx-clipboard:paste
 
 The difference between them is that the native variant requires a
-perl from apple's devkit or so, and C<maxosx-pastebin> requires the
+perl from apple's devkit or so, and C<macosx-clipboard> requires the
 C<Mac::Pasteboard> module, works with other perls, has fewer bugs, is
 simpler etc. etc.
 
@@ -394,6 +394,11 @@ simpler etc. etc.
 Displays a very simple digital clock in the upper right corner of the
 window. Illustrates overwriting the refresh callbacks to create your own
 overlays or changes.
+
+=item confirm-paste
+
+Displays a confirmation dialog when a paste containing at least a full
+line is detected.
 
 =back
 
@@ -419,7 +424,7 @@ hints on what they mean:
 
 =item $text
 
-Rxvt-unicodes special way of encoding text, where one "unicode" character
+Rxvt-unicode's special way of encoding text, where one "unicode" character
 always represents one screen cell. See L<ROW_t> for a discussion of this format.
 
 =item $string
@@ -612,6 +617,13 @@ output.
 Called whenever some data is written to the tty/pty and can be used to
 suppress or filter tty input.
 
+=item on_tt_paste $term, $octets
+
+Called whenever text is about to be pasted, with the text as argument. You
+can filter/change and paste the text yourself by returning a true value
+and calling C<< $term->tt_paste >> yourself. C<$octets> is
+locale-encoded.
+
 =item on_line_update $term, $row
 
 Called whenever a line was updated or changed. Can be used to filter
@@ -646,7 +658,7 @@ resource in the @@RXVT_NAME@@(1) manpage).
 The event is simply the action string. This interface is assumed to change
 slightly in the future.
 
-=item on_resize_all_windows $tern, $new_width, $new_height
+=item on_resize_all_windows $term, $new_width, $new_height
 
 Called just after the new window size has been calculated, but before
 windows are actually being resized or hints are being set. If this hook
@@ -690,8 +702,8 @@ focus out processing.
 
 =item on_unmap_notify $term, $event
 
-Called whenever the corresponding X event is received for the terminal If
-the hook returns true, then the even will be ignored by rxvt-unicode.
+Called whenever the corresponding X event is received for the terminal. If
+the hook returns true, then the event will be ignored by rxvt-unicode.
 
 The event is a hash with most values as named by Xlib (see the XEvent
 manpage), with the additional members C<row> and C<col>, which are the
@@ -710,6 +722,10 @@ subwindow.
 
 Called when various types of ClientMessage events are received (all with
 format=32, WM_PROTOCOLS or WM_PROTOCOLS:WM_DELETE_WINDOW).
+
+=item on_bell $term
+
+Called on receipt of a bell character.
 
 =back
 
@@ -1388,18 +1404,24 @@ Returns the current selection screen, and then optionally sets it.
 
 Tries to make a selection as set by C<selection_beg> and
 C<selection_end>. If C<$rectangular> is true (default: false), a
-rectangular selection will be made. This is the prefered function to make
+rectangular selection will be made. This is the preferred function to make
 a selection.
 
-=item $success = $term->selection_grab ($eventtime)
+=item $success = $term->selection_grab ($eventtime[, $clipboard])
 
-Try to request the primary selection text from the server (for example, as
-set by the next method). No visual feedback will be given. This function
+Try to acquire ownership of the primary (clipboard if C<$clipboard> is
+true) selection from the server. The corresponding text can be set
+with the next method. No visual feedback will be given. This function
 is mostly useful from within C<on_sel_grab> hooks.
 
-=item $oldtext = $term->selection ([$newtext])
+=item $oldtext = $term->selection ([$newtext, $clipboard])
 
-Return the current selection text and optionally replace it by C<$newtext>.
+Return the current selection (clipboard if C<$clipboard> is true) text
+and optionally replace it by C<$newtext>.
+
+=item $term->selection_clear ([$clipboard])
+
+Revoke ownership of the primary (clipboard if C<$clipboard> is true) selection.
 
 =item $term->overlay_simple ($x, $y, $text)
 
@@ -1537,9 +1559,15 @@ locale-specific encoding of the terminal and can contain command sequences
 
 =item $term->tt_write ($octets)
 
-Write the octets given in C<$data> to the tty (i.e. as program input). To
+Write the octets given in C<$octets> to the tty (i.e. as program input). To
 pass characters instead of octets, you should convert your strings first
 to the locale-specific encoding using C<< $term->locale_encode >>.
+
+=item $term->tt_paste ($octets)
+
+Write the octets given in C<$octets> to the tty as a paste, converting NL to
+CR and bracketing the data with control sequences if bracketed paste mode
+is set.
 
 =item $old_events = $term->pty_ev_events ([$new_events])
 
@@ -1863,7 +1891,7 @@ recent grab.
 
 =item $term->ungrab
 
-Calls XUngrab for the most recent grab. Is called automatically on
+Calls XUngrabPointer and XUngrabKeyboard for the most recent grab. Is called automatically on
 evaluation errors, as it is better to lose the grab in the error case as
 the session.
 
@@ -1895,7 +1923,7 @@ the session.
 
 Various X or X-related functions. The C<$term> object only serves as
 the source of the display, otherwise those functions map more-or-less
-directory onto the X functions of the same name.
+directly onto the X functions of the same name.
 
 =back
 

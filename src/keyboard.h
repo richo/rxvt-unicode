@@ -32,8 +32,8 @@
 #include "rxvtutil.h"
 
 #define KEYSYM_HASH_BITS        4       /* lowest #bits of keysym is used as hash key */
-#define KEYSYM_HASH_BUDGETS     (1<<KEYSYM_HASH_BITS)
-#define KEYSYM_HASH_MASK        (KEYSYM_HASH_BUDGETS-1)
+#define KEYSYM_HASH_BUCKETS     (1<<KEYSYM_HASH_BITS)
+#define KEYSYM_HASH_MASK        (KEYSYM_HASH_BUCKETS-1)
 
 #define MetaMask                0x0100
 #define NumLockMask             0x0200
@@ -57,7 +57,7 @@ typedef void (keyevent_handler) (rxvt_term *rt,
 struct keysym_t
 {
   enum keysym_type {
-    STRING, RANGE, RANGE_META8, LIST, BUILTIN,
+    STRING, LIST, BUILTIN,
   };
 
   KeySym      keysym;
@@ -83,21 +83,12 @@ public:
 
 private:
   void register_keymap (keysym_t *key);
-  void purge_duplicate_keymap ();
   void setup_hash ();
   int find_keysym (KeySym keysym, unsigned int state);
 
 private:
-  uint16_t hash[KEYSYM_HASH_BUDGETS];
+  uint16_t hash[KEYSYM_HASH_BUCKETS];
   vector<keysym_t *> keymap;
-
-#if STOCK_KEYMAP
-  // stock keymaps are all static data
-  static keysym_t stock_keymap[];
-#endif
-  // user keymaps and their .string are dynamically allocated and freed
-  vector<keysym_t *> user_keymap;
-  vector<const char *> user_translations;
 };
 
 #endif /* KEYSYM_RESOURCE */

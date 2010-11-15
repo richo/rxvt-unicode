@@ -114,6 +114,7 @@ optList[] = {
               BOOL (Rs_transparent, "transparent", "tr", Opt_transparent, 0, "inherit parent pixmap"),
               STRG (Rs_color + Color_tint, "tintColor", "tint", "color", "tint color"),
               STRG (Rs_shade, "shading", "sh", "number", "shade background by number %."),
+              STRG (Rs_blurradius, "blurRadius", "blr", "HxV", "gaussian blur radii to apply to the root background"),
 #endif
 #if OFF_FOCUS_FADING
               STRG (Rs_fade, "fading", "fade", "number", "fade colors by number % when losing focus"),
@@ -179,6 +180,7 @@ optList[] = {
 #endif
 #ifdef OPTION_HC
               STRG (Rs_color + Color_HC, "highlightColor", "hc", "color", "highlight color"),
+              RSTRG (Rs_color + Color_HTC, "highlightTextColor", "color"),
 #endif
 #ifndef NO_CURSORCOLOR
               STRG (Rs_color + Color_cursor, "cursorColor", "cr", "color", "cursor color"),
@@ -191,6 +193,9 @@ optList[] = {
 #ifdef BG_IMAGE_FROM_FILE
               RSTRG (Rs_path, "path", "search path"),
               STRG (Rs_backgroundPixmap, "backgroundPixmap", "pixmap", "file[;geom]", "background pixmap"),
+# if ENABLE_EWMH
+              STRG (Rs_iconfile, "iconFile", "icon", "file", "path to application icon image"),
+# endif
 #endif
               /* fonts: command-line option = resource name */
               STRG (Rs_font, "font", "fn", "fontname", "normal text font"),
@@ -260,14 +265,11 @@ optList[] = {
               STRG (Rs_perl_ext_2, "perl-ext", "pe", "string", "colon-separated list of perl extensions to enable for this instance"),
 #endif
 #if ISO_14755
+              BOOL (Rs_iso14755, "iso14755", NULL, Opt_iso14755, 0, NULL),
               BOOL (Rs_iso14755_52, "iso14755_52", NULL, Opt_iso14755_52, 0, NULL),
 #endif
 #ifdef HAVE_AFTERIMAGE
               STRG (Rs_blendtype, "blendType", "blt", "string", "background image blending type - alpha, tint, etc..."),
-              STRG (Rs_blurradius, "blurRadius", "blr", "HxV", "gaussian blur radii to apply to the root background"),
-# if ENABLE_EWMH
-              STRG (Rs_iconfile, "iconFile", "icon", "file", "path to application icon image"),
-# endif
 #endif
               INFO ("e", "command arg ...", "command to execute")
             };
@@ -327,6 +329,9 @@ static const char optionsstring[] = "options: "
 #endif
 #if HAVE_AFTERIMAGE
                                     "afterimage,"
+#endif
+#if HAVE_PIXBUF
+                                    "pixbuf,"
 #endif
 #if defined(USE_XIM)
                                     "XIM,"
@@ -555,10 +560,9 @@ rxvt_term::get_options (int argc, const char *const *argv)
         {
           if (i+1 < argc)
             {
-              char *res = (char *)malloc (strlen (opt) + strlen (argv[++i]) + 6);
+              char *res = rxvt_temp_buf<char> (strlen (opt) + strlen (argv[++i]) + 6);
               sprintf (res, "*.%s: %s\n", opt, argv[i]);
               XrmPutLineResource (&option_db, res);
-              free (res);
             }
         }
 #endif
@@ -690,7 +694,7 @@ rxvt_term::parse_keysym (const char *str, const char *arg)
       sym = strtol (str, &end, 16);
       if (*end)
         return -1;
-    }  
+    }
 
   keyboard->register_user_translation (sym, state, arg);
   return 1;

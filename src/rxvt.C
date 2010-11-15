@@ -30,6 +30,7 @@ int
 main (int argc, const char *const *argv)
 try
   {
+    ptytty::init ();
     rxvt_init ();
 
     rxvt_term *t = new rxvt_term;
@@ -51,7 +52,7 @@ try
     t->init (argc, argv, 0);
 #endif
 
-    ev_loop (0);
+    ev_run ();
 
     return EXIT_SUCCESS;
   }

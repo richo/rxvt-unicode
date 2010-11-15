@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "@@RXVT_NAME@@ 1"
-.TH @@RXVT_NAME@@ 1 "2009-12-30" "@@RXVT_VERSION@@" "RXVT-UNICODE"
+.TH @@RXVT_NAME@@ 1 "2010-11-13" "@@RXVT_VERSION@@" "RXVT-UNICODE"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -241,13 +241,10 @@ Turn on/off jump scrolling (allow multiple lines per refresh); resource \fBjumpS
 Turn on/off skip scrolling (allow multiple screens per refresh); resource \fBskipScroll\fR.
 .IP "\fB\-tr\fR|\fB+tr\fR" 4
 .IX Item "-tr|+tr"
-Turn on/off illusion of a transparent window background; resource \fBtransparent\fR.
+Turn on/off pseudo-transparency by using the root pixmap as background; resource \fBtransparent\fR.
 .Sp
 \&\fB\-ip\fR is still accepted as an obsolete alias but will be removed in
 future versions.
-.Sp
-\&\fIPlease address all transparency related issues to Sasha Vasko at
-sasha@aftercode.net. Read the \s-1FAQ\s0 (man 7 @@RXVT_NAME@@)!\fR
 .IP "\fB\-fade\fR \fInumber\fR" 4
 .IX Item "-fade number"
 Fade the text by the given percentage when focus is lost. Small values
@@ -259,44 +256,32 @@ Fade to this colour when fading is used (see \fB\-fade\fR). The default colour
 is opaque black. resource \fBfadeColor\fR.
 .IP "\fB\-tint\fR \fIcolour\fR" 4
 .IX Item "-tint colour"
-Tint the transparent background pixmap with the given colour when
-transparency is enabled with \fB\-tr\fR. This only works for
-non-tiled backgrounds, currently. See also the \fB\-sh\fR option that can be
-used to brighten or darken the image in addition to tinting it.
-Please note that certain tint colours can be applied on the server-side,
-thus yielding performance gain of two orders of magnitude. These colours are:
-blue, red, green, cyan, magenta, yellow, and those close to them. Also
-pure black and pure white colors essentially mean no tinting; resource
-\&\fItintColor\fR. Example:
-.Sp
-.Vb 1
-\&   @@RXVT_NAME@@ \-tr \-tint blue \-sh 40
-.Ve
+Tint the transparent background with the given colour;
+resource \fItintColor\fR.
 .IP "\fB\-sh\fR \fInumber\fR" 4
 .IX Item "-sh number"
-Darken (0 .. 100) or lighten (100 .. 200) the transparent
-background image in addition to (or instead of) tinting it;
+Darken (0 .. 100) or lighten (100 .. 200) the transparent background;
 resource \fIshading\fR.
 .IP "\fB\-blt\fR \fIstring\fR" 4
 .IX Item "-blt string"
 Specify background blending type. If background pixmap is specified
 at the same time as transparency \- such pixmap will be blended over
-transparency image, using method specified. Supported values are :
-\&\fBadd\fR, \fBalphablend\fR, \fBallanon\fR \- color values averaging, \fBcolorize\fR,
+the transparent background, using the method specified. Supported values are:
+\&\fBadd\fR, \fBalphablend\fR, \fBallanon\fR \- colour values averaging, \fBcolorize\fR,
 \&\fBdarken\fR, \fBdiff\fR, \fBdissipate\fR, \fBhue\fR, \fBlighten\fR, \fBoverlay\fR,
 \&\fBsaturate\fR, \fBscreen\fR, \fBsub\fR, \fBtint\fR, \fBvalue\fR. The default is
 alpha-blending. Compile \fIafterimage\fR; resource \fIblendType\fR.
 .IP "\fB\-blr\fR \fIHxV\fR" 4
 .IX Item "-blr HxV"
 Apply Gaussian Blur with the specified radii to the transparent
-background image. If single number is specified \- both vertical and
+background. If a single number is specified \- both vertical and
 horizontal radii are considered to be the same. Setting one of the
 radii to 1 and another to a large number creates interesting effects
-on some backgrounds. Maximum radius value is 128. Compile \fIafterimage\fR;
+on some backgrounds. Maximum radius value is 128;
 resource \fIblurRadius\fR.
 .IP "\fB\-icon\fR \fIfile\fR" 4
 .IX Item "-icon file"
-Compile \fIafterimage\fR: Use the specified image as application icon. This
+Compile \fIafterimage\fR or \fIpixbuf\fR: Use the specified image as application icon. This
 is used by many window managers, taskbars and pagers to represent the
 application window; resource \fIiconFile\fR.
 .IP "\fB\-bg\fR \fIcolour\fR" 4
@@ -307,7 +292,7 @@ Window background colour; resource \fBbackground\fR.
 Window foreground colour; resource \fBforeground\fR.
 .IP "\fB\-pixmap\fR \fIfile[;geom[:op1][:op2][...]]\fR" 4
 .IX Item "-pixmap file[;geom[:op1][:op2][...]]"
-Compile \fIafterimage\fR: Specify image file for the background and also
+Compile \fIafterimage\fR or \fIpixbuf\fR: Specify image file for the background and also
 optionally specify its scaling with a geometry string. Note you may need to
 add quotes to avoid special shell interpretation of the \f(CW\*(C`;\*(C'\fR in the
 command-line; for more details see resource \fBbackgroundPixmap\fR.
@@ -681,7 +666,7 @@ corresponds to low-intensity (normal) colours and 8\-15 corresponds to
 high-intensity (bold = bright foreground, blink = bright background)
 colours. The canonical names are as follows: 0=black, 1=red, 2=green,
 3=yellow, 4=blue, 5=magenta, 6=cyan, 7=white, but the actual colour
-names used are listed in the \fB\s-1COLORS\s0 \s-1AND\s0 \s-1GRAPHICS\s0\fR section.
+names used are listed in the \fB\s-1COLOURS\s0 \s-1AND\s0 \s-1GRAPHICS\s0\fR section.
 .Sp
 Colours higher than 15 cannot be set using resources (yet), but can be
 changed using an escape command (see @@RXVT_NAME@@(7)).
@@ -701,14 +686,18 @@ foreground colour is the default. If font styles are not available
 .IX Item "colorUL: colour"
 Use the specified colour to display underlined characters when the
 foreground colour is the default.
-.IP "\fBcolorRV:\fR \fIcolour\fR" 4
-.IX Item "colorRV: colour"
-Use the specified colour as the background for reverse video characters
-when \s-1OPTION_HC\s0 is disabled (\-\-disable\-frills).
 .IP "\fBunderlineColor:\fR \fIcolour\fR" 4
 .IX Item "underlineColor: colour"
 If set, use the specified colour as the colour for the underline
 itself. If unset, use the foreground colour.
+.IP "\fBhighlightColor:\fR \fIcolour\fR" 4
+.IX Item "highlightColor: colour"
+If set, use the specified colour as the background for highlighted
+characters. If unset, use reverse video.
+.IP "\fBhighlightTextColor:\fR \fIcolour\fR" 4
+.IX Item "highlightTextColor: colour"
+If set and highlightColor is set, use the specified colour as the
+foreground for highlighted characters.
 .IP "\fBcursorColor:\fR \fIcolour\fR" 4
 .IX Item "cursorColor: colour"
 Use the specified colour for the cursor. The default is to use the
@@ -722,7 +711,7 @@ use the background colour.
 .IX Item "reverseVideo: boolean"
 \&\fBTrue\fR: simulate reverse video by foreground and background colours;
 option \fB\-rv\fR. \fBFalse\fR: regular screen colours [default]; option
-\&\fB+rv\fR. See note in \fB\s-1COLORS\s0 \s-1AND\s0 \s-1GRAPHICS\s0\fR section.
+\&\fB+rv\fR. See note in \fB\s-1COLOURS\s0 \s-1AND\s0 \s-1GRAPHICS\s0\fR section.
 .IP "\fBjumpScroll:\fR \fIboolean\fR" 4
 .IX Item "jumpScroll: boolean"
 \&\fBTrue\fR: specify that jump scrolling should be used. When receiving lots
@@ -745,13 +734,10 @@ if the refresh is too fast for the human eye to read anything (or the
 monitor to display anything); option \fB+ss\fR.
 .IP "\fBtransparent:\fR \fIboolean\fR" 4
 .IX Item "transparent: boolean"
-Turn on/off illusion of a transparent window background.
+Turn on/off pseudo-transparency by using the root pixmap as background.
 .Sp
 \&\fBinheritPixmap\fR is still accepted as an obsolete alias but will be removed in
 future versions.
-.Sp
-\&\fIPlease address all transparency related issues to Sasha Vasko at
-sasha@aftercode.net. Read the \s-1FAQ\s0 (man 7 @@RXVT_NAME@@)!\fR
 .IP "\fBfading:\fR \fInumber\fR" 4
 .IX Item "fading: number"
 Fade the text by the given percentage when focus is lost; option \fB\-fade\fR.
@@ -761,19 +747,19 @@ Fade to this colour, when fading is used (see \fBfading:\fR). The default
 colour is black; option \fB\-fadecolor\fR.
 .IP "\fBtintColor:\fR \fIcolour\fR" 4
 .IX Item "tintColor: colour"
-Tint the transparent background pixmap with the given colour; option
+Tint the transparent background with the given colour; option
 \&\fB\-tint\fR.
 .IP "\fBshading:\fR \fInumber\fR" 4
 .IX Item "shading: number"
-Darken (0 .. 100) or lighten (\-1 .. \-100) the transparent background image
-in addition to tinting it; option \fB\-sh\fR.
+Darken (0 .. 100) or lighten (100 .. 200) the transparent background;
+option \fB\-sh\fR.
 .IP "\fBblendType:\fR \fIstring\fR" 4
 .IX Item "blendType: string"
 Specify background blending type; option \fB\-blt\fR.
 .IP "\fBblurRadius:\fR \fInumber\fR" 4
 .IX Item "blurRadius: number"
 Apply gaussian blur with the specified radius to the transparent
-background image; option \fB\-blr\fR.
+background; option \fB\-blr\fR.
 .IP "\fBiconFile:\fR \fIfile\fR" 4
 .IX Item "iconFile: file"
 Set the application icon pixmap; option \fB\-icon\fR.
@@ -792,12 +778,10 @@ and the text.
 .IX Item "backgroundPixmap: file[;geom[:op1][:op2][...]]"
 Use the specified image file for the background and also
 optionally specify its scaling with a geometry string \fBWxH+X+Y\fR,
-(default \f(CW\*(C`0x0+50+50\*(C'\fR) in which \fB\*(L"W\*(R" / \*(L"H\*(R"\fR specify the
+(default \f(CW\*(C`100x100+50+50\*(C'\fR) in which \fB\*(L"W\*(R" / \*(L"H\*(R"\fR specify the
 horizontal/vertical scale (percent), and \fB\*(L"X\*(R" / \*(L"Y\*(R"\fR locate the image
-centre (percent).  A scale of 0 displays the image with tiling. A scale
-of 1 displays the image without any scaling. A scale of 2 to 9 specifies
-an integer number of images in that direction. No image will be magnified
-beyond 10 times its original size. The maximum permitted scale is 1000.
+centre (percent).  A scale of 0 displays the image with tiling.
+The maximum permitted scale is 1000.
 Additional operations can be specified after colon \fB:op1:op2...\fR.
 Supported operations are:
 .Sp
@@ -813,8 +797,9 @@ Supported operations are:
 .Ve
 .Sp
 If used in conjunction with \fB\-tr\fR option, the specified pixmap will be
-blended over transparency image using either alpha-blending, or any
-other blending type, specified with \fB\-blt \*(L"type\*(R"\fR option.
+blended over the transparent background using alpha-blending. If \fIafterimage\fR
+support has been compiled in it is possible to choose other blending
+types with \fB\-blt \*(L"type\*(R"\fR option.
 .IP "\fBpath:\fR \fIpath\fR" 4
 .IX Item "path: path"
 Specify the colon-delimited search path for finding background image files.
@@ -851,7 +836,7 @@ wide and 15 pixels high.
 .Sp
 The second font is just used to add additional unicode characters not in
 the base font, likewise the third, which is unfortunately non-bold, but
-the bold version of the font does contain less characters, so this is a
+the bold version of the font does contain fewer characters, so this is a
 useful supplement.
 .Sp
 The third font is an Xft font with aliasing turned off, and the characters
@@ -1043,7 +1028,7 @@ large number (e.g. \f(CW987654321\fR) to effectively disable the timeout.
 .IP "\fBbackspacekey:\fR \fIstring\fR" 4
 .IX Item "backspacekey: string"
 The string to send when the backspace key is pressed. If set to \fB\s-1DEC\s0\fR
-or unset it will send \fBDelete\fR (code 127) or, if shifted, \fBBackspace\fR
+or unset it will send \fBDelete\fR (code 127) or, with control, \fBBackspace\fR
 (code 8) \- which can be reversed with the appropriate \s-1DEC\s0 private mode
 escape sequence.
 .IP "\fBdeletekey:\fR \fIstring\fR" 4
@@ -1157,7 +1142,7 @@ keysym value (\fB0x0000 \- 0xFFFF\fR). Note that the lookup of \fIsym\fRs is not
 performed in an exact manner; however, the closest match is assured.
 .Sp
 \&\fIstring\fR may contain escape values (\f(CW\*(C`\en\*(C'\fR: newline, \f(CW\*(C`\e000\*(C'\fR: octal
-number), see \s-1RESOURCES\s0 in \f(CW\*(C`man 7 X\*(C'\fR for futher details.
+number), see \s-1RESOURCES\s0 in \f(CW\*(C`man 7 X\*(C'\fR for further details.
 .Sp
 You can define a range of keysyms in one shot by providing a \fIstring\fR
 with pattern \fBlist/PREFIX/MIDDLE/SUFFIX\fR, where the delimiter `/'
@@ -1196,7 +1181,7 @@ manpage. For example, the \fIselection\fR extension (activated via
 .Ve
 .Sp
 Due the the large number of modifier combinations, a defined key mapping
-will match if at \fIat least\fR the specified identifiers are being set, and
+will match if \fIat least\fR the specified identifiers are being set, and
 no other key mappings with those and more bits are being defined. That
 means that defining a key map for \f(CW\*(C`a\*(C'\fR will automatically provide
 definitions for \f(CW\*(C`Meta\-a\*(C'\fR, \f(CW\*(C`Shift\-a\*(C'\fR and so on, unless some of those are defined
@@ -1295,6 +1280,9 @@ Compile \fIfrills\fR: Sets the \s-1WM_TRANSIENT_FOR\s0 property to the given win
 .IX Item "override-redirect: boolean"
 Compile \fIfrills\fR: Sets override-redirect for the terminal window, making
 it almost invisible to window managers; option \fB\-override\-redirect\fR.
+.IP "\fBiso14755:\fR \fIboolean\fR" 4
+.IX Item "iso14755: boolean"
+Turn on/off \s-1ISO\s0 14755 (default enabled).
 .IP "\fBiso14755_52:\fR \fIboolean\fR" 4
 .IX Item "iso14755_52: boolean"
 Turn on/off \s-1ISO\s0 14755 5.2 mode (default enabled).
@@ -1431,12 +1419,15 @@ both scenario A and B of \s-1ISO\s0 14755, including part 5.2.
 it can be seen via the \fI\fIwho\fI\|(1)\fR command, and can accept messages.  To
 allow this feature, \fB@@RXVT_NAME@@\fR may need to be installed setuid root
 on some systems or setgid to root or to some other group on others.
-.SH "COLORS AND GRAPHICS"
-.IX Header "COLORS AND GRAPHICS"
+.SH "COLOURS AND GRAPHICS"
+.IX Header "COLOURS AND GRAPHICS"
 In addition to the default foreground and background colours,
-\&\fB@@RXVT_NAME@@\fR can display up to 16 colours (8 \s-1ANSI\s0 colours plus
-high-intensity bold/blink versions of the same). Here is a list of the
-colours with their names.
+\&\fB@@RXVT_NAME@@\fR can display up to 88/256 colours: 8 \s-1ANSI\s0 colours plus
+high-intensity (potentially bold/blink) versions of the same, and 72 (or
+240 in 256 colour mode) colours arranged in an 4x4x4 (or 6x6x6) colour \s-1RGB\s0
+cube plus a 8 (24) colour greyscale ramp.
+.PP
+Here is a list of the \s-1ANSI\s0 colours with their names.
 .TS
 l l l .
 color0	(black)	= Black
@@ -1464,14 +1455,26 @@ It is also possible to specify the colour values of \fBforeground\fR,
 a number 0\-15, as a convenient shorthand to reference the colour name of
 color0\-color15.
 .PP
-In addition to the colours defined above, @@RXVT_NAME@@ offers an
-additional 72 colours. The first 64 of those (with indices 16 to 79)
-consist of a 4*4*4 \s-1RGB\s0 colour cube (i.e. \fIindex = r * 16 + g * 4 + b +
-16\fR), followed by 8 additional shades of gray (with indices 80 to 87).
+The following text gives values for the standard 88 colour mode (and
+values for the 256 colour mode in parentheses).
 .PP
-Together, all those colours implement the 88 colour xterm colours. Only
-the first 16 can be changed using resources currently, the rest can only
-be changed via command sequences (\*(L"escape codes\*(R").
+The \s-1RGB\s0 cube uses indices 16..79 (16..231) using the following formulas:
+.PP
+.Vb 2
+\&   index_88  = (r *  4 + g) *  4 + b + 16   # r, g, b = 0..3
+\&   index_256 = (r * 16 + g) * 16 + b + 16   # r, g, b = 0..15
+.Ve
+.PP
+The grayscale ramp uses indices 80..87 (232..239), from 10% to 90% in 10%
+steps (1/26 to 25/26 in 1/26 steps) \- black and white are already part of
+the \s-1RGB\s0 cube.
+.PP
+Together, all those colours implement the 88 (256) colour xterm
+colours. Only the first 16 can be changed using resources currently, the
+rest can only be changed via command sequences (\*(L"escape codes\*(R").
+.PP
+Applications are advised to use terminfo or command sequences to discover
+number and \s-1RGB\s0 values of all colours (yes, you can query this...).
 .PP
 Note that \fB\-rv\fR (\fB\*(L"reverseVideo: True\*(R"\fR) simulates reverse video by
 always swapping the foreground/background colours. This is in contrast to
@@ -1489,9 +1492,9 @@ White.
 If Xft support has been compiled in and as long as Xft/Xrender/X don't get
 their act together, rxvt-unicode will do it's own alpha channel management:
 .PP
-You can prefix any color with an opaquenes percentage enclosed in
+You can prefix any colour with an opaqueness percentage enclosed in
 brackets, i.e. \f(CW\*(C`[percent]\*(C'\fR, where \f(CW\*(C`percent\*(C'\fR is a decimal percentage
-(0\-100) that specifies the opacity of the color, where \f(CW0\fR is completely
+(0\-100) that specifies the opacity of the colour, where \f(CW0\fR is completely
 transparent and \f(CW100\fR is completely opaque. For example, \f(CW\*(C`[50]red\*(C'\fR is a
 half-transparent red, while \f(CW\*(C`[95]#00ff00\*(C'\fR is an almost opaque green. This
 is the recommended format to specify transparency values, and works with
@@ -1592,7 +1595,7 @@ If set and accessible, gives the name of a X resource file to be loaded by
 .IX Header "FILES"
 .IP "\fB/usr/lib/X11/rgb.txt\fR" 4
 .IX Item "/usr/lib/X11/rgb.txt"
-Color names.
+Colour names.
 .SH "SEE ALSO"
 .IX Header "SEE ALSO"
 @@RXVT_NAME@@(7), @@RXVT_NAME@@c(1), @@RXVT_NAME@@d(1), \fIxterm\fR\|(1), \fIsh\fR\|(1), \fIresize\fR\|(1), X(1), \fIpty\fR\|(4), \fItty\fR\|(4), \fIutmp\fR\|(5)

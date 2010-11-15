@@ -656,6 +656,17 @@ BOOT:
     const_iv (NUM_RESOURCES),
     const_iv (DEFAULT_RSTYLE),
     const_iv (OVERLAY_RSTYLE),
+    const_iv (Color_Bits),
+    const_iv (RS_bgShift), const_iv (RS_bgMask),
+    const_iv (RS_fgShift), const_iv (RS_fgMask),
+    const_iv (RS_Careful),
+    const_iv (RS_fontCount),
+    const_iv (RS_fontShift),
+    const_iv (RS_fontMask),
+    const_iv (RS_baseattrMask),
+    const_iv (RS_attrMask),
+    const_iv (RS_redraw),
+    const_iv (RS_Sel),
     const_iv (RS_Bold),
     const_iv (RS_Italic),
     const_iv (RS_Blink),
@@ -1596,7 +1607,7 @@ rxvt_term::selection_screen (int screen = -1)
         RETVAL
 
 void
-rxvt_term::selection_clear ()
+rxvt_term::selection_clear (bool clipboard = false)
 
 void
 rxvt_term::selection_make (Time eventtime, bool rect = false)
@@ -1606,23 +1617,26 @@ rxvt_term::selection_make (Time eventtime, bool rect = false)
         THIS->selection_make (eventtime);
 
 int
-rxvt_term::selection_grab (Time eventtime)
+rxvt_term::selection_grab (Time eventtime, bool clipboard = false)
 
 void
-rxvt_term::selection (SV *newtext = 0)
+rxvt_term::selection (SV *newtext = 0, bool clipboard = false)
         PPCODE:
 {
+        wchar_t * &text   = clipboard ? THIS->selection.clip_text : THIS->selection.text;
+        unsigned int &len = clipboard ? THIS->selection.clip_len  : THIS->selection.len;
+
         if (GIMME_V != G_VOID)
-          XPUSHs (THIS->selection.text
-                  ? sv_2mortal (wcs2sv (THIS->selection.text, THIS->selection.len))
+          XPUSHs (text
+                  ? sv_2mortal (wcs2sv (text, len))
                   : &PL_sv_undef);
 
         if (newtext)
           {
-            free (THIS->selection.text);
+            free (text);
 
-            THIS->selection.text = sv2wcs (newtext);
-            THIS->selection.len = wcslen (THIS->selection.text);
+            text = sv2wcs (newtext);
+            len = wcslen (text);
           }
 }
 
@@ -1661,6 +1675,14 @@ rxvt_term::tt_write (SV *octets)
           char *str = SvPVbyte (octets, len);
 	C_ARGS:
           str, len
+
+void
+rxvt_term::tt_paste (SV *octets)
+      INIT:
+        STRLEN len;
+        char *str = SvPVbyte (octets, len);
+      C_ARGS:
+        str, len
 
 void
 rxvt_term::cmd_parse (SV *octets)

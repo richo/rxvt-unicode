@@ -24,7 +24,6 @@ doc/pty-fd
 doc/etc/rxvt-unicode.terminfo
 doc/etc/rxvt-unicode.termcap
 doc/wcwidth.patch
-doc/urxvt-8.2-256color.patch
 
 doc/.cvsignore
 doc/Makefile.in
@@ -159,12 +158,15 @@ src/perl/tabbed
 src/perl/xim-onthespot
 src/perl/readline
 src/perl/remote-clipboard
+src/perl/clipboard-osc
 src/perl/kuake
 src/perl/example-refresh-hooks
 src/perl/block-graphics-to-ascii
 src/perl/digital-clock
 src/perl/macosx-clipboard
+src/perl/macosx-clipboard-native
 src/perl/overlay-osc
+src/perl/confirm-paste
 
 libev/ev.h
 libev/ev++.h

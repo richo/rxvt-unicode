@@ -11,6 +11,10 @@
 # undef max
 #endif
 
+#ifdef HAVE_PIXBUF
+#include <gdk-pixbuf-xlib/gdk-pixbuf-xlib.h>
+#endif
+
 #if defined(BG_IMAGE_FROM_FILE) || defined(ENABLE_TRANSPARENCY)
 # define HAVE_BG_PIXMAP 1 /* to simplify further usage */
 struct bgPixmap_t
@@ -21,22 +25,23 @@ struct bgPixmap_t
   enum {
     geometrySet     = 1 <<  0,
     propScale       = 1 <<  1,
-    geometryFlags   = geometrySet | propScale,
+    rootAlign       = 1 <<  2,
+    geometryFlags   = geometrySet | propScale | rootAlign,
 
     tintSet         = 1 <<  8,
     tintNeeded      = 1 <<  9,
     tintWholesome   = 1 << 10,
-    tintServerSide  = 1 << 11,
-    tintFlags       = tintSet | tintServerSide | tintNeeded | tintWholesome,
+    tintFlags       = tintSet | tintNeeded | tintWholesome,
 
-    blurNeeded      = 1 << 12,
-    blurServerSide  = 1 << 13, /* this doesn't work yet */
+    blurNeeded      = 1 << 11,
+
+    HAS_RENDER      = 1 << 12,
+    HAS_RENDER_CONV = 1 << 13,
 
     isTransparent   = 1 << 16,
     isInvalid       = 1 << 17,
-    isVtOrigin      = 1 << 18,  /* if set pixmap has origin at corner of
-                                   vt window instead of parent[0]! */
     hasChanged      = 1 << 19,
+    sizeSensitive   = 1 << 20,
   };
 
   unsigned int flags;
@@ -44,22 +49,22 @@ struct bgPixmap_t
   enum {
     transpPmapTiled       = 1 << 0,
     transpPmapTinted      = tintNeeded,
-    transpPmapBlured      = blurNeeded,
+    transpPmapBlurred     = blurNeeded,
     transpTransformations = tintNeeded | blurNeeded,
   }; /* these flags are returned by make_transparency_pixmap if called */
-
-  bool check_clearChanged ()
-  {
-    bool r = flags & hasChanged;
-    flags &= ~hasChanged;
-    return r;
-  };
 
 # ifdef  BG_IMAGE_FROM_FILE
 #  ifdef HAVE_AFTERIMAGE
   ASImage *original_asim;
-  bool render_asim (ASImage *background, ARGB32 background_tint);
 #  endif
+
+#  ifdef HAVE_PIXBUF
+  GdkPixbuf *pixbuf;
+#  endif
+
+  void get_image_geometry (int image_width, int image_height, int &w, int &h, int &x, int &y);
+  bool render_image (unsigned long background_flags);
+  bool have_image;
 
   enum {
     noScale = 0,
@@ -67,7 +72,6 @@ struct bgPixmap_t
     defaultScale = windowScale,
     centerAlign = 50,
     defaultAlign = centerAlign,
-    rootAlign = -10000
   };
 
   unsigned int h_scale, v_scale;/* percents of the window size */
@@ -76,23 +80,22 @@ struct bgPixmap_t
   void unset_geometry ()
   {
     flags = flags & ~geometryFlags;
-  };
+  }
   bool set_geometry (const char *geom);
   void set_defaultGeometry ()
   {
     h_scale = v_scale = defaultScale;
     h_align = v_align = defaultAlign;
     flags |= geometrySet;
-  };
+  }
 
   bool set_file (const char *file);
 # endif /* BG_IMAGE_FROM_FILE */
 
   rxvt_term *target;
-  bool set_target (rxvt_term *new_target);
+  void set_target (rxvt_term *new_target);
 
 # ifdef ENABLE_TRANSPARENCY
-  int         root_depth; /* obtained when target is set */
   Pixmap      root_pixmap; /* current root pixmap set */
   rxvt_color  tint;
   int         shade;
@@ -103,7 +106,9 @@ struct bgPixmap_t
   bool set_tint (rxvt_color &new_tint);
   bool unset_tint ();
   bool set_shade (const char *shade_str);
-  bool set_root_pixmap ();
+  bool blur_pixmap (Pixmap pixmap, Visual *visual, int width, int height);
+  bool tint_pixmap (Pixmap pixmap, Visual *visual, int width, int height);
+  void set_root_pixmap ();
 
   unsigned long make_transparency_pixmap ();/* returns combination of the transpTransformations flags */
 # endif
@@ -116,11 +121,6 @@ struct bgPixmap_t
   bool window_size_sensitive ();
   bool window_position_sensitive ();
 
-  bool is_parentOrigin ()
-  {
-    return !(flags & isVtOrigin);
-  };
-
   bool need_client_side_rendering ();
   void apply ();
   bool render ();
@@ -131,7 +131,7 @@ struct bgPixmap_t
         flags |= isInvalid;
         invalid_since = ev::now ();
       }
-  };
+  }
 };
 #else
 # undef HAVE_BG_PIXMAP

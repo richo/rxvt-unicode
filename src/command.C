@@ -164,11 +164,8 @@ void
 rxvt_term::iso14755_51 (unicode_t ch, rend_t r, int x, int y)
 {
   rxvt_fontset *fs = FONTSET (r);
-  rxvt_font *f = (*fs)[fs->find_font (ch)];
-  wchar_t *chr, *alloc, ch2, *fname;
+  wchar_t *chr, *alloc, ch2, **fname;
   int len;
-
-  fname = rxvt_utf8towcs (f->name);
 
 # if ENABLE_COMBINING
   if (IS_COMPOSE (ch))
@@ -199,7 +196,14 @@ rxvt_term::iso14755_51 (unicode_t ch, rend_t r, int x, int y)
            r & RS_Uline   ? " uline"   : "",
            r & RS_Careful ? " careful" : "");
 
-  int width = wcswidth (fname, wcslen (fname));
+  int width = 0;
+  fname = rxvt_temp_buf<wchar_t *> (len);
+  for (int i = 0; i < len; i++)
+    {
+      rxvt_font *f = (*fs)[fs->find_font_idx (chr[i])];
+      fname[i] = rxvt_utf8towcs (f->name);
+      max_it (width, wcswidth (fname[i], wcslen (fname[i])));
+    }
 
   max_it (width, 8+5); // for char + hex
   max_it (width, strlen (attr));
@@ -210,7 +214,7 @@ rxvt_term::iso14755_51 (unicode_t ch, rend_t r, int x, int y)
       x = 0;
     }
 
-  scr_overlay_new (x, y, width, len + 2);
+  scr_overlay_new (x, y, width, len * 2 + 1);
 
   r = SET_STYLE (OVERLAY_RSTYLE, GET_STYLE (r));
 
@@ -239,9 +243,11 @@ rxvt_term::iso14755_51 (unicode_t ch, rend_t r, int x, int y)
 //    scr_overlay_set (0, 0, buf);
 //  }
   scr_overlay_set (0, len    , attr);
-  scr_overlay_set (0, len + 1, fname);
-
-  free (fname);
+  for (int i = 0; i < len; i++)
+    {
+      scr_overlay_set (0, len + 1 + i, fname[i]);
+      free (fname[i]);
+    }
 
 # if ENABLE_COMBINING
   if (alloc)
@@ -284,7 +290,7 @@ rxvt_term::commit_iso14755 ()
 static int
 hex_keyval (XKeyEvent &ev)
 {
-  // check wether this event corresponds to a hex digit
+  // check whether this event corresponds to a hex digit
   // if the modifiers had not been pressed.
   for (int index = 0; index < 8; index++)
     {
@@ -418,12 +424,6 @@ rxvt_term::key_press (XKeyEvent &ev)
   ctrl = ev.state & ControlMask;
   meta = ev.state & ModMetaMask;
 
-  if (numlock_state || (ev.state & ModNumLockMask))
-    {
-      numlock_state = (ev.state & ModNumLockMask);
-      set_privmode (PrivMode_aplKP, !numlock_state);
-    }
-
   kbuf[0] = 0;
 
 #ifdef USE_XIM
@@ -507,6 +507,8 @@ rxvt_term::key_press (XKeyEvent &ev)
 #else
               lnsppg = nrow * 4 / 5;
 #endif
+              max_it (lnsppg, 1);
+
               if (keysym == XK_Prior)
                 {
                   scr_page (UP, lnsppg);
@@ -581,7 +583,7 @@ rxvt_term::key_press (XKeyEvent &ev)
 
 #if ENABLE_FRILLS || ISO_14755
       // ISO 14755 support
-      if (shft && ctrl)
+      if (iso14755buf & (ISO_14755_STARTED | ISO_14755_51))
         {
           int hv;
 
@@ -621,8 +623,9 @@ rxvt_term::key_press (XKeyEvent &ev)
               iso14755buf = 0;
             }
         }
-      else if ((ctrl && (keysym == XK_Shift_L || keysym == XK_Shift_R))
-               || (shft && (keysym == XK_Control_L || keysym == XK_Control_R)))
+      else if (option (Opt_iso14755) &&
+               ((ctrl && (keysym == XK_Shift_L || keysym == XK_Shift_R))
+                || (shft && (keysym == XK_Control_L || keysym == XK_Control_R))))
         if (!(iso14755buf & ISO_14755_STARTED))
           {
             iso14755buf |= ISO_14755_STARTED;
@@ -646,7 +649,12 @@ rxvt_term::key_press (XKeyEvent &ev)
           bool kp = priv_modes & PrivMode_aplKP ? !shft : shft;
           unsigned int newlen = 1;
 
-          switch (translate_keypad (keysym, kp))
+          if (ev.state & ModNumLockMask)
+            kp = false;
+
+          keysym = translate_keypad (keysym, kp);
+
+          switch (keysym)
             {
 #ifndef NO_BACKSPACE_KEY
               case XK_BackSpace:
@@ -969,8 +977,9 @@ rxvt_term::flush ()
   flush_ev.stop ();
 
 #ifdef HAVE_BG_PIXMAP
-  if (bgPixmap.check_clearChanged ())
+  if (bgPixmap.flags & bgPixmap_t::hasChanged)
     {
+      bgPixmap.flags &= ~bgPixmap_t::hasChanged;
 //      scr_clear (true); This needs to be researched further!
       scr_touch (false);
     }
@@ -1026,7 +1035,7 @@ rxvt_term::flush ()
   display->flush ();
 }
 
-/* checks wether a refresh is requested and starts the refresh timer */
+/* checks whether a refresh is requested and starts the refresh timer */
 void
 rxvt_term::refresh_check ()
 {
@@ -1130,7 +1139,7 @@ static struct event_handler
     // ones with high nice levels is a useful thing to do. It surely is is
     // allowed by the sus... as is returning ENOSYS.
     // since the linux guys additionally thought that breaking the only
-    // known workaroudn against their unusable sched_yield hack is cool,
+    // known workaround against their unusable sched_yield hack is cool,
     // we just nanosleep a bit and hope for the best.
 
     struct timespec ts = { 0, 1000 };
@@ -1424,9 +1433,6 @@ rxvt_term::x_cb (XEvent &ev)
         break;
 
       case ConfigureNotify:
-        /*fprintf (stderr, "ConfigureNotify for %X, parent is %X, geom is %dx%d%+d%+d, old geom was %dx%d\n",
-              ev.xconfigure.window, parent[0], ev.xconfigure.width, ev.xconfigure.height, ev.xconfigure.x, ev.xconfigure.y,
-              szHint.width, szHint.height);*/
         if (ev.xconfigure.window == parent[0])
           {
             while (XCheckTypedWindowEvent (dpy, ev.xconfigure.window, ConfigureNotify, &ev))
@@ -1463,7 +1469,7 @@ rxvt_term::x_cb (XEvent &ev)
         break;
 
       case SelectionClear:
-        selection_clear ();
+        selection_clear (ev.xselectionclear.selection == xa[XA_CLIPBOARD]);
         break;
 
       case SelectionNotify:
@@ -1477,12 +1483,12 @@ rxvt_term::x_cb (XEvent &ev)
 
       case MapNotify:
 #ifdef HAVE_BG_PIXMAP
-        /* This is needed spcifically to fix the case of no window manager or a
+        /* This is needed specifically to fix the case of no window manager or a
          * non-reparenting window manager. In those cases we never get first
          * ConfigureNotify. Also that speeds startup under normal WM, by taking
-         * care of multiplicity of ConfigureNotify events arriwing while WM does
+         * care of multiplicity of ConfigureNotify events arriving while WM does
          * reparenting.
-         * We should not render background immidiately, as there could be several
+         * We should not render background immediately, as there could be several
          * ConfigureNotify's to follow. Lets take care of all of them in one scoop
          * by scheduling background redraw as soon as we can, but giving a short
          * bit of time for ConfigureNotifies to arrive.
@@ -1863,7 +1869,7 @@ rxvt_term::button_press (XButtonEvent &ev)
 #ifdef MOUSE_REPORT_DOUBLECLICK
           if (ev.button == MEvent.button && clickintime)
             {
-              /* same button, within alloted time */
+              /* same button, within allowed time */
               MEvent.clicks++;
 
               if (MEvent.clicks > 1)
@@ -2144,7 +2150,7 @@ rxvt_term::button_release (XButtonEvent &ev)
 
           case Button2:
             if (IN_RANGE_EXC (ev.x, 0, width) && IN_RANGE_EXC (ev.y, 0, height)) // inside window?
-	      selection_request (ev.time, ev.state & ModMetaMask ? Sel_Clipboard : Sel_Primary);
+              selection_request (ev.time, ev.state & ModMetaMask ? Sel_Clipboard : Sel_Primary);
             break;
 
 #ifdef MOUSE_WHEEL
@@ -3225,13 +3231,12 @@ rxvt_term::get_to_st (unicode_t &ends_how)
 void
 rxvt_term::process_dcs_seq ()
 {
-  char *s;
-  unicode_t eh;
-
   /*
    * Not handled yet
    */
-  s = get_to_st (eh);
+
+  unicode_t eh;
+  char *s = get_to_st (eh);
   if (s)
     free (s);
 
@@ -3245,15 +3250,15 @@ rxvt_term::process_dcs_seq ()
 void
 rxvt_term::process_osc_seq ()
 {
-  unicode_t ch, eh;
   int arg;
 
-  ch = cmd_getc ();
+  unicode_t ch = cmd_getc ();
   for (arg = 0; isdigit (ch); ch = cmd_getc ())
     arg = arg * 10 + (ch - '0');
 
   if (ch == ';')
     {
+      unicode_t eh;
       char *s = get_to_st (eh);
 
       if (s)
@@ -3388,15 +3393,18 @@ rxvt_term::process_xterm_seq (int op, char *str, char resp)
       case XTerm_Color_pointer_bg:
         process_color_seq (op, Color_pointer_bg, str, resp);
         break;
-#ifndef NO_BOLD_UNDERLINE_REVERSE
-      case XTerm_Color_RV:
-        process_color_seq (op, Color_RV, str, resp);
+#ifdef OPTION_HC
+      case XTerm_Color_HC:
+        process_color_seq (op, Color_HC, str, resp);
         break;
-      case Rxvt_Color_BD:
+      case XTerm_Color_HTC:
+        process_color_seq (op, Color_HTC, str, resp);
+        break;
+#endif
+#ifndef NO_BOLD_UNDERLINE_REVERSE
       case URxvt_Color_BD:
         process_color_seq (op, Color_BD, str, resp);
         break;
-      case Rxvt_Color_UL:
       case URxvt_Color_UL:
         process_color_seq (op, Color_UL, str, resp);
         break;
@@ -3431,7 +3439,7 @@ rxvt_term::process_xterm_seq (int op, char *str, char resp)
           {
             char str[256];
 
-            sprintf (str, "[%dx%d+%d+%d]",	/* can't presume snprintf () ! */
+            sprintf (str, "[%dx%d+%d+%d]",
                      min (bgPixmap.h_scale, 32767), min (bgPixmap.v_scale, 32767),
                      min (bgPixmap.h_align, 32767), min (bgPixmap.v_align, 32767));
             process_xterm_seq (XTerm_title, str, CHAR_ST);
@@ -3573,6 +3581,7 @@ rxvt_term::privcases (int mode, unsigned long bit)
         state = (SavedModes & bit) ? 1 : 0;	/* no overlapping */
       else
         state = (mode == 't') ? ! (priv_modes & bit) : mode;
+
       set_privmode (bit, state);
     }
 
@@ -3601,7 +3610,7 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
                  // 8, auto-repeat keys         // DECARM
                   { 9, PrivMode_MouseX10 },
                  // 18 end FF to printer after print screen
-                 // 19 Print screen prints full screen/scorll region
+                 // 19 Print screen prints full screen/scroll region
                   { 25, PrivMode_VisibleCursor }, // cnorm/cvvis/civis
 #ifdef scrollBar_esc
                   { scrollBar_esc, PrivMode_scrollBar },

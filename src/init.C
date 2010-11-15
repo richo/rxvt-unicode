@@ -176,6 +176,7 @@ const char *const def_colorName[] =
     "rgb:00/ff/ff",             // 6/14: bright cyan    (Cyan)
     "rgb:ff/ff/ff",             // 7/15: bright white   (White)
 
+#if !USE_256_COLORS
     // 88 xterm colours
     "rgb:00/00/00",
     "rgb:00/00/8b",
@@ -249,6 +250,249 @@ const char *const def_colorName[] =
     "rgb:b9/b9/b9",
     "rgb:d0/d0/d0",
     "rgb:e7/e7/e7",
+#else
+    // 256 xterm colours
+    "rgb:00/00/00",
+    "rgb:00/00/5f",
+    "rgb:00/00/87",
+    "rgb:00/00/af",
+    "rgb:00/00/d7",
+    "rgb:00/00/ff",
+    "rgb:00/5f/00",
+    "rgb:00/5f/5f",
+    "rgb:00/5f/87",
+    "rgb:00/5f/af",
+    "rgb:00/5f/d7",
+    "rgb:00/5f/ff",
+    "rgb:00/87/00",
+    "rgb:00/87/5f",
+    "rgb:00/87/87",
+    "rgb:00/87/af",
+    "rgb:00/87/d7",
+    "rgb:00/87/ff",
+    "rgb:00/af/00",
+    "rgb:00/af/5f",
+    "rgb:00/af/87",
+    "rgb:00/af/af",
+    "rgb:00/af/d7",
+    "rgb:00/af/ff",
+    "rgb:00/d7/00",
+    "rgb:00/d7/5f",
+    "rgb:00/d7/87",
+    "rgb:00/d7/af",
+    "rgb:00/d7/d7",
+    "rgb:00/d7/ff",
+    "rgb:00/ff/00",
+    "rgb:00/ff/5f",
+    "rgb:00/ff/87",
+    "rgb:00/ff/af",
+    "rgb:00/ff/d7",
+    "rgb:00/ff/ff",
+    "rgb:5f/00/00",
+    "rgb:5f/00/5f",
+    "rgb:5f/00/87",
+    "rgb:5f/00/af",
+    "rgb:5f/00/d7",
+    "rgb:5f/00/ff",
+    "rgb:5f/5f/00",
+    "rgb:5f/5f/5f",
+    "rgb:5f/5f/87",
+    "rgb:5f/5f/af",
+    "rgb:5f/5f/d7",
+    "rgb:5f/5f/ff",
+    "rgb:5f/87/00",
+    "rgb:5f/87/5f",
+    "rgb:5f/87/87",
+    "rgb:5f/87/af",
+    "rgb:5f/87/d7",
+    "rgb:5f/87/ff",
+    "rgb:5f/af/00",
+    "rgb:5f/af/5f",
+    "rgb:5f/af/87",
+    "rgb:5f/af/af",
+    "rgb:5f/af/d7",
+    "rgb:5f/af/ff",
+    "rgb:5f/d7/00",
+    "rgb:5f/d7/5f",
+    "rgb:5f/d7/87",
+    "rgb:5f/d7/af",
+    "rgb:5f/d7/d7",
+    "rgb:5f/d7/ff",
+    "rgb:5f/ff/00",
+    "rgb:5f/ff/5f",
+    "rgb:5f/ff/87",
+    "rgb:5f/ff/af",
+    "rgb:5f/ff/d7",
+    "rgb:5f/ff/ff",
+    "rgb:87/00/00",
+    "rgb:87/00/5f",
+    "rgb:87/00/87",
+    "rgb:87/00/af",
+    "rgb:87/00/d7",
+    "rgb:87/00/ff",
+    "rgb:87/5f/00",
+    "rgb:87/5f/5f",
+    "rgb:87/5f/87",
+    "rgb:87/5f/af",
+    "rgb:87/5f/d7",
+    "rgb:87/5f/ff",
+    "rgb:87/87/00",
+    "rgb:87/87/5f",
+    "rgb:87/87/87",
+    "rgb:87/87/af",
+    "rgb:87/87/d7",
+    "rgb:87/87/ff",
+    "rgb:87/af/00",
+    "rgb:87/af/5f",
+    "rgb:87/af/87",
+    "rgb:87/af/af",
+    "rgb:87/af/d7",
+    "rgb:87/af/ff",
+    "rgb:87/d7/00",
+    "rgb:87/d7/5f",
+    "rgb:87/d7/87",
+    "rgb:87/d7/af",
+    "rgb:87/d7/d7",
+    "rgb:87/d7/ff",
+    "rgb:87/ff/00",
+    "rgb:87/ff/5f",
+    "rgb:87/ff/87",
+    "rgb:87/ff/af",
+    "rgb:87/ff/d7",
+    "rgb:87/ff/ff",
+    "rgb:af/00/00",
+    "rgb:af/00/5f",
+    "rgb:af/00/87",
+    "rgb:af/00/af",
+    "rgb:af/00/d7",
+    "rgb:af/00/ff",
+    "rgb:af/5f/00",
+    "rgb:af/5f/5f",
+    "rgb:af/5f/87",
+    "rgb:af/5f/af",
+    "rgb:af/5f/d7",
+    "rgb:af/5f/ff",
+    "rgb:af/87/00",
+    "rgb:af/87/5f",
+    "rgb:af/87/87",
+    "rgb:af/87/af",
+    "rgb:af/87/d7",
+    "rgb:af/87/ff",
+    "rgb:af/af/00",
+    "rgb:af/af/5f",
+    "rgb:af/af/87",
+    "rgb:af/af/af",
+    "rgb:af/af/d7",
+    "rgb:af/af/ff",
+    "rgb:af/d7/00",
+    "rgb:af/d7/5f",
+    "rgb:af/d7/87",
+    "rgb:af/d7/af",
+    "rgb:af/d7/d7",
+    "rgb:af/d7/ff",
+    "rgb:af/ff/00",
+    "rgb:af/ff/5f",
+    "rgb:af/ff/87",
+    "rgb:af/ff/af",
+    "rgb:af/ff/d7",
+    "rgb:af/ff/ff",
+    "rgb:d7/00/00",
+    "rgb:d7/00/5f",
+    "rgb:d7/00/87",
+    "rgb:d7/00/af",
+    "rgb:d7/00/d7",
+    "rgb:d7/00/ff",
+    "rgb:d7/5f/00",
+    "rgb:d7/5f/5f",
+    "rgb:d7/5f/87",
+    "rgb:d7/5f/af",
+    "rgb:d7/5f/d7",
+    "rgb:d7/5f/ff",
+    "rgb:d7/87/00",
+    "rgb:d7/87/5f",
+    "rgb:d7/87/87",
+    "rgb:d7/87/af",
+    "rgb:d7/87/d7",
+    "rgb:d7/87/ff",
+    "rgb:d7/af/00",
+    "rgb:d7/af/5f",
+    "rgb:d7/af/87",
+    "rgb:d7/af/af",
+    "rgb:d7/af/d7",
+    "rgb:d7/af/ff",
+    "rgb:d7/d7/00",
+    "rgb:d7/d7/5f",
+    "rgb:d7/d7/87",
+    "rgb:d7/d7/af",
+    "rgb:d7/d7/d7",
+    "rgb:d7/d7/ff",
+    "rgb:d7/ff/00",
+    "rgb:d7/ff/5f",
+    "rgb:d7/ff/87",
+    "rgb:d7/ff/af",
+    "rgb:d7/ff/d7",
+    "rgb:d7/ff/ff",
+    "rgb:ff/00/00",
+    "rgb:ff/00/5f",
+    "rgb:ff/00/87",
+    "rgb:ff/00/af",
+    "rgb:ff/00/d7",
+    "rgb:ff/00/ff",
+    "rgb:ff/5f/00",
+    "rgb:ff/5f/5f",
+    "rgb:ff/5f/87",
+    "rgb:ff/5f/af",
+    "rgb:ff/5f/d7",
+    "rgb:ff/5f/ff",
+    "rgb:ff/87/00",
+    "rgb:ff/87/5f",
+    "rgb:ff/87/87",
+    "rgb:ff/87/af",
+    "rgb:ff/87/d7",
+    "rgb:ff/87/ff",
+    "rgb:ff/af/00",
+    "rgb:ff/af/5f",
+    "rgb:ff/af/87",
+    "rgb:ff/af/af",
+    "rgb:ff/af/d7",
+    "rgb:ff/af/ff",
+    "rgb:ff/d7/00",
+    "rgb:ff/d7/5f",
+    "rgb:ff/d7/87",
+    "rgb:ff/d7/af",
+    "rgb:ff/d7/d7",
+    "rgb:ff/d7/ff",
+    "rgb:ff/ff/00",
+    "rgb:ff/ff/5f",
+    "rgb:ff/ff/87",
+    "rgb:ff/ff/af",
+    "rgb:ff/ff/d7",
+    "rgb:ff/ff/ff",
+    "rgb:08/08/08",
+    "rgb:12/12/12",
+    "rgb:1c/1c/1c",
+    "rgb:26/26/26",
+    "rgb:30/30/30",
+    "rgb:3a/3a/3a",
+    "rgb:44/44/44",
+    "rgb:4e/4e/4e",
+    "rgb:58/58/58",
+    "rgb:62/62/62",
+    "rgb:6c/6c/6c",
+    "rgb:76/76/76",
+    "rgb:80/80/80",
+    "rgb:8a/8a/8a",
+    "rgb:94/94/94",
+    "rgb:9e/9e/9e",
+    "rgb:a8/a8/a8",
+    "rgb:b2/b2/b2",
+    "rgb:bc/bc/bc",
+    "rgb:c6/c6/c6",
+    "rgb:d0/d0/d0",
+    "rgb:da/da/da",
+    "rgb:e4/e4/e4",
+    "rgb:ee/ee/ee",
+#endif
 
 #ifndef NO_CURSORCOLOR
     COLOR_CURSOR_BACKGROUND,
@@ -267,6 +511,7 @@ const char *const def_colorName[] =
     NULL,			// Color_underline
 #endif
 #ifdef OPTION_HC
+    NULL,
     NULL,
 #endif
     COLOR_SCROLLBAR,
@@ -310,26 +555,9 @@ rxvt_term::init_vars ()
   set_option (Opt_secondaryScroll);
   set_option (Opt_pastableTabs);
   set_option (Opt_intensityStyles);
+  set_option (Opt_iso14755);
   set_option (Opt_iso14755_52);
   set_option (Opt_buffered);
-}
-
-static void
-init_secondary ()
-{
-  int i;
-
-  if ((i = open ("/dev/null", O_RDONLY)) < 0)
-    {
-      dup2 (STDERR_FILENO, STDIN_FILENO);
-    }
-  else if (i != STDIN_FILENO)
-    {
-      dup2 (i, STDIN_FILENO);
-      close (i);
-    }
-
-  dup2 (STDERR_FILENO, STDOUT_FILENO);
 }
 
 /*----------------------------------------------------------------------*/
@@ -404,6 +632,11 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 #ifdef HAVE_AFTERIMAGE
   set_application_name ((char *)rs[Rs_name]);
   set_output_threshold (OUTPUT_LEVEL_WARNING);
+#endif
+
+#ifdef HAVE_PIXBUF
+  g_type_init ();
+  gdk_pixbuf_xlib_init_with_depth (dpy, display->screen, depth);
 #endif
 
 #if ENABLE_PERL
@@ -546,8 +779,6 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 
   init_vars ();
 
-  init_secondary ();
-
   const char **cmd_argv = init_resources (argc, argv);
 
 #ifdef KEYSYM_RESOURCE
@@ -591,10 +822,9 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
       {
         bgPixmap.set_transparent ();
 
-#ifdef HAVE_AFTERIMAGE
         if (rs [Rs_blurradius])
           bgPixmap.set_blur_radius (rs [Rs_blurradius]);
-#endif
+
         if (ISSET_PIXCOLOR (Color_tint))
           bgPixmap.set_tint (pix_colors_focused [Color_tint]);
 
@@ -1055,6 +1285,118 @@ rxvt_term::get_ourmods ()
     ModMetaMask = modmasks[i - 1];
 }
 
+void
+rxvt_term::set_icon (const char *file)
+{
+#ifdef HAVE_AFTERIMAGE
+  init_asv ();
+
+  ASImage *im = file2ASImage (file, 0xFFFFFFFF, SCREEN_GAMMA, 0, NULL);
+  if (!im)
+    {
+      rxvt_warn ("Loading image icon failed, continuing without.\n");
+      return;
+    }
+
+  unsigned int w = im->width;
+  unsigned int h = im->height;
+
+  if (!IN_RANGE_INC (w, 1, 16383) || !IN_RANGE_INC (h, 1, 16383))
+    {
+      rxvt_warn ("Icon image too big, continuing without.\n");
+      destroy_asimage (&im);
+      return;
+    }
+
+  ASImage *result = scale_asimage (asv, im,
+                                   w, h, ASA_ARGB32,
+                                   100, ASIMAGE_QUALITY_DEFAULT);
+  destroy_asimage (&im);
+
+  if (!result)
+    {
+      rxvt_warn ("Icon image transformation to ARGB failed, continuing without.\n");
+      return;
+    }
+
+  long *buffer = (long *)malloc ((2 + w * h) * sizeof (long));
+  if (buffer)
+    {
+      ARGB32 *asbuf = result->alt.argb32;
+      buffer [0] = w;
+      buffer [1] = h;
+
+      for (unsigned int i = 0; i < w * h; ++i)
+        buffer [i + 2] = asbuf [i];
+
+      XChangeProperty (dpy, parent[0], xa[XA_NET_WM_ICON], XA_CARDINAL, 32,
+                       PropModeReplace, (const unsigned char *) buffer, 2 + w * h);
+      free (buffer);
+    }
+  else
+    rxvt_warn ("Memory allocation for icon hint failed, continuing without.\n");
+
+  destroy_asimage (&result);
+#endif
+
+#ifdef HAVE_PIXBUF
+  GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file (file, NULL);
+  if (!pixbuf)
+    {
+      rxvt_warn ("Loading image icon failed, continuing without.\n");
+      return;
+    }
+
+  unsigned int w = gdk_pixbuf_get_width (pixbuf);
+  unsigned int h = gdk_pixbuf_get_height (pixbuf);
+
+  if (!IN_RANGE_INC (w, 1, 16383) || !IN_RANGE_INC (h, 1, 16383))
+    {
+      rxvt_warn ("Icon image too big, continuing without.\n");
+      g_object_unref (pixbuf);
+      return;
+    }
+
+  if (long *buffer = (long *)malloc ((2 + w * h) * sizeof (long)))
+    {
+      int rowstride = gdk_pixbuf_get_rowstride (pixbuf);
+      unsigned char *row = gdk_pixbuf_get_pixels (pixbuf);
+      int channels = gdk_pixbuf_get_n_channels (pixbuf);
+
+      buffer [0] = w;
+      buffer [1] = h;
+      for (int i = 0; i < h; i++)
+        {
+          for (int j = 0; j < w; j++)
+            {
+              unsigned char *pixel = row + j * channels;
+              long value;
+
+              if (channels == 4)
+                value = pixel[3];
+              else
+                value = (unsigned char)0x00ff;
+
+              value = (value << 8) + pixel[0];
+              value = (value << 8) + pixel[1];
+              value = (value << 8) + pixel[2];
+              buffer[(i * w + j) + 2] = value;
+            }
+
+          row += rowstride;
+        }
+
+      XChangeProperty (dpy, parent[0], xa[XA_NET_WM_ICON], XA_CARDINAL, 32,
+                       PropModeReplace, (const unsigned char *) buffer, 2 + w * h);
+      free (buffer);
+    }
+  else
+    rxvt_warn ("Memory allocation for icon hint failed, continuing without.\n");
+
+  g_object_unref (pixbuf);
+#endif
+}
+
 /*----------------------------------------------------------------------*/
 /* rxvt_Create_Windows () - Open and map the window */
 void
@@ -1143,55 +1485,16 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   XmbSetWMProperties (dpy, top, NULL, NULL, (char **)argv, argc,
                       &szHint, &wmHint, &classHint);
-#if ENABLE_EWMH 
-# ifdef HAVE_AFTERIMAGE
+#if ENABLE_EWMH
   /*
    * set up icon hint
-   * rs [Rs_iconfile] is path to icon, asv has been created in init_resources
+   * rs [Rs_iconfile] is path to icon
    */
 
   if (rs [Rs_iconfile])
     {
-      init_asv ();
-
-      ASImage *im = file2ASImage (rs [Rs_iconfile], 0xFFFFFFFF, SCREEN_GAMMA, 0, NULL);
-      if (asv && im)
-        {
-          int w = im->width;
-          int h = im->height;
-          long* buffer = (long *)malloc ((2 + w * h) * sizeof (long));
-          ASImage *result = scale_asimage (asv, im,
-                                           w, h, ASA_ARGB32,
-                                           100, ASIMAGE_QUALITY_DEFAULT);
-          destroy_asimage (&im);
-
-          if (buffer && result)
-            {
-              ARGB32 *asbuf = result->alt.argb32;
-              buffer [0] = w;
-              buffer [1] = h;
-
-              for (unsigned int i = 0; i < w * h; ++i)
-                buffer [i + 2] = asbuf [i];
-
-              destroy_asimage (&result);
-              XChangeProperty (dpy, top, xa[XA_NET_WM_ICON], XA_CARDINAL, 32,
-                               PropModeReplace, (const unsigned char*) buffer, 2 + w * h);
-              free (buffer);
-            }
-          else
-            {
-              if (!buffer)
-                rxvt_warn ("Memory allocation for icon hint failed, continuing without.\n");
-
-              if (!result)
-                rxvt_warn ("Icon image transformation to ARGB failed, continuing without.\n");
-            }
-        }
-      else
-        rxvt_warn ("Loading image icon failed, continuing without.\n");
+      set_icon (rs [Rs_iconfile]);
     }
-# endif
 #endif
 
 #if ENABLE_FRILLS
@@ -1280,168 +1583,6 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   scr_recolour ();
 }
 
-/* ------------------------------------------------------------------------- *
- *                            GET TTY CURRENT STATE                          *
- * ------------------------------------------------------------------------- */
-void
-rxvt_get_ttymode (struct termios *tio, int erase)
-{
-  /*
-   * standard System V termios interface
-   */
-  if (tcgetattr (STDIN_FILENO, tio) < 0)
-    {
-      // return error - use system defaults,
-      // where possible, and zero elsewhere
-      memset (tio, 0, sizeof (struct termios));
-
-      tio->c_cc[VINTR] = CINTR;
-      tio->c_cc[VQUIT] = CQUIT;
-      tio->c_cc[VERASE] = CERASE;
-#ifdef VERASE2
-      tio->c_cc[VERASE2] = CERASE2;
-#endif
-      tio->c_cc[VKILL] = CKILL;
-      tio->c_cc[VSTART] = CSTART;
-      tio->c_cc[VSTOP] = CSTOP;
-      tio->c_cc[VSUSP] = CSUSP;
-# ifdef VDSUSP
-      tio->c_cc[VDSUSP] = CDSUSP;
-# endif
-# ifdef VREPRINT
-      tio->c_cc[VREPRINT] = CRPRNT;
-# endif
-# ifdef VDISCRD
-      tio->c_cc[VDISCRD] = CFLUSH;
-# endif
-# ifdef VWERSE
-      tio->c_cc[VWERSE] = CWERASE;
-# endif
-# ifdef VLNEXT
-      tio->c_cc[VLNEXT] = CLNEXT;
-# endif
-    }
-
-  tio->c_cc[VEOF] = CEOF;
-  tio->c_cc[VEOL] = VDISABLE;
-# ifdef VEOL2
-  tio->c_cc[VEOL2] = VDISABLE;
-# endif
-# ifdef VSWTC
-  tio->c_cc[VSWTC] = VDISABLE;
-# endif
-# ifdef VSWTCH
-  tio->c_cc[VSWTCH] = VDISABLE;
-# endif
-# if VMIN != VEOF
-  tio->c_cc[VMIN] = 1;
-# endif
-# if VTIME != VEOL
-  tio->c_cc[VTIME] = 0;
-# endif
-
-  if (erase != -1)
-    tio->c_cc[VERASE] = (char)erase;
-
-  /* input modes */
-  tio->c_iflag = (BRKINT | IGNPAR | ICRNL
-# ifdef IMAXBEL
-                  | IMAXBEL
-# endif
-                  | IXON);
-
-  /* output modes */
-  tio->c_oflag = (OPOST | ONLCR);
-
-  /* control modes */
-  tio->c_cflag = (CS8 | CREAD);
-
-  /* line discipline modes */
-  tio->c_lflag = (ISIG | ICANON | IEXTEN | ECHO
-# if defined (ECHOCTL) && defined (ECHOKE)
-                  | ECHOCTL | ECHOKE
-# endif
-                  | ECHOE | ECHOK);
-
-  /*
-   * Debugging
-   */
-#ifdef DEBUG_TTYMODE
-  /* c_iflag bits */
-  fprintf (stderr, "Input flags\n");
-
-  /* cpp token stringize doesn't work on all machines <sigh> */
-# define FOO(flag,name)                 \
-    if ((tio->c_iflag) & flag)          \
-        fprintf (stderr, "%s ", name)
-
-  /* c_iflag bits */
-  FOO (IGNBRK, "IGNBRK");
-  FOO (BRKINT, "BRKINT");
-  FOO (IGNPAR, "IGNPAR");
-  FOO (PARMRK, "PARMRK");
-  FOO (INPCK, "INPCK");
-  FOO (ISTRIP, "ISTRIP");
-  FOO (INLCR, "INLCR");
-  FOO (IGNCR, "IGNCR");
-  FOO (ICRNL, "ICRNL");
-  FOO (IXON, "IXON");
-  FOO (IXOFF, "IXOFF");
-# ifdef IUCLC
-  FOO (IUCLC, "IUCLC");
-# endif
-# ifdef IXANY
-  FOO (IXANY, "IXANY");
-# endif
-# ifdef IMAXBEL
-  FOO (IMAXBEL, "IMAXBEL");
-# endif
-
-  fprintf (stderr, "\n");
-
-# undef FOO
-# define FOO(entry, name)                                       \
-    fprintf (stderr, "%-8s = %#04o\n", name, tio->c_cc [entry])
-
-  FOO (VINTR, "VINTR");
-  FOO (VQUIT, "VQUIT");
-  FOO (VERASE, "VERASE");
-  FOO (VKILL, "VKILL");
-  FOO (VEOF, "VEOF");
-  FOO (VEOL, "VEOL");
-# ifdef VEOL2
-  FOO (VEOL2, "VEOL2");
-# endif
-# ifdef VSWTC
-  FOO (VSWTC, "VSWTC");
-# endif
-# ifdef VSWTCH
-  FOO (VSWTCH, "VSWTCH");
-# endif
-  FOO (VSTART, "VSTART");
-  FOO (VSTOP, "VSTOP");
-  FOO (VSUSP, "VSUSP");
-# ifdef VDSUSP
-  FOO (VDSUSP, "VDSUSP");
-# endif
-# ifdef VREPRINT
-  FOO (VREPRINT, "VREPRINT");
-# endif
-# ifdef VDISCRD
-  FOO (VDISCRD, "VDISCRD");
-# endif
-# ifdef VWERSE
-  FOO (VWERSE, "VWERSE");
-# endif
-# ifdef VLNEXT
-  FOO (VLNEXT, "VLNEXT");
-# endif
-
-  fprintf (stderr, "\n");
-# undef FOO
-#endif /* DEBUG_TTYMODE */
-}
-
 /*----------------------------------------------------------------------*/
 /*
  * Run the command in a subprocess and return a file descriptor for the
@@ -1470,18 +1611,15 @@ rxvt_term::run_command (const char *const *argv)
     if (!pty->get ())
       rxvt_fatal ("can't initialize pseudo-tty, aborting.\n");
 
-  int er;
+  struct termios tio = def_tio;
 
 #ifndef NO_BACKSPACE_KEY
   if (rs[Rs_backspace_key][0] && !rs[Rs_backspace_key][1])
-    er = rs[Rs_backspace_key][0];
+    tio.c_cc[VERASE] = rs[Rs_backspace_key][0];
   else if (strcmp (rs[Rs_backspace_key], "DEC") == 0)
-    er = '\177';            /* the initial state anyway */
-  else
+    tio.c_cc[VERASE] = '\177';            /* the initial state anyway */
 #endif
-    er = -1;
 
-  rxvt_get_ttymode (&tio, er);
   /* init terminal attributes */
   cfsetospeed (&tio, BAUDRATE);
   cfsetispeed (&tio, BAUDRATE);
@@ -1578,7 +1716,7 @@ rxvt_term::run_child (const char *const *argv)
   signal (SIGHUP,  SIG_DFL);
   signal (SIGPIPE, SIG_DFL);
   /*
-   * mimick login's behavior by disabling the job control signals
+   * mimic login's behavior by disabling the job control signals
    * a shell that wants them can turn them back on
    */
 #ifdef SIGTSTP

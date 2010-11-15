@@ -71,11 +71,12 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
     re-run the command. Subsequent invocations of the script will re-use the
     existing daemon.
 
-   How do I distinguish whether I'm running rxvt-unicode or a regular xterm? I need this to decide about setting colors etc.
+   How do I distinguish whether I'm running rxvt-unicode or a regular
+xterm? I need this to decide about setting colours etc.
     The original rxvt and rxvt-unicode always export the variable
     "COLORTERM", so you can check and see if that is set. Note that several
     programs, JED, slrn, Midnight Commander automatically check this
-    variable to decide whether or not to use color.
+    variable to decide whether or not to use colour.
 
    How do I set the correct, full IP address for the DISPLAY variable?
     If you've compiled rxvt-unicode with DISPLAY_IS_IP and have enabled
@@ -182,10 +183,10 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
 
   Rendering, Font & Look and Feel Issues
    I can't get transparency working, what am I doing wrong?
-    First of all, please address all transparency related issues to Sasha
-    Vasko at sasha@aftercode.net and do not bug the author about it. Also,
-    if you can't get it working consider it a rite of passage: ... and you
-    failed.
+    First of all, transparency isn't officially supported in rxvt-unicode,
+    so you are mostly on your own. Do not bug the author about it (but you
+    may bug everybody else). Also, if you can't get it working consider it a
+    rite of passage: ... and you failed.
 
     Here are four ways to get transparency. Do read the manpage and option
     descriptions for the programs mentioned and rxvt-unicode. Really, do it!
@@ -205,8 +206,8 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
        convert wallpaper.jpg -blur 20x20 -modulate 30 background.jpg
        urxvt -pixmap "background.jpg;:root"
 
-    That works. If you think it doesn't, you lack AfterImage support, or you
-    are unable to read.
+    That works. If you think it doesn't, you lack libAfterImage or
+    GDK-PixBuf support, or you are unable to read.
 
     3. Use an ARGB visual:
 
@@ -314,14 +315,14 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
     "--enable-text-blink", the blink attribute will be ignored.
 
     On ANSI colours, bold/blink attributes are used to set high-intensity
-    foreground/background colors.
+    foreground/background colours.
 
-    color0-7 are the low-intensity colors.
+    color0-7 are the low-intensity colours.
 
-    color8-15 are the corresponding high-intensity colors.
+    color8-15 are the corresponding high-intensity colours.
 
-   I don't like the screen colors.  How do I change them?
-    You can change the screen colors at run-time using ~/.Xdefaults
+   I don't like the screen colours.  How do I change them?
+    You can change the screen colours at run-time using ~/.Xdefaults
     resources (or as long-options).
 
     Here are values that are supposed to resemble a VGA screen, including
@@ -345,7 +346,7 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
        URxvt.color14:  #00FFFF
        URxvt.color15:  #FFFFFF
 
-    And here is a more complete set of non-standard colors.
+    And here is a more complete set of non-standard colours.
 
        URxvt.cursorColor:  #dc74d1
        URxvt.pointerColor: #dc74d1
@@ -527,34 +528,16 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
     debian policy of using "^?" when unsure, because it's the one and only
     correct choice :).
 
-    Rxvt-unicode tries to inherit the current stty settings and uses the
-    value of `erase' to guess the value for backspace. If rxvt-unicode
-    wasn't started from a terminal (say, from a menu or by remote shell),
-    then the system value of `erase', which corresponds to CERASE in
-    <termios.h>, will be used (which may not be the same as your stty
-    setting).
-
-    For starting a new rxvt-unicode:
+    It is possible to toggle between "^H" and "^?" with the DECBKM private
+    mode:
 
        # use Backspace = ^H
        $ stty erase ^H
-       $ urxvt
+       $ echo -n "^[[?67h"
 
        # use Backspace = ^?
        $ stty erase ^?
-       $ urxvt
-
-    Toggle with "ESC [ 36 h" / "ESC [ 36 l".
-
-    For an existing rxvt-unicode:
-
-       # use Backspace = ^H
-       $ stty erase ^H
-       $ echo -n "^[[36h"
-
-       # use Backspace = ^?
-       $ stty erase ^?
-       $ echo -n "^[[36l"
+       $ echo -n "^[[?67l"
 
     This helps satisfy some of the Backspace discrepancies that occur, but
     if you use Backspace = "^H", make sure that the termcap/terminfo value
@@ -652,7 +635,7 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
 
     The selection stuff mainly makes the selection perl-error-message aware
     and tells it to convert perl error messages into vi-commands to load the
-    relevant file and go tot he error line number.
+    relevant file and go to the error line number.
 
        URxvt.scrollstyle:      plain
        URxvt.secondaryScroll:  true
@@ -735,7 +718,7 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
     bold and normal fonts.
 
     Please note that I used the "urxvt" instance name and not the "URxvt"
-    class name. Thats because I use different configs for different
+    class name. That is because I use different configs for different
     purposes, for example, my IRC window is started with "-name IRC", and
     uses these defaults:
 
@@ -756,7 +739,7 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
 
     The above is all in my ".Xdefaults" (I don't use ".Xresources" nor
     "xrdb"). I also have some resources in a separate ".Xdefaults-hostname"
-    file for different hosts, for example, on ym main desktop, I use:
+    file for different hosts, for example, on my main desktop, I use:
 
        URxvt.keysym.C-M-q: command:\033[3;5;5t
        URxvt.keysym.C-M-y: command:\033[3;5;606t
@@ -1040,7 +1023,7 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
     should be enabled, as important functionality (menus, selection, likely
     more in the future) depends on it.
 
-    You should not overwrite the "perl-ext-common" snd "perl-ext" resources
+    You should not overwrite the "perl-ext-common" and "perl-ext" resources
     system-wide (except maybe with "defaults"). This will result in useful
     behaviour. If your distribution aims at low memory, add an empty
     "perl-ext-common" resource to the app-defaults file. This will keep the
@@ -1121,9 +1104,4 @@ RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS
     possibly working workaround is to use a wcwidth implementation like
 
     http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c
-
-   I want 256 colors
-    Are you sure you need 256 colors? 88 colors should be enough for most
-    purposes. If you really need more, there is an unsupported patch for it
-    in the doc directory, but please do not ask for it to be applied.
 

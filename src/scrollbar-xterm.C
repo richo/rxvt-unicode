@@ -55,7 +55,7 @@ scrollBar_t::show_xterm (int update)
       xscrollbarGC = XCreateGC (term->dpy, win,
                                 GCForeground | GCBackground
                                 | GCFillStyle | GCStipple, &gcvalue);
-      gcvalue.foreground = term->pix_colors_focused[Color_scroll];
+      gcvalue.foreground = term->pix_colors_focused[Color_border];
       ShadowGC = XCreateGC (term->dpy, win, GCForeground, &gcvalue);
     }
 

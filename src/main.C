@@ -32,11 +32,13 @@
 
 #include "../config.h"          /* NECESSARY */
 #include "rxvt.h"               /* NECESSARY */
+#include "init.h"
 #include "keyboard.h"
 #include "rxvtperl.h"
 
 #include <limits>
 
+#include <cassert>
 #include <csignal>
 #include <cstring>
 
@@ -51,6 +53,7 @@
 # endif
 #endif
 
+struct termios rxvt_term::def_tio;
 vector<rxvt_term *> rxvt_term::termlist;
 
 // used to tell global functions which terminal instance is "active"
@@ -103,7 +106,7 @@ text_t rxvt_composite_vec::compose (unicode_t c1, unicode_t c2)
       cc = (*this)[cc->c1];
     }
 
-  // check to see wether this combination already exists otherwise
+  // check to see whether this combination already exists otherwise
   for (cc = v.end (); cc-- > v.begin (); )
     {
       if (cc->c1 == c1 && cc->c2 == c2)
@@ -239,6 +242,7 @@ rxvt_term::~rxvt_term ()
   if (display)
     {
       selection_clear ();
+      selection_clear (true);
 
 #ifdef USE_XIM
       im_destroy ();
@@ -273,6 +277,7 @@ rxvt_term::~rxvt_term ()
     free (allocated [i]);
 
   free (selection.text);
+  free (selection.clip_text);
   // TODO: manage env vars in child only(!)
   free (env_display);
   free (env_term);
@@ -382,7 +387,7 @@ print_x_error (Display *dpy, XErrorEvent *event)
     char *mtype = "XlibMessage";
     XGetErrorText(dpy, event->error_code, buffer, BUFSIZ);
     XGetErrorDatabaseText(dpy, mtype, "XError", "X Error", mesg, BUFSIZ);
-    rxvt_warn ("An X Error occured, trying to continue after report.\n");
+    rxvt_warn ("An X Error occurred, trying to continue after report.\n");
     rxvt_warn ("%s:  %s\n", mesg, buffer);
     XGetErrorDatabaseText(dpy, mtype, "MajorCode", "Request Major code %d", mesg, BUFSIZ);
     rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->request_code);
@@ -390,33 +395,33 @@ print_x_error (Display *dpy, XErrorEvent *event)
     XGetErrorDatabaseText(dpy, "XRequest", number, "", buffer, BUFSIZ);
     rxvt_warn ("(which is %s)\n", buffer);
     if (event->request_code >= 128) {
-	XGetErrorDatabaseText(dpy, mtype, "MinorCode", "Request Minor code %d",
-			      mesg, BUFSIZ);
+        XGetErrorDatabaseText(dpy, mtype, "MinorCode", "Request Minor code %d",
+                              mesg, BUFSIZ);
         rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->minor_code);
     }
     if ((event->error_code == BadWindow) ||
-	       (event->error_code == BadPixmap) ||
-	       (event->error_code == BadCursor) ||
-	       (event->error_code == BadFont) ||
-	       (event->error_code == BadDrawable) ||
-	       (event->error_code == BadColor) ||
-	       (event->error_code == BadGC) ||
-	       (event->error_code == BadIDChoice) ||
-	       (event->error_code == BadValue) ||
-	       (event->error_code == BadAtom)) {
-	if (event->error_code == BadValue)
-	    XGetErrorDatabaseText(dpy, mtype, "Value", "Value 0x%x",
-				  mesg, BUFSIZ);
-	else if (event->error_code == BadAtom)
-	    XGetErrorDatabaseText(dpy, mtype, "AtomID", "AtomID 0x%x",
-				  mesg, BUFSIZ);
-	else
-	    XGetErrorDatabaseText(dpy, mtype, "ResourceID", "ResourceID 0x%x",
-				  mesg, BUFSIZ);
-	rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->resourceid);
+               (event->error_code == BadPixmap) ||
+               (event->error_code == BadCursor) ||
+               (event->error_code == BadFont) ||
+               (event->error_code == BadDrawable) ||
+               (event->error_code == BadColor) ||
+               (event->error_code == BadGC) ||
+               (event->error_code == BadIDChoice) ||
+               (event->error_code == BadValue) ||
+               (event->error_code == BadAtom)) {
+        if (event->error_code == BadValue)
+            XGetErrorDatabaseText(dpy, mtype, "Value", "Value 0x%x",
+                                  mesg, BUFSIZ);
+        else if (event->error_code == BadAtom)
+            XGetErrorDatabaseText(dpy, mtype, "AtomID", "AtomID 0x%x",
+                                  mesg, BUFSIZ);
+        else
+            XGetErrorDatabaseText(dpy, mtype, "ResourceID", "ResourceID 0x%x",
+                                  mesg, BUFSIZ);
+        rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->resourceid);
     }
     XGetErrorDatabaseText(dpy, mtype, "ErrorSerial", "Error Serial #%d",
-			  mesg, BUFSIZ);
+                          mesg, BUFSIZ);
     rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->serial);
 }
 #endif
@@ -473,14 +478,88 @@ sig_handlers::sig_term (ev::sig &w, int revents)
   kill (getpid (), w.signum);
 }
 
+static void
+rxvt_get_ttymode (struct termios *tio)
+{
+  if (tcgetattr (STDIN_FILENO, tio) < 0)
+    memset (tio, 0, sizeof (struct termios));
+
+  for (int i = 0; i < NCCS; i++)
+    tio->c_cc[i] = VDISABLE;
+
+  tio->c_cc[VINTR] = CINTR;
+  tio->c_cc[VQUIT] = CQUIT;
+  tio->c_cc[VERASE] = CERASE;
+#ifdef VERASE2
+  tio->c_cc[VERASE2] = CERASE2;
+#endif
+  tio->c_cc[VKILL] = CKILL;
+  tio->c_cc[VEOF] = CEOF;
+  tio->c_cc[VSTART] = CSTART;
+  tio->c_cc[VSTOP] = CSTOP;
+  tio->c_cc[VSUSP] = CSUSP;
+# ifdef VDSUSP
+  tio->c_cc[VDSUSP] = CDSUSP;
+# endif
+# ifdef VREPRINT
+  tio->c_cc[VREPRINT] = CRPRNT;
+# endif
+# ifdef VDISCRD
+  tio->c_cc[VDISCRD] = CFLUSH;
+# endif
+# ifdef VWERSE
+  tio->c_cc[VWERSE] = CWERASE;
+# endif
+# ifdef VLNEXT
+  tio->c_cc[VLNEXT] = CLNEXT;
+# endif
+# ifdef VSTATUS
+  tio->c_cc[VSTATUS] = CSTATUS;
+# endif
+
+# if VMIN != VEOF
+  tio->c_cc[VMIN] = 1;
+# endif
+# if VTIME != VEOL
+  tio->c_cc[VTIME] = 0;
+# endif
+
+  /* input modes */
+  tio->c_iflag = (BRKINT | IGNPAR | ICRNL
+# ifdef IMAXBEL
+                  | IMAXBEL
+# endif
+                  | IXON);
+
+  /* output modes */
+  tio->c_oflag = (OPOST | ONLCR);
+
+  /* control modes */
+  tio->c_cflag = (CS8 | CREAD);
+
+  /* local modes */
+  tio->c_lflag = (ISIG | ICANON | IEXTEN | ECHO
+# if defined (ECHOCTL) && defined (ECHOKE)
+                  | ECHOCTL | ECHOKE
+# endif
+                  | ECHOE | ECHOK);
+}
+
 char **rxvt_environ; // startup environment
 
 void
 rxvt_init ()
 {
-  ptytty::init ();
+  assert (("fontMask must not overlap other RS masks",
+           0 == (RS_fontMask & (RS_Sel | RS_baseattrMask | RS_customMask | RS_bgMask | RS_fgMask))));
 
-  if (!ev_default_loop (0))
+  rxvt_get_ttymode (&rxvt_term::def_tio);
+
+  // get rid of stdin/stdout as we don't need them, to free resources
+  dup2 (STDERR_FILENO, STDIN_FILENO);
+  dup2 (STDERR_FILENO, STDOUT_FILENO);
+
+  if (!ev_default_loop ())
     rxvt_fatal ("cannot initialise libev (bad value for LIBEV_METHODS?)\n");
 
   rxvt_environ = environ;
@@ -490,9 +569,6 @@ rxvt_init ()
 
   sig_handlers.sw_term.start (SIGTERM); ev_unref ();
   sig_handlers.sw_int.start  (SIGINT);  ev_unref ();
-
-  /* need to trap SIGURG for SVR4 (Unixware) rlogin */
-  /* signal (SIGURG, SIG_DFL); */
 
   old_xerror_handler = XSetErrorHandler ((XErrorHandler) rxvt_xerror_handler);
   // TODO: handle this with exceptions and tolerate the memory loss
@@ -688,7 +764,7 @@ rxvt_term::set_fonts ()
   delete fontset[0];
   fontset[0] = fs;
 
-  prop = (*fs)[1]->properties ();
+  prop = (*fs)[rxvt_fontset::firstFont]->properties ();
   prop.height += lineSpace;
   prop.width += letterSpace;
 
@@ -750,6 +826,18 @@ rxvt_term::set_string_property (Atom prop, const char *str, int len)
 }
 
 void
+rxvt_term::set_mbstring_property (Atom prop, const char *str, int len)
+{
+  XTextProperty ct;
+
+  if (XmbTextListToTextProperty (dpy, (char **)&str, 1, XStdICCTextStyle, &ct) >= 0)
+    {
+      XSetTextProperty (dpy, parent[0], &ct, prop);
+      XFree (ct.value);
+    }
+}
+
+void
 rxvt_term::set_utf8_property (Atom prop, const char *str, int len)
 {
   wchar_t *ws = rxvt_mbstowcs (str, len);
@@ -769,7 +857,7 @@ rxvt_term::set_utf8_property (Atom prop, const char *str, int len)
 void
 rxvt_term::set_title (const char *str)
 {
-  set_string_property (XA_WM_NAME, str);
+  set_mbstring_property (XA_WM_NAME, str);
 #if ENABLE_EWMH
   set_utf8_property (xa[XA_NET_WM_NAME], str);
 #endif
@@ -778,7 +866,7 @@ rxvt_term::set_title (const char *str)
 void
 rxvt_term::set_icon_name (const char *str)
 {
-  set_string_property (XA_WM_ICON_NAME, str);
+  set_mbstring_property (XA_WM_ICON_NAME, str);
 #if ENABLE_EWMH
   set_utf8_property (xa[XA_NET_WM_ICON_NAME], str);
 #endif
@@ -995,9 +1083,6 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
   if (fix_screen || old_height == 0)
     scr_reset ();
 
-  // TODO, with nvidia-8178, resizes kill the alpha channel, report if not fixed in newer version
-  //scr_touch (false);
-
 #ifdef HAVE_BG_PIXMAP
 //  TODO: this don't seem to have any effect - do we still need it ? If so - in which case exactly ?
 //  if (bgPixmap.pixmap)
@@ -1165,7 +1250,7 @@ xim_preedit_draw (XIC ic, XPointer client_data, XIMPreeditDrawCallbackStruct *ca
 
   if (text)
     {
-      void *str;
+      wchar_t *str;
 
       if (!text->encoding_is_wchar && text->string.multi_byte)
         {
@@ -1173,14 +1258,14 @@ xim_preedit_draw (XIC ic, XPointer client_data, XIMPreeditDrawCallbackStruct *ca
           if (term->rs[Rs_imLocale])
             SET_LOCALE (term->rs[Rs_imLocale]);
 
-          str = rxvt_temp_buf ((text->length + 1) * sizeof (wchar_t));
-          mbstowcs ((wchar_t *)str, text->string.multi_byte, text->length + 1);
+          str = rxvt_temp_buf<wchar_t> (text->length + 1);
+          mbstowcs (str, text->string.multi_byte, text->length + 1);
 
           if (term->rs[Rs_imLocale])
             SET_LOCALE (term->locale);
         }
       else
-        str = (void *)text->string.wide_char;
+        str = text->string.wide_char;
 
       HOOK_INVOKE ((term, HOOK_XIM_PREEDIT_DRAW,
                     DT_INT, call_data->caret,
@@ -1544,7 +1629,6 @@ rxvt_term::get_window_origin (int &x, int &y)
 {
   Window cr;
   XTranslateCoordinates (dpy, parent[0], display->root, 0, 0, &x, &y, &cr);
-/*  fprintf (stderr, "origin is %+d%+d\n", x, y);*/
 }
 
 Pixmap
@@ -1568,15 +1652,6 @@ rxvt_term::get_pixmap_property (int prop_id)
 }
 
 #ifdef HAVE_BG_PIXMAP
-# if TRACE_PIXMAPS
-#  undef update_background
-void
-rxvt_term::trace_update_background (const char *file, int line)
-{
-  fprintf (stderr, "%s:%d:update_background()\n", file, line);
-  update_background ();
-}
-# endif
 
 void
 rxvt_term::update_background ()
