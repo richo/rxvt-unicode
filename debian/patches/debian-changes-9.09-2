@@ -1,0 +1,73 @@
+Description: Upstream changes introduced in version 9.09-2
+ This patch has been created by dpkg-source during the package build.
+ Here's the last changelog entry, hopefully it gives details on why
+ those changes were made:
+ .
+ rxvt-unicode (9.09-2) unstable; urgency=low
+ .
+   [ Bhavani Shankar ]
+   * Link against libfontconfig to fix FTBFS with binutils-gold (Closes:
+     #604952)
+ .
+   [ Decklin Foster ]
+   * Enable 256 colors in regular and -ml flavors (hooray!) (Closes:
+     #493481)
+   * Fix handling of 'meta8' option for non-latin1 locales (Closes:
+     #558725)
+ .
+ The person named in the Author field signed this changelog entry.
+Author: Decklin Foster <decklin@red-bean.com>
+Bug-Debian: http://bugs.debian.org/493481
+Bug-Debian: http://bugs.debian.org/558725
+Bug-Debian: http://bugs.debian.org/604952
+
+---
+The information above should follow the Patch Tagging Guidelines, please
+checkout http://dep.debian.net/deps/dep3/ to learn about the format. Here
+are templates for supplementary fields that you might want to add:
+
+Origin: <vendor|upstream|other>, <url of original patch>
+Bug: <url in upstream bugtracker>
+Bug-Debian: http://bugs.debian.org/<bugnumber>
+Bug-Ubuntu: https://launchpad.net/bugs/<bugnumber>
+Forwarded: <no|not-needed|url proving that it has been forwarded>
+Reviewed-By: <name and email of someone who approved the patch>
+Last-Update: <YYYY-MM-DD>
+
+--- rxvt-unicode-9.09.orig/src/command.C
++++ rxvt-unicode-9.09/src/command.C
+@@ -810,8 +810,21 @@ rxvt_term::key_press (XKeyEvent &ev)
+             {
+               char *ch;
+ 
+-              for (ch = kbuf; ch < kbuf + len; ch++)
+-                *ch |= 0x80;
++              for (ch = kbuf; ch < kbuf + len; ch++) {
++                /* UTF-8 encoding */
++                char byte2 = 0x80 | (*ch  & 0x3f);
++                *ch = 0xC0 | (0x80 >> 6) | ((*ch >> 6) & 0x03);
++                ch ++;
++
++                char * current = NULL;
++                char * last = kbuf + len;
++                for (current=last; current > ch; current--) {
++                    *current = *(current-1);
++                }
++
++                len ++;
++                *ch = byte2;
++              }
+ 
+               meta = 0;
+             }
+--- rxvt-unicode-9.09.orig/src/Makefile.in
++++ rxvt-unicode-9.09/src/Makefile.in
+@@ -20,7 +20,7 @@ LDFLAGS = @LDFLAGS@
+ DEFS = @DEFS@
+ LIBS = @LIBS@
+ XINC = @X_CFLAGS@ @AFTERIMAGE_CFLAGS@ @PIXBUF_CFLAGS@
+-XLIB = @X_LIBS@ @AFTERIMAGE_LIBS@ -lX11 @X_EXTRA_LIBS@ @PIXBUF_LIBS@
++XLIB = @X_LIBS@ @AFTERIMAGE_LIBS@ -lX11 -lfontconfig @X_EXTRA_LIBS@
+ COMPILE = $(CXX) -I.. -I$(srcdir) -I. -I$(srcdir)/../libev $(DEFS) $(CPPFLAGS) $(CXXFLAGS) $(XINC)
+ LINK = @LINKER@ $(LDFLAGS)
+ EXEEXT = @EXEEXT@

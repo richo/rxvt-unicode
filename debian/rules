@@ -52,6 +52,7 @@ conf-unicode:
 	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
 	    --enable-xft \
 	    --enable-font-styles \
+	    --enable-256-color \
 	    --enable-afterimage \
 	    --enable-transparency \
 	    --enable-fading \
@@ -70,6 +71,7 @@ conf-unicode-ml:
 	    --enable-combining \
 	    --enable-xft \
 	    --enable-font-styles \
+	    --enable-256-color \
 	    --enable-afterimage \
 	    --enable-transparency \
 	    --enable-fading \

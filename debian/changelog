@@ -1,3 +1,17 @@
+rxvt-unicode (9.09-2) unstable; urgency=low
+
+  [ Bhavani Shankar ]
+  * Link against libfontconfig to fix FTBFS with binutils-gold (Closes:
+    #604952)
+
+  [ Decklin Foster ]
+  * Enable 256 colors in regular and -ml flavors (hooray!) (Closes:
+    #493481)
+  * Fix handling of 'meta8' option for non-latin1 locales (Closes:
+    #558725)
+
+ -- Decklin Foster <decklin@red-bean.com>  Tue, 30 Nov 2010 01:34:55 -0500
+
 rxvt-unicode (9.09-1) unstable; urgency=low
 
   * New upstream version
