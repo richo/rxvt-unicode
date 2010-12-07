@@ -33,8 +33,7 @@ cfgcommon = \
     --enable-pointer-blank \
     --enable-utmp \
     --enable-wtmp \
-    --enable-lastlog \
-    --with-term=rxvt-unicode
+    --enable-lastlog
 
 config.status: configure
 	dh_testdir
@@ -46,7 +45,8 @@ conf-unicode-lite:
 	    --disable-xft \
 	    --disable-afterimage \
 	    --disable-perl \
-	    --disable-iso14755
+	    --disable-iso14755 \
+	    --with-term=rxvt-unicode
 
 conf-unicode:
 	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
@@ -63,7 +63,8 @@ conf-unicode:
 	    --enable-mousewheel \
 	    --enable-slipwheeling \
 	    --enable-smart-resize \
-	    --disable-iso14755
+	    --disable-iso14755 \
+	    --with-term=rxvt-256color
 
 conf-unicode-ml:
 	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
@@ -84,7 +85,8 @@ conf-unicode-ml:
 	    --enable-frills \
 	    --enable-mousewheel \
 	    --enable-slipwheeling \
-	    --enable-smart-resize
+	    --enable-smart-resize \
+	    --with-term=rxvt-256color
 
 build: build-stamp
 build-stamp: config.status

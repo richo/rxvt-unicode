@@ -1,3 +1,11 @@
+rxvt-unicode (9.09-3) unstable; urgency=low
+
+  * Set TERM to rxvt-256color for regular and -ml flavors. This may be
+    a temporary measure until we fork the "rxvt-unicode" terminfo entry;
+    please send your feedback.
+
+ -- Decklin Foster <decklin@red-bean.com>  Tue, 07 Dec 2010 11:33:49 -0500
+
 rxvt-unicode (9.09-2) unstable; urgency=low
 
   [ Bhavani Shankar ]
