@@ -7,9 +7,11 @@ Standards-Version: 3.7.2
 
 Package: rxvt-unicode
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
 Provides: x-terminal-emulator
-Suggests: ttf-dejavu
+Replaces: rxvt-unicode-ml
+Conflicts: rxvt-unicode-ml
+Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
+Recommends: ttf-dejavu, ttf-sazanami-gothic
 Description: RXVT-like terminal emulator with Unicode support
  rxvt-unicode is a modern, Unicode-aware color xterm replacement that uses
  significantly less memory than a conventional xterm and many other Unicode
@@ -18,15 +20,21 @@ Description: RXVT-like terminal emulator with Unicode support
  It supports using multiple fonts at the same time, including Xft fonts, and
  client-server technology to reduce memory consumption when using multiple
  windows.
- .
- This package contains the program version with most commonly-used features
- enabled, including transparency, (16-bit) Unicode and FreeType font support.
 
 Package: rxvt-unicode-ml
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-base (>= 5.4-7)
+Depends: ${shlibs:Depends}, ${misc:Depends}, rxvt-unicode
+Description: multi-lingual terminal emulator -- transitional package
+ This is a transitional package depending on rxvt-unicode. Previously, some
+ features were disabled in the regular package because they used more memory
+ even when not being used, but this is no longer the case. All features
+ previously enabled only in this package are now available in rxvt-unicode.
+
+Package: rxvt-unicode-256color
+Architecture: any
 Provides: x-terminal-emulator, rxvt-unicode
-Suggests: ttf-bitstream-vera, ttf-kochi-gothic
+Depends: ${shlibs:Depends}, ${misc:Depends}, base-passwd (>= 2.0.3.4), ncurses-term (>= 5.4-7)
+Recommends: ttf-dejavu, ttf-sazanami-gothic
 Conflicts: rxvt-unicode
 Description: multi-lingual terminal emulator with Unicode support for X11
  rxvt-unicode is a modern, Unicode-aware color xterm replacement that uses
@@ -37,9 +45,9 @@ Description: multi-lingual terminal emulator with Unicode support for X11
  client-server technology to reduce memory consumption when using multiple
  windows.
  .
- This package is configured with all additional features, including additional
- multi-language functions (direct support for Asian encodings and extended
- Unicode 3 support), and an embedded Perl interpreter.
+ This package is configured with 256-color support, and TERM set to
+ "rxvt-unicode-256color". Any other systems you log into must have this
+ terminfo entry installed!
 
 Package: rxvt-unicode-lite
 Architecture: any

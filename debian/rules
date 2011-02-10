@@ -40,19 +40,12 @@ config.status: configure
 	cp -f /usr/share/misc/config.sub config.sub
 	cp -f /usr/share/misc/config.guess config.guess
 
-conf-unicode-lite:
-	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
-	    --disable-xft \
-	    --disable-afterimage \
-	    --disable-perl \
-	    --disable-iso14755 \
-	    --with-term=rxvt-unicode
-
 conf-unicode:
 	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
+	    --enable-unicode3 \
+	    --enable-combining \
 	    --enable-xft \
 	    --enable-font-styles \
-	    --enable-256-color \
 	    --enable-afterimage \
 	    --enable-transparency \
 	    --enable-fading \
@@ -60,13 +53,14 @@ conf-unicode:
 	    --enable-next-scroll \
 	    --enable-xterm-scroll \
 	    --enable-perl \
+	    --enable-xim \
+	    --enable-iso14755 \
 	    --enable-mousewheel \
 	    --enable-slipwheeling \
 	    --enable-smart-resize \
-	    --disable-iso14755 \
-	    --with-term=rxvt-256color
+	    --with-term=rxvt-unicode
 
-conf-unicode-ml:
+conf-unicode-256color:
 	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
 	    --enable-unicode3 \
 	    --enable-combining \
@@ -82,11 +76,18 @@ conf-unicode-ml:
 	    --enable-perl \
 	    --enable-xim \
 	    --enable-iso14755 \
-	    --enable-frills \
 	    --enable-mousewheel \
 	    --enable-slipwheeling \
 	    --enable-smart-resize \
-	    --with-term=rxvt-256color
+	    --with-term=rxvt-unicode-256color
+
+conf-unicode-lite:
+	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
+	    --disable-xft \
+	    --disable-afterimage \
+	    --disable-perl \
+	    --disable-iso14755 \
+	    --with-term=rxvt-unicode
 
 build: build-stamp
 build-stamp: config.status
@@ -96,10 +97,11 @@ build-stamp: config.status
 	dh_installdirs -A usr/bin etc/X11/app-defaults usr/share/pixmaps
 
 	set -e; \
-	for x in unicode unicode-lite unicode-ml; do \
+	for x in unicode unicode-256color unicode-lite; do \
 		cp -f debian/rxvt-unicode-base.preinst debian/rxvt-$$x.preinst; \
 		cp -f debian/rxvt-unicode-base.postinst debian/rxvt-$$x.postinst; \
 		cp -f debian/rxvt-unicode-base.prerm debian/rxvt-$$x.prerm; \
+		cp -f debian/rxvt-unicode-base.docs debian/rxvt-$$x.docs; \
 		y=$(CURDIR)/debian/rxvt-$$x ; z=$(CURDIR)/tmp/$$x; \
 		$(MAKE) $(MFLAGS) -f debian/rules conf-$$x && \
 			perl -pe s,..tag.CXX,, -i src/Makefile; \
@@ -177,7 +179,7 @@ binary-arch: build install
 	dh_testdir
 	dh_testroot
 	dh_installchangelogs -A Changes
-	dh_installdocs -A `cat debian/docs`
+	dh_installdocs
 	dh_installexamples
 	# fix the perms
 #	chmod -x debian/*/usr/share/doc/*/examples/menu/*

@@ -1,3 +1,16 @@
+rxvt-unicode (9.09-5) unstable; urgency=low
+
+  * Split into rxvt-unicode-256color package
+
+ -- Decklin Foster <decklin@red-bean.com>  Thu, 10 Feb 2011 13:03:21 -0500
+
+rxvt-unicode (9.09-4) unstable; urgency=low
+
+  * Recommend ncurses-term for regular/ml flavors (Closes: #605951)
+  * Update -ml font depends (kochi -> sazanami)
+
+ -- Decklin Foster <decklin@red-bean.com>  Wed, 08 Dec 2010 11:52:58 -0500
+
 rxvt-unicode (9.09-3) unstable; urgency=low
 
   * Set TERM to rxvt-256color for regular and -ml flavors. This may be
