@@ -14,15 +14,23 @@ public:
   static bool vax           () { return e == 0x44332211; };
 } byteorder;
 
-template<typename T, typename U>
-static inline T min (T a, U b) { return a < b ? a : (T)b; }
-template<typename T, typename U>
-static inline T max (T a, U b) { return a > b ? a : (T)b; }
-template<typename T>
-static inline void swap (T& a, T& b) { T t=a; a=b; b=t; }
+template<typename T, typename U> static inline T    min    (T  a, U b) { return a < (T)b ? a : (T)b; }
+template<typename T, typename U> static inline void min_it (T &a, U b) {    a = a < (T)b ? a : (T)b; }
+template<typename T, typename U> static inline T    max    (T  a, U b) { return a > (T)b ? a : (T)b; }
+template<typename T, typename U> static inline void max_it (T &a, U b) {    a = a > (T)b ? a : (T)b; }
 
-#define IN_RANGE(val,beg,end) \
+template<typename T, typename U, typename V> static inline T    clamp    (T  v, U a, V b) { return v < (T)a ? a : v >(T)b ? b : v; }
+template<typename T, typename U, typename V> static inline void clamp_it (T &v, U a, V b) {    v = v < (T)a ? a : v >(T)b ? b : v; }
+
+template<typename T, typename U> static inline void swap (T& a, U& b) { T t=a; a=(T)b; b=(U)t; }
+
+// in range including end
+#define IN_RANGE_INC(val,beg,end) \
   ((unsigned int)(val) - (unsigned int)(beg) <= (unsigned int)(end) - (unsigned int)(beg))
+
+// in range excluding end
+#define IN_RANGE_EXC(val,beg,end) \
+  ((unsigned int)(val) - (unsigned int)(beg) <  (unsigned int)(end) - (unsigned int)(beg))
 
 struct zero_initialized {
   void *operator new (size_t s);

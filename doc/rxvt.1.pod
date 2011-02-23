@@ -204,6 +204,12 @@ be printed. See resource B<italicFont> for details.
 Compile font-styles: The bold italic font list to use when bold characters are to
 be printed. See resource B<boldItalicFont> for details.
 
+=item B<-is>|B<+is>
+
+Compile font-styles: Bold/Italic font styles imply high intensity
+foreground/background (default). See resource B<intensityStyles> for
+details.
+
 =item B<-name> I<name>
 
 Specify the application name under which resources are to be obtained,
@@ -315,6 +321,11 @@ on the command-line. If there is no B<-e> option then the default is to
 run the program specified by the B<SHELL> environment variable or,
 failing that, I<sh(1)>.
 
+Please note that you must specify a program with arguments. If you want to
+run shell commands, you have to specify the shell, like this:
+
+  @@RXVT_NAME@@ -e sh -c "shell commands"
+
 =item B<-title> I<text>
 
 Window title (B<-T> still respected); the default title is the basename
@@ -379,6 +390,13 @@ B<secondaryScreen>.
 
 Turn on/off secondary screen scroll (default enabled); resource
 B<secondaryScroll>.
+
+=item B<-hold>|B<+hold>
+
+Turn on/off hold window after exit support. If enabled, @@RXVT_NAME@@
+will not immediately destroy its window when the program executed within
+it exits. Instead, it will wait till it is being killed or closed by the
+user; resource B<hold>.
 
 =item B<-keysym.>I<sym> I<string>
 
@@ -677,6 +695,14 @@ not possible, replacement fonts of the desired shape will be tried.
 If set, but empty, then this specific style is disabled and the normal
 text font will being used for the given style.
 
+=item B<intensityStyles:> I<boolean>
+
+When font styles are not enabled, or this option is enabled (B<True>,
+option B<-is>, the default), bold and italic font styles imply high
+intensity foreground/backround colours. Disabling this option (B<False>,
+option B<+is>) disables this behaviour, the high intensity colours are not
+reachable.
+
 =item B<selectstyle:> I<mode>
 
 Set mouse selection style to B<old> which is 2.20, B<oldword> which is
@@ -900,13 +926,15 @@ the end of the logical line only. option B<-tcw>.
 Enables "insecure" mode. Rxvt-unicode offers some escape sequences that
 echo arbitrary strings like the icon name or the locale. This could be
 abused if somebody gets 8-bit-clean access to your display, whether
-throuh a mail client displaying mail bodies unfiltered or though
-write(1). Therefore, these sequences are disabled by default. (Note
-that other terminals, including xterm, have these sequences
-enabled by default). You can enable them by setting this boolean
-resource or specifying B<-insecure> as an option. At the moment, this
-enabled display-answer, locale, findfont, icon label and window title
-requests as well as dynamic menubar dispatch.
+through a mail client displaying mail bodies unfiltered or through
+write(1) or any other means. Therefore, these sequences are disabled by
+default. (Note that many other terminals, including xterm, have these
+sequences enabled by default, which doesn't make it safer, though).
+
+You can enable them by setting this boolean resource or specifying
+B<-insecure> as an option. At the moment, this enables display-answer,
+locale, findfont, icon label and window title requests as well as dynamic
+menubar dispatch.
 
 =item B<modifier:> I<modifier>
 
@@ -930,6 +958,13 @@ Turn on/off secondary screen scroll (default enabled). If the this
 option is enabled, scrolls on the secondary screen will change the
 scrollback buffer and switching to/from the secondary screen will
 instead scroll the screen up.
+
+=item B<hold>: I<bool>
+
+Turn on/off hold window after exit support. If enabled, @@RXVT_NAME@@
+will not immediately destroy its window when the program executed within
+it exits. Instead, it will wait till it is being killed or closed by the
+user.
 
 =item B<keysym.>I<sym>: I<string>
 
@@ -1060,8 +1095,10 @@ to select a word; Left triple-click to select the entire logical line
 B<tripleclickwords>.
 
 Starting a selection while pressing the B<Meta> key (or B<Meta+Ctrl> keys)
-(Compile: I<frills>) will create a rectangular selection instead of a normal
-one.
+(Compile: I<frills>) will create a rectangular selection instead of a
+normal one. In this mode, every selected row becomes its own line in the
+selection, and trailing whitespace is visually underlined and removed from
+the selection.
 
 =item B<Insertion>:
 
@@ -1079,7 +1116,7 @@ supported in rxvt-unicode. Bug me if you need this.
 You can, however, switch fonts at runtime using escape sequences (and
 therefore using the menubar), e.g.:
 
-   printf '\e]701;%s\007' "9x15bold,xft:Kochi Gothic"
+   printf '\e]710;%s\007' "9x15bold,xft:Kochi Gothic"
 
 rxvt-unicode will automatically re-apply these fonts to the output so far.
 

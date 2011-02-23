@@ -197,7 +197,7 @@ CONFIGURE OPTIONS
           settable insecure mode
           keysym remapping support
           cursor blinking and underline cursor
-          -embed and -pty-fd options
+          -embed, -pty-fd and -hold options
 
     --enable-iso14755 (default: on)
         Enable extended ISO 14755 support (see rxvt(1), or doc/rxvt.1.txt).
@@ -233,9 +233,9 @@ CONFIGURE OPTIONS
         <http://g.oswego.edu/dl/html/malloc.html> for details.
 
     --enable-smart-resize (default: on)
-        Add smart growth/shrink behaviour when changing font size via from
-        hot keys. This should keep in a fixed position the rxvt corner which
-        is closest to a corner of the screen.
+        Add smart growth/shrink behaviour when changing font size via hot
+        keys. This should keep the window corner which is closest to a
+        corner of the screen in a fixed position.
 
     --enable-pointer-blank (default: on)
         Add support to have the pointer disappear when typing or inactive.

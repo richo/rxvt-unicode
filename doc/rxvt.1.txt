@@ -6,7 +6,7 @@ SYNOPSIS
     rxvt [options] [-e command [ args ]]
 
 DESCRIPTION
-    rxvt-unicode, version 5.8, is a colour vt102 terminal emulator intended
+    rxvt-unicode, version 6.2, is a colour vt102 terminal emulator intended
     as an *xterm*(1) replacement for users who do not require features such
     as Tektronix 4014 emulation and toolkit-style configurability. As a
     result, rxvt-unicode uses much less swap space -- a significant
@@ -177,6 +177,11 @@ OPTIONS
         characters are to be printed. See resource boldItalicFont for
         details.
 
+    -is|+is
+        Compile font-styles: Bold/Italic font styles imply high intensity
+        foreground/background (default). See resource intensityStyles for
+        details.
+
     -name *name*
         Specify the application name under which resources are to be
         obtained, rather than the default executable file name. Name should
@@ -269,6 +274,12 @@ OPTIONS
         run the program specified by the SHELL environment variable or,
         failing that, *sh(1)*.
 
+        Please note that you must specify a program with arguments. If you
+        want to run shell commands, you have to specify the shell, like
+        this:
+
+          rxvt -e sh -c "shell commands"
+
     -title *text*
         Window title (-T still respected); the default title is the basename
         of the program specified after the -e option, if any, otherwise the
@@ -320,6 +331,12 @@ OPTIONS
     -ssr|+ssr
         Turn on/off secondary screen scroll (default enabled); resource
         secondaryScroll.
+
+    -hold|+hold
+        Turn on/off hold window after exit support. If enabled, rxvt will
+        not immediately destroy its window when the program executed within
+        it exits. Instead, it will wait till it is being killed or closed by
+        the user; resource hold.
 
     -keysym.*sym* *string*
         Remap a key symbol. See resource keysym.
@@ -586,6 +603,13 @@ RESOURCES (available also as long-options)
         If set, but empty, then this specific style is disabled and the
         normal text font will being used for the given style.
 
+    intensityStyles: *boolean*
+        When font styles are not enabled, or this option is enabled (True,
+        option -is, the default), bold and italic font styles imply high
+        intensity foreground/backround colours. Disabling this option
+        (False, option +is) disables this behaviour, the high intensity
+        colours are not reachable.
+
     selectstyle: *mode*
         Set mouse selection style to old which is 2.20, oldword which is
         xterm style with 2.20 old word selection, or anything else which
@@ -771,13 +795,16 @@ RESOURCES (available also as long-options)
         Enables "insecure" mode. Rxvt-unicode offers some escape sequences
         that echo arbitrary strings like the icon name or the locale. This
         could be abused if somebody gets 8-bit-clean access to your display,
-        whether throuh a mail client displaying mail bodies unfiltered or
-        though write(1). Therefore, these sequences are disabled by default.
-        (Note that other terminals, including xterm, have these sequences
-        enabled by default). You can enable them by setting this boolean
-        resource or specifying -insecure as an option. At the moment, this
-        enabled display-answer, locale, findfont, icon label and window
-        title requests as well as dynamic menubar dispatch.
+        whether through a mail client displaying mail bodies unfiltered or
+        through write(1) or any other means. Therefore, these sequences are
+        disabled by default. (Note that many other terminals, including
+        xterm, have these sequences enabled by default, which doesn't make
+        it safer, though).
+
+        You can enable them by setting this boolean resource or specifying
+        -insecure as an option. At the moment, this enables display-answer,
+        locale, findfont, icon label and window title requests as well as
+        dynamic menubar dispatch.
 
     modifier: *modifier*
         Set the key to be interpreted as the Meta key to: alt, meta, hyper,
@@ -796,6 +823,12 @@ RESOURCES (available also as long-options)
         option is enabled, scrolls on the secondary screen will change the
         scrollback buffer and switching to/from the secondary screen will
         instead scroll the screen up.
+
+    hold: *bool*
+        Turn on/off hold window after exit support. If enabled, rxvt will
+        not immediately destroy its window when the program executed within
+        it exits. Instead, it will wait till it is being killed or closed by
+        the user.
 
     keysym.*sym*: *string*
         Compile *frills*: Associate *string* with keysym *sym*. The
@@ -917,7 +950,9 @@ TEXT SELECTION AND INSERTION
 
         Starting a selection while pressing the Meta key (or Meta+Ctrl keys)
         (Compile: *frills*) will create a rectangular selection instead of a
-        normal one.
+        normal one. In this mode, every selected row becomes its own line in
+        the selection, and trailing whitespace is visually underlined and
+        removed from the selection.
 
     Insertion:
         Pressing and releasing the Middle mouse button (or Shift-Insert) in
@@ -931,7 +966,7 @@ CHANGING FONTS
     You can, however, switch fonts at runtime using escape sequences (and
     therefore using the menubar), e.g.:
 
-       printf '\e]701;%s\007' "9x15bold,xft:Kochi Gothic"
+       printf '\e]710;%s\007' "9x15bold,xft:Kochi Gothic"
 
     rxvt-unicode will automatically re-apply these fonts to the output so
     far.

@@ -22,6 +22,7 @@
 
 #include "../config.h"
 #include "rxvtdaemon.h"
+#include "fdpass.h"
 
 #include "rxvt.h"
 
@@ -86,8 +87,8 @@ main (int argc, const char *const *argv)
 
   c.send ("CWD"), c.send (cwd);
 
-  for (char **var = environ; *environ; environ++)
-    c.send ("ENV"), c.send (*environ);
+  for (char **var = environ; *var; var++)
+    c.send ("ENV"), c.send (*var);
 
   const char *base = strrchr (argv[0], '/');
   base = base ? base + 1 : argv[0];
@@ -99,6 +100,7 @@ main (int argc, const char *const *argv)
   c.send ("END");
 
   auto_str tok;
+  int cint;
 
   for (;;)
     if (!c.recv (tok))
@@ -108,6 +110,16 @@ main (int argc, const char *const *argv)
       }
     else if (!strcmp (tok, "MSG") && c.recv (tok))
       fprintf (stderr, "%s", (const char *)tok);
+#if ENABLE_FRILLS && HAVE_UNIX_FDPASS
+    else if (!strcmp (tok, "GETFD") && c.recv (cint))
+      {
+        if (rxvt_send_fd (c.fd, cint) < 0)
+          {
+            fprintf (stderr, "unable to send fd %d: ", cint); perror (0);
+            exit (EXIT_FAILURE);
+          }
+      }
+#endif
     else if (!strcmp (tok, "END"))
       {
         int success;
@@ -116,7 +128,7 @@ main (int argc, const char *const *argv)
       }
     else
       {
-        fprintf (stderr, "protocol error: received illegal token '%s'.\n", (const char *)tok);
+        fprintf (stderr, "protocol error: received unsupported token '%s'.\n", (const char *)tok);
         break;
       }
 

@@ -112,13 +112,13 @@ rxvt_term::resize_scrollbar ()
     {
       /* create the scrollbar window */
       scrollBar.win = XCreateSimpleWindow (display->display,
-                                          TermWin.parent[0],
-                                          window_sb_x, 0,
-                                          scrollbar_TotalWidth (),
-                                          szHint.height,
-                                          0,
-                                          pix_colors[Color_fg],
-                                          pix_colors[Color_border]);
+                                           parent[0],
+                                           window_sb_x, 0,
+                                           scrollbar_TotalWidth (),
+                                           szHint.height,
+                                           0,
+                                           pix_colors[Color_fg],
+                                           pix_colors[Color_border]);
 #ifdef DEBUG_X
       XStoreName (display->display, scrollBar.win, "scrollbar");
 #endif
@@ -155,9 +155,9 @@ rxvt_term::scrollbar_show (int update)
 
   if (update)
     {
-      top = (TermWin.nscrolled - TermWin.view_start);
-      bot = top + (TermWin.nrow - 1);
-      len = max ((TermWin.nscrolled + (TermWin.nrow - 1)), 1);
+      top = nsaved - view_start;
+      bot = top + (nrow - 1);
+      len = max (nsaved + (nrow - 1), 1);
       adj = (((bot - top) * scrollbar_size ()) % len) > 0 ? 1 : 0;
 
       scrollBar.top = (scrollBar.beg + (top * scrollbar_size ()) / len);
@@ -232,7 +232,7 @@ rxvt_term::setup_scrollbar (const char *scrollalign, const char *scrollstyle, co
       width = min (i, SB_WIDTH_MAXIMUM);
 
 # if defined(RXVT_SCROLLBAR)
-  if (! (options & Opt_scrollBar_floating) && style == R_SB_RXVT)
+  if (! OPTION (Opt_scrollBar_floating) && style == R_SB_RXVT)
     sb_shadow = SHADOW;
 # endif
 
