@@ -22,7 +22,13 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-#include <cwchar>
+#if HAVE_CWCHAR
+# include <cwchar>
+#elif HAVE_WCHAR_H
+# include <wchar.h>
+#else
+// stdlib.h might provide it
+#endif
 
 #include "ptytty.h"
 
@@ -56,8 +62,8 @@ typedef struct rxvt_term *rxvt_t;
 
 extern rxvt_t rxvt_current_term;
 
-# define SET_R(r) rxvt_current_term = (r)
-# define GET_R rxvt_current_term
+#define SET_R(r) rxvt_current_term = (r)
+#define GET_R rxvt_current_term
 
 #define scrollbar_visible()    scrollBar.state
 #define menubar_visible()      menuBar.state

@@ -16,8 +16,10 @@ a significant advantage on a machine serving many X sessions.
 
 =head1 FREQUENTLY ASKED QUESTIONS
 
-See @@RXVT_NAME@@(7) (try C<man 7 @@RXVT_NAME@@>) for a list of frequently
-asked questions and answer to them and some common problems.
+See @@RXVT_NAME@@(7) (try C<man 7 @@RXVT_NAME@@>) for a list of
+frequently asked questions and answer to them and some common
+problems. That document is also accessible on the World-Wide-Web at
+L<http://cvs.schmorp.de/browse/*checkout*/rxvt-unicode/doc/rxvt.7.html>.
 
 =head1 RXVT-UNICODE VS. RXVT
 
@@ -368,11 +370,62 @@ B<secondaryScreen>.
 Turn on/off secondary screen scroll (default enabled); resource
 B<secondaryScroll>.
 
-=item B<-xrm> I<resourcestring>
+=item B<-keysym.>I<sym> I<string>
 
-No effect on rxvt-unicode. Simply passes through an argument to be made
-available in the instance's argument list. Appears in I<WM_COMMAND> in
-some window managers.
+Remap a key symbol. See resource B<keysym>.
+
+=item B<-embed> I<windowid>
+
+Tells @@RXVT_NAME@@ to embed it's windows into an already-existing window,
+which enables applications to easily embed a terminal.
+
+Right now, @@RXVT_NAME@@ will first unmap/map the specified window, so it
+shouldn't be a top-level window. @@RXVT_NAME@@ will also reconfigure it
+quite a bit, so don't expect it to keep some specific state. It's best to
+create an extra subwindow for @@RXVT_NAME@@ and leave it alone.
+
+The window will not be destroyed when @@RXVT_NAME@@ exits.
+
+It might be useful to know that @@RXVT_NAME@@ will not close file
+descriptors passed to it (except for stdin/out/err, of course), so you
+can use file descriptors to communicate with the programs within the
+terminal. This works regardless of wether the C<-embed> option was used or
+not.
+
+Here is a short Gtk2-perl snippet that illustrates how this option can be
+used (a longer example is in F<doc/embed>):
+
+   my $rxvt = new Gtk2::Socket;
+   $rxvt->signal_connect_after (realize => sub {
+      my $xid = $_[0]->window->get_xid;
+      system "@@RXVT_NAME@@ -embed $xid &";
+   });
+
+=item B<-pty-fd> I<fileno>
+
+Tells @@RXVT_NAME@@ NOT to execute any commands or create a new pty/tty
+pair but instead use the given filehandle as the tty master. This is
+useful if you want to drive @@RXVT_NAME@@ as a generic terminal emulator
+without having to run a program within it.
+
+If this switch is given, @@RXVT_NAME@@ will not create any utmp/wtmp
+entries and will not tinker with pty/tty permissions - you have to do that
+yourself if you want that.
+
+Here is a example in perl that illustrates how this option can be used (a
+longer example is in F<doc/pty-fd>):
+
+   use IO::Pty;
+   use Fcntl;
+
+   my $pty = new IO::Pty;
+   fcntl $pty, F_SETFD, 0; # clear close-on-exec
+   system "@@RXVT_NAME@@ -pty-fd " . (fileno $pty) . "&";
+   close $pty;
+
+   # now communicate with rxvt
+   my $slave = $pty->slave;
+   while (<$slave>) { print $slave "got <$_>\n" }
 
 =back
 
@@ -385,8 +438,16 @@ There are two different methods that @@RXVT_NAME@@ can use to get the
 Xresource data: using the X libraries (Xrm*-functions) or internal
 Xresources reader (B<~/.Xdefaults>). For the first method (ie.
 B<@@RXVT_NAME@@ -h> lists B<XGetDefaults>), you can set and change the
-resources using X11 tools like B<xset>. Many distribution do also load
-settings from the B<~/.Xresources> file when X starts.
+resources using X11 tools like B<xrdb>. Many distribution do also load
+settings from the B<~/.Xresources> file when X starts. @@RXVT_NAME@@
+will consult the following files/resources in order, with later settings
+overwriting earlier ones:
+
+  1. system-wide app-defaults file, either locale-dependent OR global
+  2. app-defaults file in $XAPPLRESDIR
+  3. RESOURCE_MANAGER property on root-window OR $HOME/.Xdefaults
+  4. SCREEN_RESOURCES for the current screen
+  5. $XENVIRONMENT file OR $HOME/.Xdefaults-<nodename>
 
 If compiled with internal Xresources support (i.e. B<@@RXVT_NAME@@ -h>
 lists B<.Xdefaults>) then B<@@RXVT_NAME@@> accepts application defaults
@@ -680,8 +741,8 @@ B<+si>.
 =item B<scrollWithBuffer:> I<boolean>
 
 B<True>: scroll with scrollback buffer when tty receives new lines (and
-B<scrollTtyOutput> is False); option B<+sw>. B<False>: do not scroll
-with scrollback buffer when tty recieves new lines; option B<-sw>.
+B<scrollTtyOutput> is False); option B<-sw>. B<False>: do not scroll
+with scrollback buffer when tty recieves new lines; option B<+sw>.
 
 =item B<scrollTtyKeypress:> I<boolean>
 
@@ -933,9 +994,9 @@ the normal text selection/insertion, hold either the Shift or the Meta
 
 If mouse reporting mode is active, the normal scrollbar actions are
 disabled -- on the assumption that we are using a fullscreen
-application. Instead, pressing Button1 and Button3 sends B<ESC[6~>
-(Next) and B<ESC[5~> (Prior), respectively. Similarly, clicking on the
-up and down arrows sends B<ESC[A> (Up) and B<ESC[B> (Down),
+application. Instead, pressing Button1 and Button3 sends B<ESC [ 6 ~>
+(Next) and B<ESC [ 5 ~> (Prior), respectively. Similarly, clicking on the
+up and down arrows sends B<ESC [ A> (Up) and B<ESC [ B> (Down),
 respectively.
 
 =head1 TEXT SELECTION AND INSERTION
@@ -1100,12 +1161,83 @@ on White.
 
 =head1 ENVIRONMENT
 
-B<@@RXVT_NAME@@> sets the environment variables B<TERM>, B<COLORTERM>
-and B<COLORFGBG>. The environment variable B<WINDOWID> is set to the X
-window id number of the B<@@RXVT_NAME@@> window and it also uses and
-sets the environment variable B<DISPLAY> to specify which display
-terminal to use. B<@@RXVT_NAME@@> uses the environment variables
-B<RXVTPATH> and B<PATH> to find XPM files.
+B<@@RXVT_NAME@@> sets and/or uses the following environment variables:
+
+=over 4
+
+=item B<TERM>
+
+Normally set to C<rxvt-unicode>, unless overwritten at configure time, via
+resources or on the commandline.
+
+=item B<COLORTERM>
+
+Either C<rxvt>, C<rxvt-xpm>, depending on wether @@RXVT_NAME@@ was
+compiled with XPM support, and optionally with the added extension
+C<-mono> to indicate that rxvt-unicode runs on a monochrome screen.
+
+=item B<COLORFGBG>
+
+Set to a string of the form C<fg;bg> or C<fg;xpm;bg>, where C<fg> is
+the colour code used as default foreground/text colour (or the string
+C<default> to indicate that the default-colour escape sequence is to be
+used), C<bg> is the colour code used as default background colour (or the
+string C<default>), and C<xpm> is the string C<default> if @@RXVT_NAME@@
+was compiled with XPM support. Libraries like C<ncurses> and C<slang> can
+(and do) use this information to optimize screen output.
+
+=item B<WINDOWID>
+
+Set to the (decimal) X Window ID of the @@RXVT_NAME@@ window (the toplevel
+window, which usually has subwindows for the scrollbar, the terminal
+window and so on).
+
+=item B<TERMINFO>
+
+Set to the terminfo directory iff @@RXVT_NAME@@ was configured with
+C<--with-terminfo=PATH>.
+
+=item B<DISPLAY>
+
+Used by @@RXVT_NAME@@ to connect to the display and set to the correct
+display in it's child processes.
+
+=item B<SHELL>
+
+The shell to be used for command execution, defaults to C</bin/sh>.
+
+=item B<RXVTPATH>
+
+The path where @@RXVT_NAME@@ looks for support files such as menu and xpm
+files.
+
+=item B<PATH>
+
+Used in the same way as C<RXVTPATH>.
+
+=item B<RXVT_SOCKET>
+
+The unix domain socket path used by @@RXVT_NAME@@c(1) and
+@@RXVT_NAME@@d(1).
+
+Default C<< $HOME/.rxvt-unicode-<nodename >>.
+
+=item B<HOME>
+
+Used to locate the default directory for the unix domain socket for
+daemon communications and to locate various resource files (such as
+C<.Xdefaults>)
+
+=item B<XAPPLRESDIR>
+
+Directory where various X resource files are being located.
+
+=item B<XENVIRONMENT>
+
+If set and accessible, gives the name of a X resource file to be loaded by
+@@RXVT_NAME@@.
+
+=back
 
 =head1 FILES
 
@@ -1135,13 +1267,9 @@ Click-and-drag doesn't work with X11 mouse report overriding.
 
 =item Project Coordinator
 
-@@RXVT_MAINT@@ L<@@RXVT_MAINTEMAIL@@>
+Marc A. Lehmann L<< <rxvt-unicode@schmorp.de> >>
 
-=item Web page maintainter
-
-@@RXVT_WEBMAINT@@ L<@@RXVT_WEBMAINTEMAIL@@>
-
-L<@@RXVT_WEBPAGE@@>
+L<http://software.schmorp.de/#rxvt-unicode>
 
 =back
 
@@ -1176,7 +1304,7 @@ Project Coordinator (changes.txt 2.21a to 2.4.5)
 Rewrote screen display and text selection routines. Project Coordinator
 (changes.txt 2.4.6 - rxvt-unicode)
 
-=item Marc Alexander Lehmann L<< <rxvt@schmorp.de> >>
+=item Marc Alexander Lehmann L<< <rxvt-unicode@schmorp.de> >>
 
 Forked rxvt-unicode, rewrote most of the display code and internal
 character handling to store text in unicode, improve xterm

@@ -1,17 +1,81 @@
-Lines marked with "xterm:" indicate either xterm features ported to rxvt
-or changed rxvt behaviour to make it more compatible to xterm (usually
-xfree86's xterm).
-
+TODO: do font request caching, might help rxvtd on some machines
+TODO: manpage 900mb update
+TODO: safer command: keymap processing.
+TODO: "slow" rendering mode for bidi and scripts
 TODO: read property sequence is broken with respect to utf-8 etc.
 WISH: keyboard modification via esc-sequences.
 WISH: line-rewrapping on resize
-WISH: hotkey font resizing (possible via keymaps)
 WISH: searchable backlog
 WISH: meta-tagging of data by regex (my dream project)
 WISH: double-click: more intelligent (urls etc.)
-WISH: OnTheSpot editing.
+WISH: OnTheSpot editing, or maybe switch to miiiiiiif
 WISH: tabbed windows (hey, just use screen...)
 WISH: just for fun, do shade and tint with XRender.
+
+5.2  Sun Feb 20 01:48:59 CET 2005
+	- new option -pty-fd that makes the terminal a slave
+          that uses an existing pty for I/O instead of starting
+          a command.
+        - implement enough of XEMBED to allow for correct focus.
+        - added doc/embed-tk, an embedding example in Perl/Tk,
+          and doc/rxvt-tabbed, a primitive tabbed shell implemented
+          in Perl/Gtk2.
+        - fix assertion failure ("crash") on mousewheel-scrolling
+          when the terminal height is small, by removing the assert.
+          (reported by Mikael Magnusson).
+        - SYNCCVS. backported bugfixes done to rxvt
+          (sourceforge bugs #1028739, #1028732), except for
+          pts/%s fix as it seems to collide with freebsd,
+          and sourceforge bug #954654, which is not neccessary.
+        - change terminfo file to not clobber G1 when using
+          line-drawing characters, as this seems to mess
+          with EUC-JP (it will clobber G0, but G0 practically
+          needs to be US-ASCII all the time).
+        - toggle default application keypad/cursor mode to help
+          some apps who fail to set the correct mode.
+        - check for WM_PROTOCOLS type in ClientMessage as to
+          not destroy the window for other types of messages.
+	- remove shared library (or any library) support - it is
+          of no use currently (and -embed is a better way to embed
+          rxvt-unicode).
+        - get rid of the intpro files.
+
+5.1  Tue Feb 15 17:13:27 CET 2005
+	- fix a bug when parsing fontnames and another one
+          for empty keymaps which could result in crashes
+          (Kuang-che Wu).
+        - new option: -embed (frills). somebody could write a simple
+          tk script to make a tab'able terminal now...
+        - only warn on X errors and _try_ to continue (frills).
+        - add COPYING back, which got lost somehow.
+        - after deciding that LSM is dead, remove all traces of it,
+          along with other, similar, cleanups.
+        - _try_ to react sensibly to some non-monotonic time changes.
+        - don't crash in urxvtc when getcwd fails (reported by Paco-Paco).
+        - tweak font searching algorithm a bit to be faster and more
+          compatible with older rxvt-unicode versions when multiple fonts
+          match (reported by Paco-Paco).
+        - urxvtd tries to stay in "/" whenever possible.
+
+5.0  Fri Feb 11 18:31:48 CET 2005
+	- document a race-free hack to start urxvtd.
+        - document all(?) environment variables used and set by rxvt.
+        - bring xgetdefault-style resource file ordering more in line with
+          Xt, and document it in rxvt(1).
+        - correctly use screen-dependent resources when --enable-xgetdefault,
+          and also fix some memory bugs (thanks to Thierry Reding for
+          his patience and time in tracking this down).
+        - bring own resource parsing more in line with X resource parsing,
+          most notably, don't remove double quotes.
+	- compile fix for freebsd (no ut_id) (Thierry Thomas).
+        - clean up utmp and pty on X I/O errors and signals (idea
+          by Joël Riou).
+        - "un"document -xrm, it never really worked, was only
+          available with --enable-xgetdefault, is not necessary
+          and is surprisingly hard to implement.
+        - shaved off some code segment size.
+        - various code cleanups.
+        - more keysym-mapping fixes.
 
 4.9  Thu Feb  3 09:52:03 CET 2005
         - nuke out utmp entries completely. Should be fixed in
@@ -46,7 +110,7 @@ WISH: just for fun, do shade and tint with XRender.
         - for core fonts, use ascent + descent when a font is loaded,
           and PIXEL_SIZE when not. when loading a font, iterate until a
           font has been found that _really_ fits the height (reported and
-          tested by Roch).
+          tested by Olivier Wittenberg).
         - set IUTF8 input flag, when defined (linux-2.6.5+).
         - only define _XOPEN_SOURCE on solaris.
         - autogenerate src/* dependency list.
@@ -403,16 +467,16 @@ WISH: just for fun, do shade and tint with XRender.
           for the keymappings.
         - don't leave the X or rxvtd sockets open in child processes.
           (inherited fd's stay open - different to rxvt).
-	- xterm: implemented OSC3, set/get window property. get is an
-          extension and is slightly ugly.
+        - xterm-compat: implemented OSC3, set/get window property. get is
+          an extension and is slightly ugly.
 	- removed --disable-swapscreen and SCROLL_ON_NO_SECONDARY and
           replaced them by runtime-configurable options secondaryScreen and
           secondaryScroll (-ssr and -ssc) (see debian bug #237673).
 	- close down terminal window when child exits. (debian bug #241267).
-        - xterm: enable seperate mouse bg colour setting.
+        - xterm-compat: enable seperate mouse bg colour setting.
         - re-enable mouse cursor colours again, fixing colours when fg/bg are
           overwritten (as is common).
-        - xterm: correctly implement privmodes 1047, 1048, 1049.
+        - xterm-compat: correctly implement privmodes 1047, 1048, 1049.
         - ported to solaris by elmar@math.uni-bremen.de.
 
 2.6  Fri Apr  2 03:24:10 CEST 2004
@@ -420,8 +484,8 @@ WISH: just for fun, do shade and tint with XRender.
         - WARNING: changed menu sequence from ESC ] 10 to ESC ] 703 to
           avoid clashes with xterm.
         - changed OSC701/OSC702 sequence to return standard escaped reports.
-        - xterm: make set window colour and other requests report window
-          colour when arg is "?".
+        - xterm-compat: make set window colour and other requests report
+          window colour when arg is "?".
         - enable colour tinting of "transparent" backgrounds.
         - stop ST sequences earlier, as we now react on 0x90 and thus
           cause conditions more often that look like locks but are, in

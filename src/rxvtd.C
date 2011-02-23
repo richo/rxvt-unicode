@@ -196,6 +196,7 @@ void server::read_cb (io_watcher &w, short revents)
             term->log_hook = 0;
 
             environ = old_environ;
+            chdir ("/");
 
             if (!success)
               term->destroy ();
@@ -215,9 +216,12 @@ main (int argc, const char *const *argv)
 {
   rxvt_init ();
 
+  chdir ("/");
+
   char *sockname = rxvt_connection::unix_sockname ();
   unix_listener l (sockname);
   printf ("rxvt-unicode daemon listening on %s.\n", sockname);
+  fflush (stdout);
   free (sockname);
 
   io_manager::loop ();
