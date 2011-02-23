@@ -58,7 +58,8 @@ namespace ev {
 
   typedef ev_tstamp tstamp;
 
-  enum {
+  enum
+  {
     UNDEF    = EV_UNDEF,
     NONE     = EV_NONE,
     READ     = EV_READ,
@@ -74,26 +75,28 @@ namespace ev {
     FORK     = EV_FORK,
     ASYNC    = EV_ASYNC,
     EMBED    = EV_EMBED,
+#   undef ERROR // some systems stupidly #define ERROR
     ERROR    = EV_ERROR,
   };
 
   enum
   {
-    AUTO = EVFLAG_AUTO,
-    NOENV = EVFLAG_NOENV,
+    AUTO      = EVFLAG_AUTO,
+    NOENV     = EVFLAG_NOENV,
     FORKCHECK = EVFLAG_FORKCHECK,
-    SELECT = EVBACKEND_SELECT,
-    POLL = EVBACKEND_POLL,
-    EPOLL = EVBACKEND_EPOLL,
-    KQUEUE = EVBACKEND_KQUEUE,
-    DEVPOLL = EVBACKEND_DEVPOLL,
-    PORT = EVBACKEND_PORT
+
+    SELECT    = EVBACKEND_SELECT,
+    POLL      = EVBACKEND_POLL,
+    EPOLL     = EVBACKEND_EPOLL,
+    KQUEUE    = EVBACKEND_KQUEUE,
+    DEVPOLL   = EVBACKEND_DEVPOLL,
+    PORT      = EVBACKEND_PORT
   };
 
   enum
   {
     NONBLOCK = EVLOOP_NONBLOCK,
-    ONESHOT = EVLOOP_ONESHOT
+    ONESHOT  = EVLOOP_ONESHOT
   };
 
   enum how_t

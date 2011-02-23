@@ -206,7 +206,8 @@ set_environ (char **envv)
  * the 'essential' information for reporting Mouse Events
  * pared down from XButtonEvent
  */
-struct mouse_event {
+struct mouse_event
+{
   int clicks;
   Time time;             /* milliseconds */
   unsigned int state;    /* key or button mask */
@@ -412,6 +413,7 @@ enum {
   URxvt_Color_tint       = 705,     // change actual tint colour
   URxvt_Color_BD         = 706,     // change actual 'Bold' color
   URxvt_Color_UL         = 707,     // change actual 'Underline' color
+  URxvt_Color_border     = 708,
 
   URxvt_font             = 710,
   URxvt_boldFont         = 711,
@@ -421,7 +423,7 @@ enum {
   URxvt_view_up          = 720,
   URxvt_view_down        = 721,
 
-  URxvt_perl             = 777,
+  URxvt_perl             = 777,     // for use by perl extensions, starts with "extension-name;"
 };
 
 /* Words starting with `Color_' are colours.  Others are counts */
@@ -552,11 +554,13 @@ enum {
 #define IMBUFSIZ               128     // input modifier buffer sizes
 #define KBUFSZ                 512     // size of keyboard mapping buffer
 #define CBUFSIZ                2048    // size of command buffer
+#define CBUFCNT                8       // never call pty_fill/cmd_parse more than this often in a row
 #define UBUFSIZ                2048    // character buffer
 
 #if ENABLE_FRILLS
 # include <X11/Xmd.h>
-typedef struct _mwmhints {
+typedef struct _mwmhints
+{
   CARD32 flags;
   CARD32 functions;
   CARD32 decorations;
@@ -613,8 +617,11 @@ typedef struct _mwmhints {
 #define Width2Pixel(n)          ((int32_t)(n) * (int32_t)fwidth)
 #define Height2Pixel(n)         ((int32_t)(n) * (int32_t)fheight)
 
-#define LINENO(n) MOD (term_start + int(n), total_rows)
-#define ROW(n) row_buf [LINENO (n)]
+#define LINENO_of(t,n) MOD ((t)->term_start + int(n), (t)->total_rows)
+#define ROW_of(t,n) (t)->row_buf [LINENO_of ((t), n)]
+
+#define LINENO(n) LINENO_of (this, n)
+#define ROW(n) ROW_of (this, n)
 
 /* how to build & extract colors and attributes */
 #define GET_BASEFG(x)           (((x) & RS_fgMask))
@@ -641,10 +648,12 @@ typedef struct _mwmhints {
 #define ISSET_PIXCOLOR(idx)     (!!rs[Rs_color + (idx)])
 
 #if ENABLE_STYLES
-# define FONTSET(style) fontset[GET_STYLE (style)]
+# define FONTSET_of(t,style) (t)->fontset[GET_STYLE (style)]
 #else
-# define FONTSET(style) fontset[0]
+# define FONTSET_of(t,style) (t)->fontset[0]
 #endif
+
+#define FONTSET(style) FONTSET_of (this, style)
 
 typedef callback<void (const char *)> log_callback;
 typedef callback<int (int)> getfd_callback;
@@ -657,7 +666,8 @@ typedef callback<int (int)> getfd_callback;
 #define LINE_FILTER     0x0008 // line needs to be filtered before display (NYI)
 #define LINE_BIDI       0x0010 // line needs bidi (NYI)
 
-struct line_t {
+struct line_t
+{
    text_t *t; // terminal the text
    rend_t *r; // rendition, uses RS_ flags
    tlen_t_ l; // length of each text line
@@ -701,7 +711,8 @@ struct line_t {
 /****************************************************************************/
 
 // primitive wrapper around mbstate_t to ensure initialisation
-struct mbstate {
+struct mbstate
+{
   mbstate_t mbs;
 
   operator mbstate_t *() { return &mbs; }
@@ -732,14 +743,16 @@ struct mbstate {
 // compose chars are used to represent composite characters
 // that are not representable in unicode, as well as characters
 // not fitting in the BMP.
-struct compose_char {
+struct compose_char
+{
   unicode_t c1, c2; // any chars != NOCHAR are valid
   compose_char (unicode_t c1, unicode_t c2)
   : c1(c1), c2(c2)
   { }
 };
 
-class rxvt_composite_vec {
+class rxvt_composite_vec
+{
   vector<compose_char> v;
 public:
   text_t compose (unicode_t c1, unicode_t c2 = NOCHAR);
@@ -768,7 +781,20 @@ extern rxvt_t rxvt_current_term;
 #define SET_R(r) rxvt_current_term = const_cast<rxvt_term *>(r)
 #define GET_R rxvt_current_term
 
-typedef struct {
+/* ------------------------------------------------------------------------- */
+struct overlay_base
+{
+  int x, y, w, h; // overlay dimensions
+  text_t **text;
+  rend_t **rend;
+
+  // while tempting to add swap() etc. here, it effetcively only increases code size
+};
+
+/* ------------------------------------------------------------------------- */
+
+typedef struct
+{
   int row;
   int col;
 } row_col_t;
@@ -809,7 +835,8 @@ typedef struct {
  *  END······················= total_rows
  */
 
-struct TermWin_t {
+struct TermWin_t
+{
   int            width;         /* window width                    [pixels] */
   int            height;        /* window height                   [pixels] */
   int            fwidth;        /* font width                      [pixels] */
@@ -853,7 +880,8 @@ struct TermWin_t {
  * * Note: col == -1 ==> we're left of screen
  *
  */
-typedef struct {
+struct screen_t
+{
   row_col_t       cur;          /* cursor position on the screen             */
   int             tscroll;      /* top of settable scroll region             */
   int             bscroll;      /* bottom of settable scroll region          */
@@ -863,9 +891,10 @@ typedef struct {
   unsigned int    s_charset;    /* saved character set number [0..3]         */
   char            s_charset_char;
   rend_t          s_rstyle;     /* saved rendition style                     */
-} screen_t;
+};
 
-enum selection_op_t {
+enum selection_op_t
+{
   SELECTION_CLEAR = 0,  /* nothing selected                          */
   SELECTION_INIT,       /* marked a point                            */
   SELECTION_BEGIN,      /* started a selection                       */
@@ -873,7 +902,8 @@ enum selection_op_t {
   SELECTION_DONE        /* selection put in CUT_BUFFER0              */
 };
 
-typedef struct {
+struct selection_t
+{
   wchar_t          *text;       /* selected text                             */
   unsigned int      len;        /* length of selected text                   */
   unsigned int      screen;     /* screen being used                         */
@@ -883,7 +913,7 @@ typedef struct {
   row_col_t         beg;        /* beginning of selection   <= mark          */
   row_col_t         mark;       /* point of initial click   <= end           */
   row_col_t         end;        /* one character past end point              */
-} selection_t;
+};
 
 /* ------------------------------------------------------------------------- */
 
@@ -907,7 +937,8 @@ Opt_count
 
 /* ------------------------------------------------------------------------- */
 
-struct rxvt_vars : TermWin_t {
+struct rxvt_vars : TermWin_t
+{
   scrollBar_t     scrollBar;
   uint8_t         options[(Opt_count + 7) >> 3];
   XSizeHints      szHint;
@@ -927,7 +958,8 @@ struct rxvt_vars : TermWin_t {
 #endif
 };
 
-struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
+struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
+{
 
   // special markers with magic addresses
   static const char resval_undef [];    // options specifically unset
@@ -945,6 +977,9 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
                   current_screen:1,	/* primary or secondary              */
                   num_scr_allow:1,
                   bypass_keystate:1,
+#ifdef ENABLE_FRILLS
+                  urgency_hint:1,
+#endif
 #ifdef CURSOR_BLINK
                   hidden_cursor:1,
 #endif
@@ -1025,12 +1060,16 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 #ifdef HAVE_AFTERIMAGE
   ASVisual       *asv;
   ASImageManager *asimman;
+
+  void init_asv ()
+  {
+    if (!asv)
+      asv = create_asvisual_for_id (dpy, display->screen, depth, XVisualIDFromVisual (visual), cmap, NULL);
+  }
 #endif
 
 #if ENABLE_OVERLAY
-  int ov_x, ov_y, ov_w, ov_h; // overlay dimensions
-  text_t **ov_text;
-  rend_t **ov_rend;
+  overlay_base ov;
 
   void scr_swap_overlay () NOTHROW;
   void scr_overlay_new (int x, int y, int w, int h) NOTHROW;
@@ -1191,12 +1230,13 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   uint32_t next_octet () NOTHROW;
   uint32_t cmd_get8 () THROW ((class out_of_input));
 
-  bool cmd_parse ();
+  void cmd_parse ();
   void mouse_report (XButtonEvent &ev);
   void button_press (XButtonEvent &ev);
   void button_release (XButtonEvent &ev);
   void focus_in ();
   void focus_out ();
+  void set_urgency (bool enable);
   void update_fade_color (unsigned int idx);
 #ifdef PRINTPIPE
   FILE *popen_printer ();
@@ -1344,6 +1384,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void paste (char *data, unsigned int len) NOTHROW;
   void scr_blank_line (line_t &l, unsigned int col, unsigned int width, rend_t efs) const NOTHROW;
   void scr_blank_screen_mem (line_t &l, rend_t efs) const NOTHROW;
+  void scr_kill_char (line_t &l, int col) const NOTHROW;
   int scr_scroll_text (int row1, int row2, int count) NOTHROW;
   void scr_reset ();
   void scr_release () NOTHROW;
@@ -1365,6 +1406,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   enum cursor_mode { SAVE, RESTORE };
 
   void scr_poweron ();
+  void scr_soft_reset () NOTHROW;
   void scr_cursor (cursor_mode mode) NOTHROW;
   void scr_do_wrap () NOTHROW;
   void scr_swap_screen () NOTHROW;

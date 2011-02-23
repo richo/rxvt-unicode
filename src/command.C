@@ -1129,8 +1129,11 @@ static struct event_handler
     // that giving a process calling sched_yield () less cpu time than
     // ones with high nice levels is a useful thing to do. It surely is is
     // allowed by the sus... as is returning ENOSYS.
+    // since the linux guys additionally thought that breaking the only
+    // known workaroudn against their unusable sched_yield hack is cool,
+    // we just nanosleep a bit and hope for the best.
 
-    struct timespec ts = { 0, 0 };
+    struct timespec ts = { 0, 1000 };
     nanosleep (&ts, 0);
 
     w.stop ();
@@ -1190,9 +1193,8 @@ rxvt_term::pty_cb (ev::io &w, int revents)
 
   if (revents & ev::READ)
     // loop, but don't allow a single term to monopolize us
-    while (pty_fill ())
-      if (cmd_parse ())
-        break;
+    for (int i = CBUFCNT; i-- && pty_fill (); )
+      cmd_parse ();
 
   if (revents & ev::WRITE)
     pty_write ();
@@ -1685,14 +1687,26 @@ rxvt_term::x_cb (XEvent &ev)
 }
 
 void
+rxvt_term::set_urgency (bool enable)
+{
+  if (enable == urgency_hint)
+    return;
+
+  if (XWMHints *h = XGetWMHints (dpy, parent[0]))
+    {
+      h->flags = h->flags & ~XUrgencyHint | (enable ? XUrgencyHint : 0);
+      XSetWMHints (dpy, parent[0], h);
+      urgency_hint = enable;
+    }
+}
+
+void
 rxvt_term::focus_in ()
 {
   if (!focus)
     {
       focus = 1;
       want_refresh = 1;
-
-      HOOK_INVOKE ((this, HOOK_FOCUS_IN, DT_END));
 
 #if USE_XIM
       if (Input_Context != NULL)
@@ -1714,14 +1728,10 @@ rxvt_term::focus_in ()
 #endif
 #if ENABLE_FRILLS
       if (option (Opt_urgentOnBell))
-        {
-          if (XWMHints *h = XGetWMHints(dpy, parent[0]))
-            {
-              h->flags &= ~XUrgencyHint;
-              XSetWMHints (dpy, parent[0], h);
-            }
-        }
+        set_urgency (0);
 #endif
+
+      HOOK_INVOKE ((this, HOOK_FOCUS_IN, DT_END));
     }
 }
 
@@ -1733,8 +1743,10 @@ rxvt_term::focus_out ()
       focus = 0;
       want_refresh = 1;
 
-      HOOK_INVOKE ((this, HOOK_FOCUS_OUT, DT_END));
-
+#if ENABLE_FRILLS
+      if (option (Opt_urgentOnBell))
+        set_urgency (0);
+#endif
 #if ENABLE_FRILLS || ISO_14755
       if (iso14755buf)
         {
@@ -1761,6 +1773,8 @@ rxvt_term::focus_out ()
           scr_recolour ();
         }
 #endif
+
+      HOOK_INVOKE ((this, HOOK_FOCUS_OUT, DT_END));
     }
 }
 
@@ -2172,16 +2186,15 @@ rxvt_term::button_release (XButtonEvent &ev)
 
 /*}}} */
 
-bool
+void
 rxvt_term::cmd_parse ()
 {
-  bool flag = false;
   wchar_t ch = NOCHAR;
   char *seq_begin; // remember start of esc-sequence here
 
   for (;;)
     {
-      if (ch == NOCHAR)
+      if (expect_false (ch == NOCHAR))
         {
           seq_begin = cmdbuf_ptr;
           ch = next_char ();
@@ -2190,9 +2203,9 @@ rxvt_term::cmd_parse ()
             break;
         }
 
-      if (!IS_CONTROL (ch) || ch == C0_LF || ch == C0_CR || ch == C0_HT)
+      if (expect_true (!IS_CONTROL (ch) || ch == C0_LF || ch == C0_CR || ch == C0_HT))
         {
-          if (!seen_input)
+          if (expect_false (!seen_input))
             {
               seen_input = 1;
               // many badly-written programs (e.g. jed) contain a race condition:
@@ -2215,12 +2228,12 @@ rxvt_term::cmd_parse ()
 
           for (;;)
             {
-              if (ch == NOCHAR || (IS_CONTROL (ch) && ch != C0_LF && ch != C0_CR && ch != C0_HT))
+              if (expect_false (ch == NOCHAR || (IS_CONTROL (ch) && ch != C0_LF && ch != C0_CR && ch != C0_HT)))
                 break;
 
               *str++ = ch;
 
-              if (ch == C0_LF || str >= eol)
+              if (expect_false (ch == C0_LF || str >= eol))
                 {
                   if (ch == C0_LF)
                     nlines++;
@@ -2279,11 +2292,9 @@ rxvt_term::cmd_parse ()
            */
           if (refreshnow)
             {
-              flag = true;
               scr_refresh ();
               want_refresh = 1;
             }
-
         }
       else
         {
@@ -2301,8 +2312,6 @@ rxvt_term::cmd_parse ()
           ch = NOCHAR;
         }
     }
-
-  return flag;
 }
 
 // read the next character
@@ -2312,7 +2321,7 @@ rxvt_term::next_char () NOTHROW
   while (cmdbuf_ptr < cmdbuf_endp)
     {
       // assume 7-bit to be ascii ALWAYS
-      if ((unsigned char)*cmdbuf_ptr <= 0x7f && *cmdbuf_ptr != 0x1b)
+      if (expect_true ((unsigned char)*cmdbuf_ptr <= 0x7f && *cmdbuf_ptr != 0x1b))
         return *cmdbuf_ptr++;
 
       wchar_t wc;
@@ -2383,7 +2392,7 @@ rxvt_term::cmd_get8 () THROW ((class out_of_input))
 FILE *
 rxvt_term::popen_printer ()
 {
-  FILE *stream = popen (rs[Rs_print_pipe], "w");
+  FILE *stream = popen (rs[Rs_print_pipe] ? rs[Rs_print_pipe] : PRINTPIPE, "w");
 
   if (stream == NULL)
     rxvt_warn ("can't open printer pipe, not printing.\n");
@@ -2404,17 +2413,16 @@ rxvt_term::pclose_printer (FILE *stream)
 void
 rxvt_term::process_print_pipe ()
 {
-  int done;
-  FILE *fd;
+  FILE *fd = popen_printer ();
 
-  if ((fd = popen_printer ()) == NULL)
+  if (!fd)
     return;
 
   /*
    * Send all input to the printer until either ESC[4i or ESC[?4i
    * is received.
    */
-  for (done = 0; !done;)
+  for (int done = 0; !done; )
     {
       unsigned char buf[8];
       unicode_t ch;
@@ -2682,17 +2690,17 @@ rxvt_term::process_escape_seq ()
         tt_write (ESCZ_ANSWER, sizeof (ESCZ_ANSWER) - 1);
         break;			/* steal obsolete ESC [ c */
 
-        /* 8.3.16: CONTROL SEQUENCE INTRODUCER */
+        /* 8.3.16: CONTROL SEQUENCE INTRODUCER (CSI) */
       case C1_CSI:		/* ESC [ */
         process_csi_seq ();
         break;
 
-        /* 8.3.90: OPERATING SYSTEM COMMAND */
+        /* 8.3.90: OPERATING SYSTEM COMMAND (OSC) */
       case C1_OSC:		/* ESC ] */
         process_osc_seq ();
         break;
 
-        /* 8.3.106: RESET TO INITIAL STATE */
+        /* 8.3.106: RESET TO INITIAL STATE (RIS) */
       case 'c':
         mbstate.reset ();
         scr_poweron ();
@@ -2757,9 +2765,9 @@ rxvt_term::process_csi_seq ()
 
   priv = 0;
   ch = cmd_getc ();
-  if (ch >= '<' && ch <= '?')
+  if ((ch >= '<' && ch <= '?') || ch == '!')
     {
-      /* '<' '=' '>' '?' */
+      /* '<' '=' '>' '?' '!' */
       priv = ch;
       ch = cmd_getc ();
     }
@@ -2823,7 +2831,22 @@ rxvt_term::process_csi_seq ()
             if (ch == 'h' || ch == 'l' || ch == 'r' || ch == 's' || ch == 't')
               process_terminal_mode (ch, priv, nargs, arg);
             break;
+
+          case '!':
+            if (ch == CSI_70)
+              {
+                /* DECSTR: soft terminal reset, used by our terminfo since 9.06 */
+                scr_soft_reset ();
+
+                static const int pm_h[] = { 7, 25 };
+                static const int pm_l[] = { 1, 3, 4, 5, 6, 9, 66, 1000, 1001, 1049 };
+
+                process_terminal_mode ('h', 0, sizeof (pm_h) / sizeof (pm_h[0]), pm_h);
+                process_terminal_mode ('l', 0, sizeof (pm_l) / sizeof (pm_l[0]), pm_l);
+              }
+          break;
         }
+
       return;
     }
 
@@ -3379,6 +3402,9 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
         process_color_seq (op, Color_IT, str, resp);
         break;
 #endif
+      case URxvt_Color_border:
+        process_color_seq (op, Color_border, str, resp);
+        break;
 #if ENABLE_TRANSPARENCY
       case URxvt_Color_tint:
         process_color_seq (op, Color_tint, str, resp);
@@ -3512,8 +3538,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
 
 #if ENABLE_PERL
       case URxvt_perl:
-        if (HOOK_INVOKE ((this, HOOK_OSC_SEQ_PERL, DT_STR, str, DT_END)))
-          ; // no responses yet
+        HOOK_INVOKE ((this, HOOK_OSC_SEQ_PERL, DT_STR, str, DT_STR_LEN, &resp, 1, DT_END));
         break;
 #endif
     }
@@ -3564,29 +3589,31 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
     const int       argval;
     const unsigned long bit;
   } argtopriv[] = {
-                  { 1, PrivMode_aplCUR },
+                  { 1, PrivMode_aplCUR },       // DECCKM
                   { 2, PrivMode_vt52 },
-                  { 3, PrivMode_132 },
-                  { 4, PrivMode_smoothScroll },
-                  { 5, PrivMode_rVideo },
-                  { 6, PrivMode_relOrigin },
-                  { 7, PrivMode_Autowrap },
-                 // 8, bi-directional support mode
+                  { 3, PrivMode_132 },          // DECCOLM
+                  { 4, PrivMode_smoothScroll }, // DECSCLM
+                  { 5, PrivMode_rVideo },       // DECSCNM
+                  { 6, PrivMode_relOrigin },    // DECOM
+                  { 7, PrivMode_Autowrap },     // DECAWM
+                 // 8, auto-repeat keys         // DECARM
                   { 9, PrivMode_MouseX10 },
-                 // 18, 19 printing-related
-                  { 25, PrivMode_VisibleCursor },
+                 // 18 end FF to printer after print screen
+                 // 19 Print screen prints full screen/scorll region
+                  { 25, PrivMode_VisibleCursor }, // cnorm/cvvis/civis
 #ifdef scrollBar_esc
                   { scrollBar_esc, PrivMode_scrollBar },
 #endif
-                  { 35, PrivMode_ShiftKeys }, // rxvt extension
+                  { 35, PrivMode_ShiftKeys },   // rxvt extension
+                 // 38, tektronix mode          // DECTEK
                   { 40, PrivMode_132OK },
                  // 41 xterm more fixes NYI
                  // 45 margin bell NYI
                  // 46 start logging
                   { 47, PrivMode_Screen },
-                  { 66, PrivMode_aplKP },
+                  { 66, PrivMode_aplKP },       // DECPAM/DECPNM
 #ifndef NO_BACKSPACE_KEY
-                  { 67, PrivMode_BackSpace },
+                  { 67, PrivMode_BackSpace },   // DECBKM
 #endif
                   { 1000, PrivMode_MouseX11 },
                   { 1002, PrivMode_MouseBtnEvent },
@@ -3635,7 +3662,6 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
             break;
 #endif
           case 1048:		/* alternative cursor save */
-          case 1049:
             if (option (Opt_secondaryScreen))
               if (mode == 0)
                 scr_cursor (RESTORE);
@@ -3658,10 +3684,7 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
               break;
             case 3:			/* 80/132 */
               if (priv_modes & PrivMode_132OK)
-                {
-                  scr_poweron ();
-                  set_widthheight (((state ? 132 : 80) * fwidth), 24 * fheight);
-                }
+                set_widthheight ((state ? 132 : 80) * fwidth, 24 * fheight);
               break;
             case 4:			/* smooth scrolling */
               set_option (Opt_jumpScroll, !state);
@@ -3713,6 +3736,7 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
                 }
               else
                 vt_emask_mouse = NoEventMask;
+
               vt_select_input ();
               break;
             case 1010:		/* scroll to bottom on TTY output inhibit */
@@ -3723,15 +3747,23 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
               break;
             case 1047:		/* secondary screen w/ clearing last */
               if (option (Opt_secondaryScreen))
-                if (current_screen != PRIMARY)
+                if (!state)
                   scr_erase_screen (2);
+
               scr_change_screen (state);
               break;
             case 1049:		/* secondary screen w/ clearing first */
-              scr_change_screen (state);
               if (option (Opt_secondaryScreen))
-                if (current_screen != PRIMARY)
+                if (state)
+                  scr_cursor (SAVE);
+
+              scr_change_screen (state);
+
+              if (option (Opt_secondaryScreen))
+                if (state)
                   scr_erase_screen (2);
+                else
+                  scr_cursor (RESTORE);
               break;
             default:
               break;

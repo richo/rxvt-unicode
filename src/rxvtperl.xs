@@ -109,13 +109,11 @@ SvPTR (SV *sv, const char *klass)
 
 #define SvOVERLAY(sv) (overlay *)SvPTR (sv, "urxvt::overlay")
 
-class overlay {
+class overlay : overlay_base
+{
   rxvt_term *THIS;
   AV *overlay_av;
-  int x, y, w, h;
   int border;
-  text_t **text;
-  rend_t **rend;
 
 public:
   HV *self;
@@ -132,8 +130,13 @@ public:
 };
 
 overlay::overlay (rxvt_term *THIS, int x_, int y_, int w_, int h_, rend_t rstyle, int border)
-: THIS(THIS), x(x_), y(y_), w(w_), h(h_), border(border == 2), overlay_av (0)
+: THIS(THIS), border(border == 2), overlay_av (0)
 {
+  x = x_;
+  y = y_;
+  w = w_;
+  h = h_;
+
   if (w < 0) w = 0;
   if (h < 0) h = 0;
 
@@ -247,6 +250,11 @@ void overlay::swap ()
   int ov_w = min (w, THIS->ncol - ov_x);
   int ov_h = min (h, THIS->nrow - ov_y);
 
+  // hide cursor if it is within the overlay area
+  if (IN_RANGE_EXC (THIS->screen.cur.col - ov_x, 0, ov_w)
+      && IN_RANGE_EXC (THIS->screen.cur.row - ov_y, 0, ov_h))
+    THIS->screen.flags &= ~Screen_VisibleCursor;
+
   for (int y = ov_h; y--; )
     {
       text_t *t1 = text [y];
@@ -312,6 +320,7 @@ rxvt_perl_interp::~rxvt_perl_interp ()
     {
       perl_destruct (perl);
       perl_free (perl);
+      PERL_SYS_TERM ();
     }
 }
 
@@ -325,7 +334,7 @@ rxvt_perl_interp::init (rxvt_term *term)
       perl_environ = rxvt_environ;
       swap (perl_environ, environ);
 
-      char *argv[] = {
+      char *args[] = {
         "",
         "-e"
         "BEGIN {"
@@ -335,11 +344,14 @@ rxvt_perl_interp::init (rxvt_term *term)
         ""
         "use urxvt;"
       };
+      int argc = sizeof (args) / sizeof (args[0]);
+      char **argv = args;
 
+      PERL_SYS_INIT3 (&argc, &argv, &environ);
       perl = perl_alloc ();
       perl_construct (perl);
 
-      if (perl_parse (perl, xs_init, 2, argv, (char **)NULL)
+      if (perl_parse (perl, xs_init, argc, argv, (char **)NULL)
           || perl_run (perl))
         {
           rxvt_warn ("unable to initialize perl-interpreter, continuing without.\n");
@@ -1099,7 +1111,9 @@ rxvt_term::ModLevel3Mask ()
             case 1: RETVAL = THIS->ModMetaMask;    break;
             case 2: RETVAL = THIS->ModNumLockMask; break;
             case 3: RETVAL = THIS->current_screen; break;
+#ifdef CURSOR_BLINK
             case 4: RETVAL = THIS->hidden_cursor;  break;
+#endif
           }
         OUTPUT:
         RETVAL

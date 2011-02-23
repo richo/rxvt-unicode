@@ -85,27 +85,13 @@ static inline void fill_text (text_t *start, text_t value, int len)
     ROW_AND_COL_IN_ROW_AT_OR_BEFORE ((X).row, (X).col, (Y).row, (Y).col)
 
 /*
- * CLEAR_ROWS : clear <num> rows starting from row <row>
  * CLEAR_CHARS: clear <num> chars starting from pixel position <x,y>
- * ERASE_ROWS : set <num> rows starting from row <row> to the foreground colour
  */
-#define CLEAR_ROWS(row, num)                                           \
-    if (mapped)                                                        \
-        XClearArea (dpy, vt, 0,                                        \
-                    Row2Pixel (row), (unsigned int)width,              \
-                    (unsigned int)Height2Pixel (num), False)
-
 #define CLEAR_CHARS(x, y, num)                                         \
     if (mapped)                                                        \
         XClearArea (dpy, vt, x, y,                                     \
                     (unsigned int)Width2Pixel (num),                   \
                     (unsigned int)Height2Pixel (1), False)
-
-#define ERASE_ROWS(row, num)                                           \
-    XFillRectangle (dpy, vt, gc,                                       \
-                    0, Row2Pixel (row),                                \
-                    (unsigned int)width,                               \
-                    (unsigned int)Height2Pixel (num))
 
 /* ------------------------------------------------------------------------- *
  *                        SCREEN `COMMON' ROUTINES                           *
@@ -148,6 +134,25 @@ rxvt_term::scr_blank_screen_mem (line_t &l, rend_t efs) const NOTHROW
   l.f = 0;
 }
 
+// nuke a single wide character at the given column
+void
+rxvt_term::scr_kill_char (line_t &l, int col) const NOTHROW
+{
+  // find begin
+  while (col > 0 && l.t[col] == NOCHAR)
+    col--;
+
+  rend_t rend = l.r[col] & ~RS_baseattrMask;
+  rend = SET_FONT (rend, FONTSET (rend)->find_font (' '));
+
+  // found start, nuke
+  do {
+    l.t[col] = ' ';
+    l.r[col] = rend;
+    col++;
+  } while (col < ncol && l.t[col] == NOCHAR);
+}
+
 /* ------------------------------------------------------------------------- *
  *                          SCREEN INITIALISATION                            *
  * ------------------------------------------------------------------------- */
@@ -155,11 +160,6 @@ rxvt_term::scr_blank_screen_mem (line_t &l, rend_t efs) const NOTHROW
 void
 rxvt_term::scr_reset ()
 {
-#if ENABLE_OVERLAY
-  scr_overlay_off ();
-#endif
-
-  rvideo_mode = false;
   view_start = 0;
   num_scr = 0;
 
@@ -171,9 +171,6 @@ rxvt_term::scr_reset ()
 
   if (ncol == prev_ncol && nrow == prev_nrow)
     return;
-
-  if (current_screen != PRIMARY)
-    scr_swap_screen ();
 
   // we need at least two lines for wrapping to work correctly
   while (nrow + saveLines < 2)
@@ -283,6 +280,7 @@ rxvt_term::scr_reset ()
         {
           // Re-wrap lines. This is rather ugly, possibly because I am too dumb
           // to come up with a lean and mean algorithm.
+          // TODO: maybe optimise when width didn't change
 
           row_col_t ocur = screen.cur;
           ocur.row = MOD (term_start + ocur.row, prev_total_rows);
@@ -396,22 +394,18 @@ rxvt_term::scr_reset ()
 
       clamp_it (screen.cur.row, 0, nrow - 1);
       clamp_it (screen.cur.col, 0, ncol - 1);
-
-      free (tabs);
     }
 
-  CLEAR_ALL_SELECTION ();
-
-  prev_nrow = nrow;
-  prev_ncol = ncol;
-
+  free (tabs);
   tabs = (char *)rxvt_malloc (ncol);
 
   for (int col = ncol; --col; )
     tabs [col] = col % TABSIZE == 0;
 
-  if (current_screen != PRIMARY)
-    scr_swap_screen ();
+  CLEAR_ALL_SELECTION ();
+
+  prev_nrow = nrow;
+  prev_ncol = ncol;
 
   tt_winch ();
 
@@ -433,25 +427,44 @@ rxvt_term::scr_release () NOTHROW
       free (row_buf);
       free (swap_buf);
       free (drawn_buf);
-      free (tabs);
+      row_buf = 0; // signal that we freed all the arrays above
 
-      row_buf = 0; // signal that we freed all the arrays
+      free (tabs);
+      tabs = 0;
     }
 }
 
 /* ------------------------------------------------------------------------- */
 /*
- * Hard reset
+ * Hard/Soft reset
  */
 void
 rxvt_term::scr_poweron ()
 {
   scr_release ();
   prev_nrow = prev_ncol = 0;
+  rvideo_mode = false;
+  scr_soft_reset ();
   scr_reset ();
 
   scr_clear (true);
   scr_refresh ();
+}
+
+void
+rxvt_term::scr_soft_reset ()
+{
+  /* only affects modes, nothing drastic such as clearing the screen */
+#if ENABLE_OVERLAY
+  scr_overlay_off ();
+#endif
+
+  if (current_screen != PRIMARY)
+    scr_swap_screen ();
+
+  scr_scroll_region (0, MAX_ROWS - 1);
+  scr_rendition (0, ~RS_None);
+  scr_insert_mode (0);
 }
 
 /* ------------------------------------------------------------------------- *
@@ -787,7 +800,7 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
     {
       c = (unicode_t)*str++; // convert to rxvt-unicodes representation
 
-      if (c < 0x20)
+      if (expect_false (c < 0x20))
         if (c == C0_LF)
           {
             max_it (line->l, screen.cur.col);
@@ -816,9 +829,11 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
             continue;
           }
 
-      if (checksel            /* see if we're writing within selection */
-          && !ROWCOL_IS_BEFORE (screen.cur, selection.beg)
-          && ROWCOL_IS_BEFORE (screen.cur, selection.end))
+      if (expect_false (
+            checksel            /* see if we're writing within selection */
+            && !ROWCOL_IS_BEFORE (screen.cur, selection.beg)
+            && ROWCOL_IS_BEFORE (screen.cur, selection.end)
+         ))
         {
           checksel = 0;
           /*
@@ -829,7 +844,7 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
           CLEAR_SELECTION ();
         }
 
-      if (screen.flags & Screen_WrapNext)
+      if (expect_false (screen.flags & Screen_WrapNext))
         {
           scr_do_wrap ();
 
@@ -841,7 +856,7 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
         }
 
       // some utf-8 decoders "decode" surrogate characters: let's fix this.
-      if (IN_RANGE_INC (c, 0xd800, 0xdfff))
+      if (expect_false (IN_RANGE_INC (c, 0xd800, 0xdfff)))
         c = 0xfffd;
 
       // rely on wcwidth to tell us the character width, do wcwidth before
@@ -850,7 +865,7 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
       // locale.
       int width = WCWIDTH (c);
 
-      if (charsets [screen.charset] == '0') // DEC SPECIAL
+      if (expect_false (charsets [screen.charset] == '0')) // DEC SPECIAL
         {
           // vt100 special graphics and line drawing
           // 5f-7e standard vt100
@@ -873,7 +888,7 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
             }
         }
 
-      if (screen.flags & Screen_Insert)
+      if (expect_false (screen.flags & Screen_Insert))
         scr_insdel_chars (width, INSERT);
 
       if (width != 0)
@@ -889,33 +904,20 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
 #endif
 
           // nuke the character at this position, if required
-          if (line->t[screen.cur.col] == NOCHAR
-              || (screen.cur.col < ncol - 1
-                  && line->t[screen.cur.col + 1] == NOCHAR))
-            {
-              int col = screen.cur.col;
-
-              // find begin
-              while (col > 0 && line->t[col] == NOCHAR)
-                col--;
-
-              rend_t rend = SET_FONT (line->r[col], FONTSET (line->r[col])->find_font (' '));
-
-              // found begin, nuke
-              do {
-                line->t[col] = ' ';
-                line->r[col] = rend;
-                col++;
-              } while (col < ncol && line->t[col] == NOCHAR);
-            }
+          if (expect_false (
+                line->t[screen.cur.col] == NOCHAR
+                || (screen.cur.col < ncol - 1
+                    && line->t[screen.cur.col + 1] == NOCHAR)
+             ))
+            scr_kill_char (*line, screen.cur.col);
 
           rend_t rend = SET_FONT (rstyle, FONTSET (rstyle)->find_font (c));
 
           // if the character doesn't fit into the remaining columns...
-          if (screen.cur.col > ncol - width && ncol >= width)
+          if (expect_false (screen.cur.col > ncol - width && ncol >= width))
             {
-              // ...output spaces
-              c = ' ';
+              // ... artificially enlargen the previous one
+              c = NOCHAR;
               // and try the same character next loop iteration
               --str;
             }
@@ -927,7 +929,7 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
               line->t[screen.cur.col] = c;
               line->r[screen.cur.col] = rend;
 
-              if (screen.cur.col < ncol - 1)
+              if (expect_true (screen.cur.col < ncol - 1))
                 screen.cur.col++;
               else
                 {
@@ -939,10 +941,10 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
 
               c = NOCHAR;
             }
-          while (--width > 0);
+          while (expect_false (--width > 0));
 
           // pad with spaces when overwriting wide character with smaller one
-          if (!width)
+          if (expect_false (!width))
             {
               line->touch ();
 
@@ -953,47 +955,50 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
                 }
             }
         }
+#if ENABLE_COMBINING
       else // width == 0
         {
-#if ENABLE_COMBINING
-          // handle combining characters
-          // we just tag the accent on the previous on-screen character.
-          // this is arguably not correct, but also arguably not wrong.
-          // we don't handle double-width characters nicely yet.
-          line_t *linep;
-          text_t *tp;
-          rend_t *rp;
-
-          if (screen.cur.col > 0)
+          if (c != 0xfeff) // ignore BOM
             {
-              linep = line;
-              tp = line->t + screen.cur.col - 1;
-              rp = line->r + screen.cur.col - 1;
+              // handle combining characters
+              // we just tag the accent on the previous on-screen character.
+              // this is arguably not correct, but also arguably not wrong.
+              // we don't handle double-width characters nicely yet.
+              line_t *linep;
+              text_t *tp;
+              rend_t *rp;
+
+              if (screen.cur.col > 0)
+                {
+                  linep = line;
+                  tp = line->t + screen.cur.col - 1;
+                  rp = line->r + screen.cur.col - 1;
+                }
+              else if (screen.cur.row > 0
+                       && ROW(screen.cur.row - 1).is_longer ())
+                {
+                  linep = &ROW(screen.cur.row - 1);
+                  tp = line->t + ncol - 1;
+                  rp = line->r + ncol - 1;
+                }
+              else
+                continue;
+
+              linep->touch ();
+
+              while (*tp == NOCHAR && tp > linep->t)
+                tp--, rp--;
+
+              // first try to find a precomposed character
+              unicode_t n = rxvt_compose (*tp, c);
+              if (n == NOCHAR)
+                n = rxvt_composite.compose (*tp, c);
+
+              *tp = n;
+              *rp = SET_FONT (*rp, FONTSET (*rp)->find_font (*tp));
             }
-          else if (screen.cur.row > 0
-                   && ROW(screen.cur.row - 1).is_longer ())
-            {
-              linep = &ROW(screen.cur.row - 1);
-              tp = line->t + ncol - 1;
-              rp = line->r + ncol - 1;
-            }
-          else
-            continue;
-
-          linep->touch ();
-
-          while (*tp == NOCHAR && tp > linep->t)
-            tp--, rp--;
-
-          // first try to find a precomposed character
-          unicode_t n = rxvt_compose (*tp, c);
-          if (n == NOCHAR)
-            n = rxvt_composite.compose (*tp, c);
-
-          *tp = n;
-          *rp = SET_FONT (*rp, FONTSET (*rp)->find_font (*tp));
-#endif
         }
+#endif
     }
 
   max_it (line->l, screen.cur.col);
@@ -1338,27 +1343,43 @@ rxvt_term::scr_erase_screen (int mode) NOTHROW
 
   min_it (num, nrow - row);
 
+  // TODO: the code below does not work when view_start != 0
+  // the workaround is to disable the clear and use a normal refresh
+  // when view_start != 0. mysterious.
   if (rstyle & (RS_RVid | RS_Uline))
     ren = (rend_t) ~RS_None;
   else if (GET_BASEBG (rstyle) == Color_bg)
     {
       ren = DEFAULT_RSTYLE;
-      CLEAR_ROWS (row, num);
+
+      if (mapped && !view_start)
+        XClearArea (dpy, vt, 0,
+                    Row2Pixel (row - view_start), (unsigned int)width,
+                    (unsigned int)Height2Pixel (num), False);
     }
   else
     {
       ren = rstyle & (RS_fgMask | RS_bgMask);
-      gcvalue.foreground = pix_colors[bgcolor_of (rstyle)];
-      XChangeGC (dpy, gc, GCForeground, &gcvalue);
-      ERASE_ROWS (row, num);
-      gcvalue.foreground = pix_colors[Color_fg];
-      XChangeGC (dpy, gc, GCForeground, &gcvalue);
+
+      if (mapped && !view_start)
+        {
+          gcvalue.foreground = pix_colors[bgcolor_of (rstyle)];
+          XChangeGC (dpy, gc, GCForeground, &gcvalue);
+          XFillRectangle (dpy, vt, gc,
+                          0, Row2Pixel (row - view_start),
+                          (unsigned int)width,
+                          (unsigned int)Height2Pixel (num));
+          gcvalue.foreground = pix_colors[Color_fg];
+          XChangeGC (dpy, gc, GCForeground, &gcvalue);
+        }
     }
 
   for (; num--; row++)
     {
       scr_blank_screen_mem (ROW(row), rstyle);
-      scr_blank_line (drawn_buf [row], 0, ncol, ren);
+
+      if (!view_start)
+        scr_blank_line (drawn_buf [row], 0, ncol, ren);
     }
 }
 
@@ -1442,9 +1463,6 @@ rxvt_term::scr_insdel_lines (int count, int insdel) NOTHROW
 void
 rxvt_term::scr_insdel_chars (int count, int insdel) NOTHROW
 {
-  int col, row;
-  rend_t tr;
-
   want_refresh = 1;
   ZERO_SCROLLBACK ();
 
@@ -1456,23 +1474,30 @@ rxvt_term::scr_insdel_chars (int count, int insdel) NOTHROW
   selection_check (1);
   min_it (count, ncol - screen.cur.col);
 
-  row = screen.cur.row;
+  int row = screen.cur.row;
 
   line_t *line = &ROW(row);
 
   line->touch ();
   line->is_longer (0);
 
+  // nuke wide spanning the start
+  if (line->t[screen.cur.col] == NOCHAR)
+    scr_kill_char (*line, screen.cur.col);
+
   switch (insdel)
     {
       case INSERT:
-        for (col = ncol - 1; (col - count) >= screen.cur.col; col--)
+        line->l = min (line->l + count, ncol);
+
+        if (line->t[screen.cur.col] == NOCHAR)
+          scr_kill_char (*line, screen.cur.col);
+
+        for (int col = ncol - 1; (col - count) >= screen.cur.col; col--)
           {
             line->t[col] = line->t[col - count];
             line->r[col] = line->r[col - count];
           }
-
-        line->l = min (line->l + count, ncol);
 
         if (selection.op && current_screen == selection.screen
             && ROWCOL_IN_ROW_AT_OR_AFTER (selection.beg, screen.cur))
@@ -1497,21 +1522,27 @@ rxvt_term::scr_insdel_chars (int count, int insdel) NOTHROW
         selection_check (1);
         screen.cur.col -= count;
 
-        line->l = max (line->l - count, 0);
+        // nuke wide char after the end
+        if (screen.cur.col + count < ncol && line->t[screen.cur.col + count] == NOCHAR)
+          scr_kill_char (*line, screen.cur.col + count);
+
         scr_blank_line (*line, screen.cur.col, count, rstyle);
         break;
 
       case DELETE:
-        tr = line->r[ncol - 1] & (RS_fgMask | RS_bgMask | RS_baseattrMask);
+        line->l = max (line->l - count, 0);
 
-        for (col = screen.cur.col; (col + count) < ncol; col++)
+        // nuke wide char spanning the end
+        if (screen.cur.col + count < ncol && line->t[screen.cur.col + count] == NOCHAR)
+          scr_kill_char (*line, screen.cur.col + count);
+
+        for (int col = screen.cur.col; (col + count) < ncol; col++)
           {
             line->t[col] = line->t[col + count];
             line->r[col] = line->r[col + count];
           }
 
-        line->l = max (line->l - count, 0);
-        scr_blank_line (*line, ncol - count, count, tr);
+        scr_blank_line (*line, ncol - count, count, rstyle);
 
         if (selection.op && current_screen == selection.screen
             && ROWCOL_IN_ROW_AT_OR_AFTER (selection.beg, screen.cur))
@@ -1899,13 +1930,7 @@ rxvt_term::scr_bell () NOTHROW
 
 # if ENABLE_FRILLS
   if (option (Opt_urgentOnBell))
-    {
-      if (XWMHints *h = XGetWMHints(dpy, parent[0]))
-        {
-          h->flags |= XUrgencyHint;
-          XSetWMHints (dpy, parent[0], h);
-        }
-    }
+    set_urgency (1);
 # endif
 
   if (option (Opt_visualBell))
@@ -1928,9 +1953,9 @@ rxvt_term::scr_printscreen (int fullhist) NOTHROW
 {
 #ifdef PRINTPIPE
   int nrows, row_start;
-  FILE *fd;
+  FILE *fd = popen_printer ();
 
-  if ((fd = popen_printer ()) == NULL)
+  if (!fd)
     return;
 
   if (fullhist)
@@ -1985,8 +2010,6 @@ rxvt_term::scr_printscreen (int fullhist) NOTHROW
 void
 rxvt_term::scr_refresh () NOTHROW
 {
-  unsigned char have_bg,
-                showcursor; /* show the cursor                           */
   int16_t col, row,   /* column/row we're processing               */
           ocrow;      /* old cursor row                            */
   int i;              /* tmp                                       */
@@ -2007,7 +2030,8 @@ rxvt_term::scr_refresh () NOTHROW
    */
   refresh_count = 0;
 
-  have_bg = 0;
+  unsigned int old_screen_flags = screen.flags;
+  char have_bg = 0;
 #ifdef HAVE_BG_PIXMAP
   have_bg = bgPixmap.pixmap != None;
 #endif
@@ -2018,13 +2042,19 @@ rxvt_term::scr_refresh () NOTHROW
    */
   scr_reverse_selection ();
 
+  HOOK_INVOKE ((this, HOOK_REFRESH_BEGIN, DT_END));
+#if ENABLE_OVERLAY
+  scr_swap_overlay ();
+#endif
+
+  char showcursor = screen.flags & Screen_VisibleCursor;
+
   /*
    * C: set the cursor character (s)
    */
   {
     unsigned char setoldcursor;
 
-    showcursor = (screen.flags & Screen_VisibleCursor);
 #ifdef CURSOR_BLINK
     if (hidden_cursor)
       showcursor = 0;
@@ -2106,11 +2136,6 @@ rxvt_term::scr_refresh () NOTHROW
           }
       }
   }
-
-  HOOK_INVOKE ((this, HOOK_REFRESH_BEGIN, DT_END));
-#if ENABLE_OVERLAY
-  scr_swap_overlay ();
-#endif
 
 #ifndef NO_SLOW_LINK_SUPPORT
   /*
@@ -2210,7 +2235,7 @@ rxvt_term::scr_refresh () NOTHROW
           // redraw one or more characters
 
           // seek to the beginning of wide characters
-          while (stp[col] == NOCHAR && col > 0)
+          while (expect_false (stp[col] == NOCHAR && col > 0))
             --col;
 
           rend_t rend = srp[col];     /* screen rendition (target rendtion) */
@@ -2257,7 +2282,7 @@ rxvt_term::scr_refresh () NOTHROW
           count -= i; /* dump any matching trailing chars */
 
           // sometimes we optimize away the trailing NOCHAR's, add them back
-          while (i && text[count] == NOCHAR)
+          while (expect_false (i && text[count] == NOCHAR))
             count++, i--;
 
           /*
@@ -2267,7 +2292,7 @@ rxvt_term::scr_refresh () NOTHROW
           int back = bgcolor_of (rend); // desired background
 
           // only do special processing if any attributes are set, which is unlikely
-          if (rend & (RS_Bold | RS_Italic | RS_Uline | RS_RVid | RS_Blink | RS_Careful))
+          if (expect_false (rend & (RS_Bold | RS_Italic | RS_Uline | RS_RVid | RS_Blink | RS_Careful)))
             {
               bool invert = rend & RS_RVid;
 
@@ -2360,7 +2385,7 @@ rxvt_term::scr_refresh () NOTHROW
            */
           rxvt_font *font = (*fontset[GET_STYLE (rend)])[GET_FONT (rend)];
 
-          if (have_bg && back == Color_bg)
+          if (expect_true (have_bg && back == Color_bg))
             {
               // this is very ugly, maybe push it into ->draw?
 
@@ -2377,7 +2402,7 @@ rxvt_term::scr_refresh () NOTHROW
           else
             font->draw (*drawable, xpixel, ypixel, text, count, fore, back);
 
-          if (rend & RS_Uline && font->descent > 1 && fore != back)
+          if (expect_false (rend & RS_Uline && font->descent > 1 && fore != back))
             {
 #if ENABLE_FRILLS
               if (ISSET_PIXCOLOR (Color_underline))
@@ -2392,11 +2417,6 @@ rxvt_term::scr_refresh () NOTHROW
             }
         }                     /* for (col....) */
     }                         /* for (row....) */
-
-#if ENABLE_OVERLAY
-  scr_swap_overlay ();
-#endif
-  HOOK_INVOKE ((this, HOOK_REFRESH_END, DT_END));
 
   /*
    * G: cleanup cursor and display outline cursor if necessary
@@ -2445,8 +2465,14 @@ rxvt_term::scr_refresh () NOTHROW
   /*
    * H: cleanup selection
    */
+#if ENABLE_OVERLAY
+  scr_swap_overlay ();
+#endif
+  HOOK_INVOKE ((this, HOOK_REFRESH_END, DT_END));
+
   scr_reverse_selection ();
 
+  screen.flags = old_screen_flags;
   num_scr = 0;
   num_scr_allow = 1;
 }
@@ -3715,16 +3741,16 @@ rxvt_term::scr_overlay_new (int x, int y, int w, int h) NOTHROW
   x -= 1; clamp_it (x, 0, ncol - w);
   y -= 1; clamp_it (y, 0, nrow - h);
 
-  ov_x = x; ov_y = y;
-  ov_w = w; ov_h = h;
+  ov.x = x; ov.y = y;
+  ov.w = w; ov.h = h;
 
-  ov_text = new text_t *[h];
-  ov_rend = new rend_t *[h];
+  ov.text = new text_t *[h];
+  ov.rend = new rend_t *[h];
 
   for (y = 0; y < h; y++)
     {
-      text_t *tp = ov_text[y] = new text_t[w];
-      rend_t *rp = ov_rend[y] = new rend_t[w];
+      text_t *tp = ov.text[y] = new text_t[w];
+      rend_t *rp = ov.rend[y] = new rend_t[w];
 
       text_t t0, t1, t2;
       rend_t r = OVERLAY_RSTYLE;
@@ -3753,31 +3779,31 @@ rxvt_term::scr_overlay_new (int x, int y, int w, int h) NOTHROW
 void
 rxvt_term::scr_overlay_off () NOTHROW
 {
-  if (!ov_text)
+  if (!ov.text)
     return;
 
   want_refresh = 1;
 
-  for (int y = 0; y < ov_h; y++)
+  for (int y = 0; y < ov.h; y++)
     {
-      delete [] ov_text[y];
-      delete [] ov_rend[y];
+      delete [] ov.text[y];
+      delete [] ov.rend[y];
     }
 
-  delete [] ov_text; ov_text = 0;
-  delete [] ov_rend; ov_rend = 0;
+  delete [] ov.text; ov.text = 0;
+  delete [] ov.rend; ov.rend = 0;
 }
 
 void
 rxvt_term::scr_overlay_set (int x, int y, text_t text, rend_t rend) NOTHROW
 {
-  if (!ov_text || x >= ov_w - 2 || y >= ov_h - 2)
+  if (!ov.text || x >= ov.w - 2 || y >= ov.h - 2)
     return;
 
   x++, y++;
 
-  ov_text[y][x] = text;
-  ov_rend[y][x] = rend;
+  ov.text[y][x] = text;
+  ov.rend[y][x] = rend;
 }
 
 void
@@ -3806,19 +3832,24 @@ rxvt_term::scr_overlay_set (int x, int y, const wchar_t *s) NOTHROW
 void
 rxvt_term::scr_swap_overlay () NOTHROW
 {
-  if (!ov_text)
+  if (!ov.text)
     return;
 
+  // hide cursor if it is within the overlay area
+  if (IN_RANGE_EXC (screen.cur.col - ov.x, 0, ov.w)
+      && IN_RANGE_EXC (screen.cur.row - ov.y, 0, ov.h))
+    screen.flags &= ~Screen_VisibleCursor;
+
   // swap screen mem with overlay
-  for (int y = ov_h; y--; )
+  for (int y = ov.h; y--; )
     {
-      text_t *t1 = ov_text[y];
-      rend_t *r1 = ov_rend[y];
+      text_t *t1 = ov.text[y];
+      rend_t *r1 = ov.rend[y];
 
-      text_t *t2 = ROW(y + ov_y + view_start).t + ov_x;
-      rend_t *r2 = ROW(y + ov_y + view_start).r + ov_x;
+      text_t *t2 = ROW(y + ov.y + view_start).t + ov.x;
+      rend_t *r2 = ROW(y + ov.y + view_start).r + ov.x;
 
-      for (int x = ov_w; x--; )
+      for (int x = ov.w; x--; )
         {
           text_t t = *t1; *t1++ = *t2; *t2++ = t;
           rend_t r = *r1; *r1++ = *r2; *r2++ = SET_FONT (r, FONTSET (r)->find_font (t));
