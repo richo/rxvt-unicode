@@ -1,0 +1,98 @@
+# ./Makefile.in			-*- Makefile -*-
+# $Id: Makefile.in,v 1.10 2005/02/02 08:09:23 root Exp $
+@MCOMMON@
+
+srcdir =	@srcdir@
+VPATH =		@srcdir@
+.PATH:		@srcdir@
+
+first_rule: all
+dummy:
+
+subdirs = src doc
+allsubdirs = $(subdirs)
+
+DIST =	INSTALL README.configure configure Makefile Makefile.in ChangeLog
+
+DIST_CFG = autoconf/aclocal.m4 autoconf/xpm.m4 autoconf/libtool.m4 \
+	autoconf/configure.in  autoconf/config.h.in \
+	autoconf/Make.common.in autoconf/install-sh autoconf/mkinstalldirs \
+	autoconf/config.guess autoconf/config.sub \
+	autoconf/ltmain.sh \
+
+MKDIR = $(srcdir)/autoconf/mkinstalldirs
+
+#-------------------------------------------------------------------------
+
+all allbin alldoc tags:
+	@for I in ${subdirs}; do (cd $$I; ${MAKE} $@) || exit 1; done
+
+realclean: clean
+	$(RMF) config.h config.status config.log libtool
+
+clean:
+	$(RMF) *~ config.cache
+	$(RMF) -r autom4te.cache
+	@for I in ${subdirs}; do (cd $$I; ${MAKE} $@) || exit 1; done
+
+#
+# entry points for other programs
+#
+rxvt:
+	(cd src; ${MAKE})
+
+tests:
+	(cd src/test; ${MAKE} tests)
+
+#-------------------------------------------------------------------------
+configure: autoconf/configure.in autoconf/aclocal.m4 autoconf/config.h.in
+	cd $(srcdir);
+	./.prebuild
+
+config.status:
+	if test -x config.status; then config.status --recheck; \
+	else $(SHELL) configure; fi
+
+autoconf/config.h.in: autoconf/configure.in
+	cd $(srcdir);
+	./.prebuild
+
+installdirs:
+	$(MKDIR) $(DESTDIR)$(bindir)
+	$(MKDIR) $(DESTDIR)$(mandir)
+
+install: installdirs
+	@for I in $(subdirs); do (cd $$I; $(MAKE) DESTDIR=$(DESTDIR) $@) || exit 1; done
+
+Makefiles:
+	$(SHELL) config.status
+
+cleandir: realclean
+
+# distclean goal is for making a clean source tree, but if you have run
+# configure from a different directory, then doesn't destroy all your
+# hardly compiled and linked stuff. That's why there is always $(srcdir)/
+# In that case most of those commands do nothing, except cleaning *~
+# and cleaning source links.
+distclean:
+	(cd $(srcdir); $(RMF) *~ config.cache config.h config.log config.status libtool)
+	@for I in $(allsubdirs); do (cd $$I; $(MAKE) $@) || exit 1; done
+	(cd $(srcdir); $(RMF) Makefile autoconf/Make.common)
+
+distdir:
+	cd doc && $(MAKE) distdepend
+	rm -rf $(VERNAME)
+	mkdir $(VERNAME)
+	rsync -aR `cat MANIFEST` $(VERNAME)/.
+
+tar.gz: distdir
+	tar cvf - $(VERNAME) | gzip -vf9 > $(VERNAME).tar.gz
+	rm -rf $(VERNAME)
+
+tar.bz2: distdir
+	tar cvf - $(VERNAME) | bzip2 -vf9 > $(VERNAME).tar.bz2
+	rm -rf $(VERNAME)
+
+dist: tar.bz2
+
+# ------------------------------------------------------------------------
