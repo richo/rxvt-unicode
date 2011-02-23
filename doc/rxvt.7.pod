@@ -1617,6 +1617,7 @@ B<octet> can be escaped by prefixing it with SYN (0x16, ^V).
 	B<< C<Ps = 713> >>	Set bold-italic fontset to B<< C<Pt> >>. Similar to C<Ps = 50> (Compile styles).
 	B<< C<Ps = 720> >>	Move viewing window up by B<< C<Pt> >> lines, or clear scrollback buffer if C<Pt = 0> (Compile frills).
 	B<< C<Ps = 721> >>	Move viewing window down by B<< C<Pt> >> lines, or clear scrollback buffer if C<Pt = 0> (Compile frills).
+	B<< C<Ps = 777> >>	Call the perl extension with the given string, which should be of the form C<extension:parameters> (Compile perl).
 
 =end table
 
@@ -2503,17 +2504,21 @@ in combination with other switches) is:
 
   MWM-hints
   EWMH-hints (pid, utf8 names) and protocols (ping)
-  seperate underline colour
-  settable border widths and borderless switch
-  settable extra linespacing
+  seperate underline colour (-underlineColor)
+  settable border widths and borderless switch (-w, -b, -bl)
+  settable extra linespacing /-lsp)
   iso-14755-2 and -3, and visual feedback
   backindex and forwardindex escape sequence
   window op and some xterm/OSC escape sequences
-  tripleclickwords
-  settable insecure mode
+  tripleclickwords (-tcw)
+  settable insecure mode (-insecure)
   keysym remapping support
-  cursor blinking and underline cursor
-  -embed, -pty-fd and -hold options
+  cursor blinking and underline cursor (-cb, -uc)
+  XEmbed support (-embed)
+  user-pty (-pty-fd)
+  hold on exit (-hold)
+  skip builtin block graphics (-sbg)
+  sgr modes 90..97 and 100..107
 
 =item --enable-iso14755 (default: on)
 
@@ -2565,6 +2570,14 @@ the screen in a fixed position.
 =item --enable-pointer-blank (default: on)
 
 Add support to have the pointer disappear when typing or inactive.
+
+=item --enable-perl (default: off)
+
+Enable an embedded perl interpreter. See the B<@@RXVT_NAME@@perl(3)>
+manpage (F<doc/rxvtperl.txt>) for more info on this feature, or the files
+in F<src/perl-ext/> for the extensions that are installed by default. The
+perl interpreter that is used can be specified via the C<PERL> environment
+variable when running configure.
 
 =item --with-name=NAME (default: urxvt)
 

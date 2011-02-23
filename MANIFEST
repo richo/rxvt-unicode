@@ -30,6 +30,8 @@ doc/README.menu
 doc/README.xvt
 doc/changes.txt
 doc/podtbl
+doc/rxvt-unicode.spec
+
 doc/rxvt.1.pod
 doc/rxvt.7.pod
 doc/rxvtc.1.pod
@@ -38,15 +40,17 @@ doc/rxvt.1.man.in
 doc/rxvt.7.man.in
 doc/rxvtc.1.man.in
 doc/rxvtd.1.man.in
-doc/rxvt.1.html
-doc/rxvt.7.html
-doc/rxvtc.1.html
-doc/rxvtd.1.html
+doc/rxvtperl.3.man.in
 doc/rxvt.1.txt
 doc/rxvt.7.txt
 doc/rxvtc.1.txt
 doc/rxvtd.1.txt
-doc/rxvt-unicode.spec
+doc/rxvtperl.3.txt
+doc/rxvt.1.html
+doc/rxvt.7.html
+doc/rxvtc.1.html
+doc/rxvtd.1.html
+doc/rxvtperl.3.html
 
 autoconf/.cvsignore
 autoconf/Make.common.in
@@ -71,6 +75,7 @@ src/encoding.h
 src/fdpass.h
 src/fdpass.C
 src/feature.h
+src/hookinc.h
 src/init.C
 src/init.h
 src/iom.C
@@ -96,6 +101,7 @@ src/rxvtfont.C
 src/rxvtfont.h
 src/rxvt.C
 src/rxvt.h
+src/rsinc.h
 src/rxvtc.C
 src/rxvtd.C
 src/rxvtdaemon.C
@@ -114,6 +120,15 @@ src/strings.C
 src/version.h
 src/xdefaults.C
 src/xpm.C
+
+src/urxvt.pm
+src/typemap
+src/rxvtperl.h
+src/rxvtperl.xs
+
+src/perl/example-refresh-hooks
+src/perl/digital-clock
+src/perl/selection
 
 src/gentables
 src/gencompose

@@ -26,6 +26,7 @@
 
 #include "../config.h"          /* NECESSARY */
 #include "rxvt.h"               /* NECESSARY */
+#include "rxvtperl.h"           /* NECESSARY */
 
 #include <X11/Xmd.h>            /* get the typedef for CARD32 */
 
@@ -419,6 +420,8 @@ rxvt_term::scr_reset ()
     tabs [col] = col % TABSIZE == 0;
 
   tt_winch ();
+
+  PERL_INVOKE ((this, HOOK_RESET, DT_END));
 }
 
 /* ------------------------------------------------------------------------- */
@@ -621,6 +624,9 @@ rxvt_term::scr_scroll_text (int row1, int row2, int count)
       && (current_screen == PRIMARY || OPTION (Opt_secondaryScroll)))
     {
       nsaved = min (nsaved + count, saveLines);
+
+      PERL_INVOKE ((this, HOOK_SCROLL_BACK, DT_INT, count, DT_INT, nsaved, DT_END));
+      
       term_start = (term_start + count) % total_rows;
 
       if (selection.op && current_screen == selection.screen)
@@ -1821,6 +1827,8 @@ rxvt_term::scr_page (enum page_dirn direction, int nlines)
 int
 rxvt_term::scr_changeview (unsigned int oldviewstart)
 {
+  PERL_INVOKE ((this, HOOK_VIEW_CHANGE, DT_INT, view_start, DT_END));
+
   if (view_start != oldviewstart)
     {
       want_refresh = 1;
@@ -2041,6 +2049,7 @@ rxvt_term::scr_refresh (unsigned char refresh_type)
       }
   }
 
+  PERL_INVOKE ((this, HOOK_REFRESH_BEGIN, DT_END));
 #if ENABLE_OVERLAY
   scr_swap_overlay ();
 #endif
@@ -2100,7 +2109,7 @@ rxvt_term::scr_refresh (unsigned char refresh_type)
 
               XCopyArea (display->display, vt, vt,
                          gc, 0, Row2Pixel (len + i),
-                         (unsigned int)TermWin_TotalWidth (),
+                         (unsigned int)this->width,
                          (unsigned int)Height2Pixel (wlen - len + 1),
                          0, Row2Pixel (len));
               len = -1;
@@ -2313,6 +2322,7 @@ rxvt_term::scr_refresh (unsigned char refresh_type)
 #if ENABLE_OVERLAY
   scr_swap_overlay ();
 #endif
+  PERL_INVOKE ((this, HOOK_REFRESH_END, DT_END));
 
   /*
    * G: cleanup cursor and display outline cursor if necessary
@@ -2556,7 +2566,7 @@ rxvt_term::selection_check (int check_more)
  * Paste a selection direct to the command fd
  */
 void
-rxvt_term::paste (unsigned char *data, unsigned int len)
+rxvt_term::paste (char *data, unsigned int len)
 {
   /* convert normal newline chars into common keyboard Return key sequence */
   for (unsigned int i = 0; i < len; i++)
@@ -2710,7 +2720,7 @@ rxvt_term::selection_paste (Window win, Atom prop, bool delete_prop)
       char *s = rxvt_wcstombs (w);
       free (w);
       // TODO: strlen == only the first element will be converted. well...
-      paste ((unsigned char *)s, strlen (s));
+      paste (s, strlen (s));
       free (s);
     }
   else
@@ -2719,12 +2729,12 @@ rxvt_term::selection_paste (Window win, Atom prop, bool delete_prop)
       && cl)
     {
       for (int i = 0; i < cr; i++)
-        paste ((unsigned char *)cl[i], strlen (cl[i]));
+        paste (cl[i], strlen (cl[i]));
 
       XFreeStringList (cl);
     }
   else
-    paste (ct.value, ct.nitems); // paste raw
+    paste ((char *)ct.value, ct.nitems); // paste raw
 
 bailout:
   XFree (ct.value);
@@ -2772,7 +2782,7 @@ rxvt_term::selection_request (Time tm, int x, int y)
   if (selection.text)
     { /* internal selection */
       char *str = rxvt_wcstombs (selection.text, selection.len);
-      paste ((unsigned char *)str, strlen (str));
+      paste (str, strlen (str));
       free (str);
       return;
     }
@@ -2874,6 +2884,9 @@ rxvt_term::selection_make (Time tm)
   if (selection.clicks == 4)
     return;                 /* nothing selected, go away */
 
+  if (PERL_INVOKE ((this, HOOK_SEL_MAKE, DT_LONG, (long)tm, DT_END)))
+    return;
+
   i = (selection.end.row - selection.beg.row + 1) * (ncol + 1);
   new_selection_text = (wchar_t *)rxvt_malloc ((i + 4) * sizeof (wchar_t));
 
@@ -2965,11 +2978,25 @@ rxvt_term::selection_make (Time tm)
   selection.len = ofs;
   selection.text = (wchar_t *)rxvt_realloc (new_selection_text, (ofs + 1) * sizeof (wchar_t));
 
+  if (PERL_INVOKE ((this, HOOK_SEL_GRAB, DT_LONG, (long)tm, DT_END)))
+    return;
+
+  selection_grab (tm);
+}
+
+bool
+rxvt_term::selection_grab (Time tm)
+{
+  selection_time = tm;
+
   XSetSelectionOwner (display->display, XA_PRIMARY, vt, tm);
   if (XGetSelectionOwner (display->display, XA_PRIMARY) == vt)
-    display->set_selection_owner (this);
+    {
+      display->set_selection_owner (this);
+      return true;
+    }
   else
-    rxvt_warn ("can't get primary selection, ignoring.\n");
+    return false;
 
 #if 0
   XTextProperty ct;
@@ -2980,8 +3007,6 @@ rxvt_term::selection_make (Time tm)
       XFree (ct.value);
     }
 #endif
-
-  selection_time = tm;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -3113,7 +3138,6 @@ rxvt_term::selection_delimit_word (enum page_dirn dirn, const row_col_t *mark, r
       break;
     }
 
-Old_Word_Selection_You_Die:
   if (dirn == DN)
     col++;                  /* put us on one past the end */
 
@@ -3300,8 +3324,11 @@ rxvt_term::selection_extend_colrow (int32_t col, int32_t row, int button3, int b
       if (ROWCOL_IS_AFTER (selection.end, selection.beg))
         selection.end.col--;
 
-      selection_delimit_word (UP, &selection.beg, &selection.beg);
-      selection_delimit_word (DN, &selection.end, &selection.end);
+      if (!PERL_INVOKE ((this, HOOK_SEL_EXTEND, DT_END)))
+        {
+          selection_delimit_word (UP, &selection.beg, &selection.beg);
+          selection_delimit_word (DN, &selection.end, &selection.end);
+        }
     }
   else if (selection.clicks == 3)
     {
@@ -3587,7 +3614,7 @@ rxvt_term::im_set_position (XPoint &pos)
 void
 rxvt_term::scr_overlay_new (int x, int y, int w, int h)
 {
-  if (nrow < 3 || ncol < 3)
+  if (nrow < 1 || ncol < 1)
     return;
 
   want_refresh = 1;

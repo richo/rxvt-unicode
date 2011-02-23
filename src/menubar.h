@@ -2,13 +2,13 @@
 #define MENUBAR_H_
 
 typedef struct {
-    short           type;	/* must not be changed; first element */
-    short           len;	/* strlen (str) */
-    unsigned char  *str;	/* action to take */
+    int    type;	/* must not be changed; first element */
+    int    len;	/* strlen (str) */
+    char  *str;	/* action to take */
 } action_t;
 
 typedef struct {
-    short           type;	/* must not be changed; first element */
+    int             type;	/* must not be changed; first element */
     struct menu_t  *menu;	/* sub-menu */
 } submenu_t;
 
@@ -68,7 +68,7 @@ typedef struct bar_t {
 
 #define HSPACE		1	/* one space */
 #define isSeparator(name)	((name)[0] == '\0')
-#define HEIGHT_SEPARATOR	(SHADOW + 1)
+#define HEIGHT_SEPARATOR	(MENU_SHADOW + 1)
 #define HEIGHT_TEXT		(Height2Pixel(1) + 2)
 
 #define MENU_DELAY_USEC	0	/* no delay */

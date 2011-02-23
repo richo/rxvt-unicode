@@ -46,7 +46,6 @@ const char *const def_colorName[] =
     COLOR_BACKGROUND,
     /* low-intensity colors */
     "Black",                    /* 0: black             (#000000) */
-#ifndef NO_BRIGHTCOLOR
     "Red3",                     /* 1: red               (#CD0000) */
     "Green3",                   /* 2: green             (#00CD00) */
     "Yellow3",                  /* 3: yellow            (#CDCD00) */
@@ -64,7 +63,6 @@ const char *const def_colorName[] =
 # else
     "Grey25",                   /* 8: bright black      (#404040) */
 # endif
-#endif                          /* NO_BRIGHTCOLOR */
     "Red",                      /* 1/9: bright red      (#FF0000) */
     "Green",                    /* 2/10: bright green   (#00FF00) */
     "Yellow",                   /* 3/11: bright yellow  (#FFFF00) */
@@ -650,7 +648,7 @@ rxvt_term::init_command (const char *const *argv)
    */
 
 #ifdef META8_OPTION
-  meta_char = OPTION ((Opt_meta8) ? 0x80 : C0_ESC);
+  meta_char = OPTION (Opt_meta8) ? 0x80 : C0_ESC;
 #endif
 
   get_ourmods ();
@@ -679,11 +677,6 @@ rxvt_term::init_command (const char *const *argv)
       priv_modes |= PrivMode_menuBar;
       SavedModes |= PrivMode_menuBar;
     }
-
-#ifdef CURSOR_BLINK
-  if (OPTION (Opt_cursorBlink))
-    (void)gettimeofday (&lastcursorchange, NULL);
-#endif
 
   run_command (argv);
 }
@@ -815,10 +808,8 @@ rxvt_term::color_aliases (int idx)
       if (i >= 8 && i <= 15)
         {        /* bright colors */
           i -= 8;
-#ifndef NO_BRIGHTCOLOR
           rs[Rs_color + idx] = rs[Rs_color + minBrightCOLOR + i];
           return;
-#endif
         }
 
       if (i >= 0 && i <= 7)   /* normal colors */
@@ -1081,8 +1072,8 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   vt = XCreateSimpleWindow (disp, top,
                                     window_vt_x,
                                     window_vt_y,
-                                    TermWin_TotalWidth (),
-                                    TermWin_TotalHeight (),
+                                    width,
+                                    height,
                                     0,
                                     pix_colors_focused[Color_fg],
                                     pix_colors_focused[Color_bg]);
@@ -1110,7 +1101,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
     {
       menuBar.win = XCreateSimpleWindow (disp, top,
                                          window_vt_x, 0,
-                                         TermWin_TotalWidth (),
+                                         width,
                                          menuBar_TotalHeight (),
                                          0,
                                          pix_colors_focused[Color_fg],

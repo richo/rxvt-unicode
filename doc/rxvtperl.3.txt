@@ -1,0 +1,548 @@
+NAME
+    rxvtperl - rxvt-unicode's embedded perl interpreter
+
+SYNOPSIS
+       # create a file grab_test in $HOME:
+
+       sub on_sel_grab {
+          warn "you selected ", $_[0]->selection;
+          ()
+       }
+
+       # start a rxvt using it:
+
+       rxvt --perl-lib $HOME -pe grab_test
+
+DESCRIPTION
+    Everytime a terminal object gets created, scripts specified via the
+    "perl" resource are loaded and associated with it.
+
+    Scripts are compiled in a 'use strict' and 'use utf8' environment, and
+    thus must be encoded as UTF-8.
+
+    Each script will only ever be loaded once, even in rxvtd, where scripts
+    will be shared (but not enabled) for all terminals.
+
+  Prepackaged Extensions
+    This section describes the extensiosn delivered with this version. You
+    can find them in /opt/rxvt/lib/urxvt/perl/.
+
+    You can activate them like this:
+
+      rxvt -pe <extensionname>
+
+    selection
+        Intelligent selection. This extension tries to be more intelligent
+        when the user extends selections (double-click). Right now, it tries
+        to select urls and complete shell-quoted arguments, which is very
+        convenient, too, if your ls supports "--quoting-style=shell".
+
+        It also offers the following bindable event:
+
+        rot13
+            Rot-13 the selection when activated. Used via keyboard trigger:
+
+               URxvt.keysym.C-M-r: perl:selection:rot13
+
+    digital-clock
+        Displays a digital clock using the built-in overlay.
+
+    example-refresh-hooks
+        Displays a very simple digital clock in the upper right corner of
+        the window. Illustrates overwriting the refresh callbacks to create
+        your own overlays or changes.
+
+  General API Considerations
+    All objects (such as terminals, time watchers etc.) are typical
+    reference-to-hash objects. The hash can be used to store anything you
+    like. All members starting with an underscore (such as "_ptr" or
+    "_hook") are reserved for internal uses and MUST NOT be accessed or
+    modified).
+
+    When objects are destroyed on the C++ side, the perl object hashes are
+    emptied, so its best to store related objects such as time watchers and
+    the like inside the terminal object so they get destroyed as soon as the
+    terminal is destroyed.
+
+  Hooks
+    The following subroutines can be declared in loaded scripts, and will be
+    called whenever the relevant event happens.
+
+    The first argument passed to them is an object private to each terminal
+    and extension package. You can call all "urxvt::term" methods on it, but
+    its not a real "urxvt::term" object. Instead, the real "urxvt::term"
+    object that is shared between all packages is stored in the "term"
+    member.
+
+    All of them must return a boolean value. If it is true, then the event
+    counts as being *consumed*, and the invocation of other hooks is
+    skipped, and the relevant action might not be carried out by the C++
+    code.
+
+    When in doubt, return a false value (preferably "()").
+
+    on_init $term
+        Called after a new terminal object has been initialized, but before
+        windows are created or the command gets run.
+
+    on_reset $term
+        Called after the screen is "reset" for any reason, such as resizing
+        or control sequences. Here is where you can react on changes to
+        size-related variables.
+
+    on_start $term
+        Called at the very end of initialisation of a new terminal, just
+        before returning to the mainloop.
+
+    on_sel_make $term, $eventtime
+        Called whenever a selection has been made by the user, but before
+        the selection text is copied, so changes to the beginning, end or
+        type of the selection will be honored.
+
+        Returning a true value aborts selection making by urxvt, in which
+        case you have to make a selection yourself by calling
+        "$term->selection_grab".
+
+    on_sel_grab $term, $eventtime
+        Called whenever a selection has been copied, but before the
+        selection is requested from the server. The selection text can be
+        queried and changed by calling "$term->selection".
+
+        Returning a true value aborts selection grabbing. It will still be
+        hilighted.
+
+    on_sel_extend $term
+        Called whenever the user tries to extend the selection (e.g. with a
+        double click) and is either supposed to return false (normal
+        operation), or should extend the selection itelf and return true to
+        suppress the built-in processing.
+
+        See the selection example extension.
+
+    on_focus_in $term
+        Called whenever the window gets the keyboard focus, before urxvt
+        does focus in processing.
+
+    on_focus_out $term
+        Called wheneever the window loses keyboard focus, before urxvt does
+        focus out processing.
+
+    on_view_change $term, $offset
+        Called whenever the view offset changes, i..e the user or program
+        scrolls. Offset 0 means display the normal terminal, positive values
+        show this many lines of scrollback.
+
+    on_scroll_back $term, $lines, $saved
+        Called whenever lines scroll out of the terminal area into the
+        scrollback buffer. $lines is the number of lines scrolled out and
+        may be larger than the scroll back buffer or the terminal.
+
+        It is called before lines are scrolled out (so rows 0 .. min ($lines
+        - 1, $nrow - 1) represent the lines to be scrolled out). $saved is
+        the total number of lines that will be in the scrollback buffer.
+
+    on_tty_activity $term *NYI*
+        Called whenever the program(s) running in the urxvt window send
+        output.
+
+    on_osc_seq $term, $string
+        Called whenever the ESC ] 777 ; string ST command sequence (OSC =
+        operating system command) is processed. Cursor position and other
+        state information is up-to-date when this happens. For
+        interoperability, the string should start with the extension name
+        and a colon, to distinguish it from commands for other extensions,
+        and this might be enforced in the future.
+
+        Be careful not ever to trust (in a security sense) the data you
+        receive, as its source can not easily be controleld (e-mail content,
+        messages from other users on the same system etc.).
+
+    on_refresh_begin $term
+        Called just before the screen gets redrawn. Can be used for overlay
+        or similar effects by modify terminal contents in refresh_begin, and
+        restoring them in refresh_end. The built-in overlay and selection
+        display code is run after this hook, and takes precedence.
+
+    on_refresh_end $term
+        Called just after the screen gets redrawn. See "on_refresh_begin".
+
+    on_keyboard_command $term, $string
+        Called whenever the user presses a key combination that has a
+        "perl:string" action bound to it (see description of the keysym
+        resource in the rxvt(1) manpage).
+
+  Variables in the "urxvt" Package
+    $urxvt::TERM
+        The current terminal. Whenever a callback/Hook is bein executed,
+        this variable stores the current "urxvt::term" object.
+
+  Functions in the "urxvt" Package
+    urxvt::fatal $errormessage
+        Fatally aborts execution with the given error message. Avoid at all
+        costs! The only time this is acceptable is when the terminal process
+        starts up.
+
+    urxvt::warn $string
+        Calls "rxvt_warn" with the given string which should not include a
+        newline. The module also overwrites the "warn" builtin with a
+        function that calls this function.
+
+        Using this function has the advantage that its output ends up in the
+        correct place, e.g. on stderr of the connecting urxvtc client.
+
+    $time = urxvt::NOW
+        Returns the "current time" (as per the event loop).
+
+  RENDITION
+    Rendition bitsets contain information about colour, font, font styles
+    and similar information for each screen cell.
+
+    The following "macros" deal with changes in rendition sets. You should
+    never just create a bitset, you should always modify an existing one, as
+    they contain important information required for correct operation of
+    rxvt-unicode.
+
+    $rend = urxvt::DEFAULT_RSTYLE
+        Returns the default rendition, as used when the terminal is starting
+        up or being reset. Useful as a base to start when creating
+        renditions.
+
+    $rend = urxvt::OVERLAY_RSTYLE
+        Return the rendition mask used for overlays by default.
+
+    $rendbit = urxvt::RS_Bold, RS_Italic, RS_Blink, RS_RVid, RS_Uline
+        Return the bit that enabled bold, italic, blink, reverse-video and
+        underline, respectively. To enable such a style, just logically OR
+        it into the bitset.
+
+    $foreground = urxvt::GET_BASEFG $rend
+    $background = urxvt::GET_BASEBG $rend
+        Return the foreground/background colour index, respectively.
+
+    $rend = urxvt::SET_FGCOLOR ($rend, $new_colour)
+    $rend = urxvt::SET_BGCOLOR ($rend, $new_colour)
+        Replace the foreground/background colour in the rendition mask with
+        the specified one.
+
+    $value = urxvt::GET_CUSTOM ($rend)
+        Return the "custom" value: Every rendition has 5 bits for use by
+        extensions. They can be set and changed as you like and are
+        initially zero.
+
+    $rend = urxvt::SET_CUSTOM ($rend, $new_value)
+        Change the custom value.
+
+  The "urxvt::term" Class
+    $value = $term->resource ($name[, $newval])
+        Returns the current resource value associated with a given name and
+        optionally sets a new value. Setting values is most useful in the
+        "init" hook. Unset resources are returned and accepted as "undef".
+
+        The new value must be properly encoded to a suitable character
+        encoding before passing it to this method. Similarly, the returned
+        value may need to be converted from the used encoding to text.
+
+        Resource names are as defined in src/rsinc.h. Colours can be
+        specified as resource names of the form "color+<index>", e.g.
+        "color+5". (will likely change).
+
+        Please note that resource strings will currently only be freed when
+        the terminal is destroyed, so changing options frequently will eat
+        memory.
+
+        Here is a a likely non-exhaustive list of resource names, not all of
+        which are supported in every build, please see the source to see the
+        actual list:
+
+          answerbackstring backgroundPixmap backspace_key boldFont boldItalicFont
+          borderLess color cursorBlink cursorUnderline cutchars delete_key
+          display_name embed ext_bwidth fade font geometry hold iconName
+          imFont imLocale inputMethod insecure int_bwidth intensityStyles
+          italicFont jumpScroll lineSpace loginShell mapAlert menu meta8 modifier
+          mouseWheelScrollPage name pastableTabs path perl_eval perl_ext_1 perl_ext_2
+          perl_lib pointerBlank pointerBlankDelay preeditType print_pipe pty_fd
+          reverseVideo saveLines scrollBar scrollBar_align scrollBar_floating
+          scrollBar_right scrollBar_thickness scrollTtyKeypress scrollTtyOutput
+          scrollWithBuffer scrollstyle secondaryScreen secondaryScroll selectstyle
+          shade term_name title transparent transparent_all tripleclickwords
+          utmpInhibit visualBell
+
+    $rend = $term->screen_rstyle ([$new_rstyle])
+        Return and optionally change the current rendition. Text thta is
+        output by the temrianl application will use this style.
+
+    ($row, $col) = $term->screen_cur ([$row, $col])
+        Return the current coordinates of the text cursor position and
+        optionally set it (which is usually bad as applications don't expect
+        that).
+
+    ($row, $col) = $term->selection_mark ([$row, $col])
+    ($row, $col) = $term->selection_beg ([$row, $col])
+    ($row, $col) = $term->selection_end ([$row, $col])
+        Return the current values of the selection mark, begin or end
+        positions, and optionally set them to new values.
+
+    $success = $term->selection_grab ($eventtime)
+        Try to request the primary selection from the server (for example,
+        as set by the next method).
+
+    $oldtext = $term->selection ([$newtext])
+        Return the current selection text and optionally replace it by
+        $newtext.
+
+        #=item $term->overlay ($x, $y, $text) # #Create a simple multi-line
+        overlay box. See the next method for details. # #=cut
+
+        sub urxvt::term::scr_overlay { die; my ($self, $x, $y, $text) = @_;
+
+           my @lines = split /\n/, $text;
+
+           my $w = 0;
+           for (map $self->strwidth ($_), @lines) {
+              $w = $_ if $w < $_;
+           }
+
+           $self->scr_overlay_new ($x, $y, $w, scalar @lines);
+           $self->scr_overlay_set (0, $_, $lines[$_]) for 0.. $#lines;
+        }
+
+    $term->overlay ($x, $y, $width, $height[, $rstyle[, $border]])
+        Create a new (empty) overlay at the given position with the given
+        width/height. $rstyle defines the initial rendition style (default:
+        "OVERLAY_RSTYLE").
+
+        If $border is 2 (default), then a decorative border will be put
+        around the box.
+
+        If either $x or $y is negative, then this is counted from the
+        right/bottom side, respectively.
+
+        This method returns an urxvt::overlay object. The overlay will be
+        visible as long as the perl object is referenced.
+
+        The methods currently supported on "urxvt::overlay" objects are:
+
+        $overlay->set ($x, $y, $text, $rend)
+            Similar to "$term->ROW_t" and "$term->ROW_r" in that it puts
+            text in rxvt-unicode's special encoding and an array of
+            rendition values at a specific position inside the overlay.
+
+        $overlay->hide
+            If visible, hide the overlay, but do not destroy it.
+
+        $overlay->show
+            If hidden, display the overlay again.
+
+    $cellwidth = $term->strwidth $string
+        Returns the number of screen-cells this string would need. Correctly
+        accounts for wide and combining characters.
+
+    $octets = $term->locale_encode $string
+        Convert the given text string into the corresponding locale
+        encoding.
+
+    $string = $term->locale_decode $octets
+        Convert the given locale-encoded octets into a perl string.
+
+    $term->tt_write ($octets)
+        Write the octets given in $data to the tty (i.e. as program input).
+        To pass characters instead of octets, you should convert your
+        strings first to the locale-specific encoding using
+        "$term->locale_encode".
+
+    $window_width = $term->width
+    $window_height = $term->height
+    $font_width = $term->fwidth
+    $font_height = $term->fheight
+    $font_ascent = $term->fbase
+    $terminal_rows = $term->nrow
+    $terminal_columns = $term->ncol
+    $has_focus = $term->focus
+    $is_mapped = $term->mapped
+    $max_scrollback = $term->saveLines
+    $nrow_plus_saveLines = $term->total_rows
+    $lines_in_scrollback = $term->nsaved
+        Return various integers describing terminal characteristics.
+
+    $view_start = $term->view_start ([$newvalue])
+        Returns the negative row number of the topmost line. Minimum value
+        is 0, which displays the normal terminal contents. Larger values
+        scroll this many lines into the scrollback buffer.
+
+    $term->want_refresh
+        Requests a screen refresh. At the next opportunity, rxvt-unicode
+        will compare the on-screen display with its stored representation.
+        If they differ, it redraws the differences.
+
+        Used after changing terminal contents to display them.
+
+    $text = $term->ROW_t ($row_number[, $new_text[, $start_col]])
+        Returns the text of the entire row with number $row_number. Row 0 is
+        the topmost terminal line, row "$term->$ncol-1" is the bottommost
+        terminal line. The scrollback buffer starts at line -1 and extends
+        to line "-$term->nsaved". Nothing will be returned if a nonexistent
+        line is requested.
+
+        If $new_text is specified, it will replace characters in the current
+        line, starting at column $start_col (default 0), which is useful to
+        replace only parts of a line. The font index in the rendition will
+        automatically be updated.
+
+        $text is in a special encoding: tabs and wide characters that use
+        more than one cell when displayed are padded with urxvt::NOCHAR
+        characters ("chr 65535"). Characters with combining characters and
+        other characters that do not fit into the normal tetx encoding will
+        be replaced with characters in the private use area.
+
+        You have to obey this encoding when changing text. The advantage is
+        that "substr" and similar functions work on screen cells and not on
+        characters.
+
+        The methods "$term->special_encode" and "$term->special_decode" can
+        be used to convert normal strings into this encoding and vice versa.
+
+    $rend = $term->ROW_r ($row_number[, $new_rend[, $start_col]])
+        Like "$term->ROW_t", but returns an arrayref with rendition bitsets.
+        Rendition bitsets contain information about colour, font, font
+        styles and similar information. See also "$term->ROW_t".
+
+        When setting rendition, the font mask will be ignored.
+
+        See the section on RENDITION, above.
+
+    $length = $term->ROW_l ($row_number[, $new_length])
+        Returns the number of screen cells that are in use ("the line
+        length"). Unlike the urxvt core, this returns "$term->ncol" if the
+        line is joined with the following one.
+
+    $bool = $term->is_longer ($row_number)
+        Returns true if the row is part of a multiple-row logical "line"
+        (i.e. joined with the following row), which means all characters are
+        in use and it is continued on the next row (and possibly a
+        continuation of the previous row(s)).
+
+    $line = $term->line ($row_number)
+        Create and return a new "urxvt::line" object that stores information
+        about the logical line that row $row_number is part of. It supports
+        the following methods:
+
+        $text = $line->t
+            Returns the full text of the line, similar to "ROW_t"
+
+        $rend = $line->r
+            Returns the full rendition array of the line, similar to "ROW_r"
+
+        $length = $line->l
+            Returns the length of the line in cells, similar to "ROW_l".
+
+        $rownum = $line->beg
+        $rownum = $line->end
+            Return the row number of the first/last row of the line,
+            respectively.
+
+        $offset = $line->offset_of ($row, $col)
+            Returns the character offset of the given row|col pair within
+            the logical line.
+
+        ($row, $col) = $line->coord_of ($offset)
+            Translates a string offset into terminal coordinates again.
+
+    ($row, $col) = $line->coord_of ($offset) =item $text =
+    $term->special_encode $string
+        Converts a perl string into the special encoding used by
+        rxvt-unicode, where one character corresponds to one screen cell.
+        See "$term->ROW_t" for details.
+
+    $string = $term->special_decode $text
+        Converts rxvt-unicodes text reprsentation into a perl string. See
+        "$term->ROW_t" for details.
+
+  The "urxvt::timer" Class
+    This class implements timer watchers/events. Time is represented as a
+    fractional number of seconds since the epoch. Example:
+
+       $term->{overlay} = $term->overlay (-1, 0, 8, 1, urxvt::OVERLAY_RSTYLE, 0);
+       $term->{timer} = urxvt::timer
+                        ->new
+                        ->interval (1)
+                        ->cb (sub {
+                           $term->{overlay}->set (0, 0,
+                              sprintf "%2d:%02d:%02d", (localtime urxvt::NOW)[2,1,0]);
+                        });                                                                                                                                      
+
+    $timer = new urxvt::timer
+        Create a new timer object in started state. It is scheduled to fire
+        immediately.
+
+    $timer = $timer->cb (sub { my ($timer) = @_; ... })
+        Set the callback to be called when the timer triggers.
+
+    $tstamp = $timer->at
+        Return the time this watcher will fire next.
+
+    $timer = $timer->set ($tstamp)
+        Set the time the event is generated to $tstamp.
+
+    $timer = $timer->interval ($interval)
+        Normally (and when $interval is 0), the timer will automatically
+        stop after it has fired once. If $interval is non-zero, then the
+        timer is automatically rescheduled at the given intervals.
+
+    $timer = $timer->start
+        Start the timer.
+
+    $timer = $timer->start ($tstamp)
+        Set the event trigger time to $tstamp and start the timer.
+
+    $timer = $timer->stop
+        Stop the timer.
+
+  The "urxvt::iow" Class
+    This class implements io watchers/events. Example:
+
+      $term->{socket} = ...
+      $term->{iow} = urxvt::iow
+                     ->new
+                     ->fd (fileno $term->{socket})
+                     ->events (1) # wait for read data
+                     ->start
+                     ->cb (sub {
+                       my ($iow, $revents) = @_;
+                       # $revents must be 1 here, no need to check
+                       sysread $term->{socket}, my $buf, 8192
+                          or end-of-file;
+                     });
+
+    $iow = new urxvt::iow
+        Create a new io watcher object in stopped state.
+
+    $iow = $iow->cb (sub { my ($iow, $reventmask) = @_; ... })
+        Set the callback to be called when io events are triggered.
+        $reventmask is a bitset as described in the "events" method.
+
+    $iow = $iow->fd ($fd)
+        Set the filedescriptor (not handle) to watch.
+
+    $iow = $iow->events ($eventmask)
+        Set the event mask to watch. Bit #0 (value 1) enables watching for
+        read data, Bit #1 (value 2) enables watching for write data.
+
+    $iow = $iow->start
+        Start watching for requested events on the given handle.
+
+    $iow = $iow->stop
+        Stop watching for events on the given filehandle.
+
+ENVIRONMENT
+  URXVT_PERL_VERBOSITY
+    This variable controls the verbosity level of the perl extension. Higher
+    numbers indicate more verbose output.
+
+    =0 - only fatal messages
+    =3 - script loading and management
+    =10 - all events received
+
+AUTHOR
+     Marc Lehmann <pcg@goof.com>
+     http://software.schmorp.de/pkg/rxvt-unicode
+

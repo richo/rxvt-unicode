@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "rxvt 7"
-.TH rxvt 7 "2006-01-02" "6.2" "RXVT-UNICODE"
+.TH rxvt 7 "2006-01-04" "6.3" "RXVT-UNICODE"
 .SH "NAME"
 RXVT REFERENCE \- FAQ, command sequences and other background information
 .SH "SYNOPSIS"
@@ -1757,6 +1757,7 @@ Ps = 712	Set italic fontset to Pt. Similar to Ps = 50 (Compile styles).
 Ps = 713	Set bold-italic fontset to Pt. Similar to Ps = 50 (Compile styles).
 Ps = 720	Move viewing window up by Pt lines, or clear scrollback buffer if Pt = 0 (Compile frills).
 Ps = 721	Move viewing window down by Pt lines, or clear scrollback buffer if Pt = 0 (Compile frills).
+Ps = 777	Call the perl extension with the given string, which should be of the form extension:parameters (Compile perl).
 .TE
 
 .PP
@@ -2478,20 +2479,24 @@ disable this.
 A non-exhaustive list of features enabled by \f(CW\*(C`\-\-enable\-frills\*(C'\fR (possibly
 in combination with other switches) is:
 .Sp
-.Vb 13
+.Vb 17
 \&  MWM-hints
 \&  EWMH-hints (pid, utf8 names) and protocols (ping)
-\&  seperate underline colour
-\&  settable border widths and borderless switch
-\&  settable extra linespacing
+\&  seperate underline colour (-underlineColor)
+\&  settable border widths and borderless switch (-w, -b, -bl)
+\&  settable extra linespacing /-lsp)
 \&  iso-14755-2 and -3, and visual feedback
 \&  backindex and forwardindex escape sequence
 \&  window op and some xterm/OSC escape sequences
-\&  tripleclickwords
-\&  settable insecure mode
+\&  tripleclickwords (-tcw)
+\&  settable insecure mode (-insecure)
 \&  keysym remapping support
-\&  cursor blinking and underline cursor
-\&  -embed, -pty-fd and -hold options
+\&  cursor blinking and underline cursor (-cb, -uc)
+\&  XEmbed support (-embed)
+\&  user-pty (-pty-fd)
+\&  hold on exit (-hold)
+\&  skip builtin block graphics (-sbg)
+\&  sgr modes 90..97 and 100..107
 .Ve
 .IP "\-\-enable\-iso14755 (default: on)" 4
 .IX Item "--enable-iso14755 (default: on)"
@@ -2535,6 +2540,13 @@ the screen in a fixed position.
 .IP "\-\-enable\-pointer\-blank (default: on)" 4
 .IX Item "--enable-pointer-blank (default: on)"
 Add support to have the pointer disappear when typing or inactive.
+.IP "\-\-enable\-perl (default: off)" 4
+.IX Item "--enable-perl (default: off)"
+Enable an embedded perl interpreter. See the \fB@@RXVT_NAME@@\f(BIperl\fB\|(3)\fR
+manpage (\fIdoc/rxvtperl.txt\fR) for more info on this feature, or the files
+in \fIsrc/perl\-ext/\fR for the extensions that are installed by default. The
+perl interpreter that is used can be specified via the \f(CW\*(C`PERL\*(C'\fR environment
+variable when running configure.
 .IP "\-\-with\-name=NAME (default: urxvt)" 4
 .IX Item "--with-name=NAME (default: urxvt)"
 Set the basename for the installed binaries, resulting

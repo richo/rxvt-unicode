@@ -1,0 +1,49 @@
+#! perl
+
+sub on_keyboard_command {
+   my ($self, $cmd) = @_;
+
+   $cmd eq "selection:rot13"
+      and $self->selection (map { y/A-Za-z/N-ZA-Mn-za-m/; $_ } $self->selection);
+
+   ()
+}
+
+my @patterns = (
+   # urls, just a heuristic
+   qr{(
+      (?:https?|ftp|news|mailto|file)://[ab-zA-Z0-9\-\@;\/?:&=%\$_.+!*\x27(),]+
+      [^.]   # do not include a trailing dot, its wrong too often
+   )}x,
+
+   # shell-like argument quoting
+   qr{\G [\ \t|&;<>()] *(
+      (?:
+         [^\\"'\ \t|&;<>()]+
+         | \\.
+         | " ([^\\"]+ | \\. )* "
+         | ' [^']* '
+      )+
+   )}xs,
+);
+
+sub on_sel_extend {
+   my ($self) = @_;
+
+   my ($row, $col) = $self->selection_mark;
+   my $line = $self->line ($row);
+   my $offset = $line->offset_of ($row, $col);
+   my $text = $line->t;
+
+   for my $regex (@patterns) {
+      while ($text =~ /$regex/g) {
+         if ($-[1] <= $offset and $offset <= $+[1]) {
+            $self->selection_beg ($line->coord_of ($-[1]));
+            $self->selection_end ($line->coord_of ($+[1]));
+            return 1;
+         }
+      }
+   }
+
+   ()
+}
