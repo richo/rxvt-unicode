@@ -46,9 +46,9 @@ extern "C" {
 /* typedef unsigned int uint32_t; */
 
 /* whatever normal size corresponds to a integer pointer */
-#define intp_t int64_t
+#define intp_t int32_t
 /* whatever normal size corresponds to a unsigned integer pointer */
-#define u_intp_t u_int64_t
+#define u_intp_t u_int32_t
 
 struct rxvt_fontset;
 struct rxvt_color;
