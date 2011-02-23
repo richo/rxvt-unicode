@@ -34,7 +34,7 @@ SEDREPLACE = -e 's%@@RXVT_VERSION@@%$(VERSION)%g;'	\
 	     -e 's%@@RXVT_LIBDIR@@%$(libdir)%g;'	\
 	     -e 's%@@URXVT_NAME@@%urxvt%g;'
 
-POD2MAN = pod2man -n @@RXVT_NAME@@ -r"$(VERSION)" -q\" -c "RXVT-UNICODE"
+POD2MAN = pod2man -n @@RXVT_NAME@@ -r @@RXVT_VERSION@@ -q\" -c "RXVT-UNICODE"
 
 all:
 	sed $(SEDREPLACE) < $(srcdir)/rxvt.1.man.in  >rxvt.1.man
@@ -72,9 +72,7 @@ rxvtperl.3.pod: ../src/urxvt.pm
 
 tags allbin:
 
-alldoc:	rxvt.1.man.in rxvt.7.man.in rxvtc.1.man.in rxvtd.1.man.in rxvtperl.3.man.in \
-	rxvt.1.txt    rxvt.7.txt    rxvtc.1.txt    rxvtd.1.txt    rxvtperl.3.txt \
-	rxvt.1.html   rxvt.7.html   rxvtc.1.html   rxvtd.1.html   rxvtperl.3.html \
+alldoc: rxvt.1.man.in rxvt.7.man.in rxvtc.1.man.in rxvtd.1.man.in rxvtperl.3.man.in \
 	../README.configure ../README.FAQ
 	infocmp -C rxvt-unicode >$(srcdir)/etc/rxvt-unicode.termcap
 
@@ -87,8 +85,6 @@ distclean: clean
 
 realclean: distclean
 	rm -f rxvt.1.man.in rxvt.7.man.in rxvtc.1.man.in rxvtd.1.man.in rxvtperl.3.man.in
-	rm -f rxvt.1.txt    rxvt.7.txt    rxvtc.1.txt    rxvtd.1.txt    rxvtperl.3.txt
-	rm -f rxvt.1.html   rxvt.7.html   rxvtc.1.html   rxvtd.1.html   rxvtperl.3.html
 	rm -f ../README.configure ../README.FAQ
 	rm -f $(srcdir)/etc/rxvt-unicode.termcap
 

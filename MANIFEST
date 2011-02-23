@@ -31,7 +31,6 @@ doc/Makefile.in
 doc/README.xvt
 doc/changes.txt
 doc/podtbl
-doc/rxvt-unicode.spec
 
 doc/rxvt.1.pod
 doc/rxvt.7.pod
@@ -42,16 +41,6 @@ doc/rxvt.7.man.in
 doc/rxvtc.1.man.in
 doc/rxvtd.1.man.in
 doc/rxvtperl.3.man.in
-doc/rxvt.1.txt
-doc/rxvt.7.txt
-doc/rxvtc.1.txt
-doc/rxvtd.1.txt
-doc/rxvtperl.3.txt
-doc/rxvt.1.html
-doc/rxvt.7.html
-doc/rxvtc.1.html
-doc/rxvtd.1.html
-doc/rxvtperl.3.html
 
 src/.cvsignore
 src/Makefile.in
@@ -86,7 +75,6 @@ src/rxvtc.C
 src/rxvtd.C
 src/rxvtdaemon.C
 src/rxvtdaemon.h
-src/rxvtlib.h.in
 src/salloc.C
 src/salloc.h
 src/screen.C
@@ -95,6 +83,7 @@ src/scrollbar-rxvt.C
 src/scrollbar-xterm.C
 src/scrollbar-plain.C
 src/scrollbar.C
+src/scrollbar.h
 src/version.h
 src/xdefaults.C
 
@@ -187,4 +176,5 @@ libev/ev_poll.c
 libev/ev_epoll.c
 libev/ev_kqueue.c
 libev/ev_port.c
+libev/libev.m4
 

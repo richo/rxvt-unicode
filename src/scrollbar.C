@@ -36,7 +36,6 @@ rxvt_term::scrollbar_mapping (int map)
 {
   int change = 0;
 
-#ifdef HAVE_SCROLLBARS
   if (map)
     {
       scrollBar.setIdle ();
@@ -56,7 +55,6 @@ rxvt_term::scrollbar_mapping (int map)
       XUnmapWindow (dpy, scrollBar.win);
       change = 1;
     }
-#endif
 
   return change;
 }
@@ -64,7 +62,6 @@ rxvt_term::scrollbar_mapping (int map)
 void
 rxvt_term::resize_scrollbar ()
 {
-#ifdef HAVE_SCROLLBARS
   int delayed_init = 0;
 
 #define R_SCROLLBEG_XTERM	0
@@ -72,9 +69,9 @@ rxvt_term::resize_scrollbar ()
 #define R_SCROLLBEG_NEXT	0
 #define R_SCROLLEND_NEXT	szHint.height - (SB_BUTTON_TOTAL_HEIGHT + \
                                                     SB_PADDING)
-#define R_SCROLLBEG_RXVT	(scrollBar.width + 1) + sb_shadow
+#define R_SCROLLBEG_RXVT	(scrollBar.width + 1) + scrollBar.shadow
 #define R_SCROLLEND_RXVT	szHint.height - R_SCROLLBEG_RXVT - \
-                                    (2 * sb_shadow)
+                                    (2 * scrollBar.shadow)
 
 #if defined(PLAIN_SCROLLBAR)
   if (scrollBar.style == R_SB_PLAIN)
@@ -120,7 +117,7 @@ rxvt_term::resize_scrollbar ()
                                            0,
                                            pix_colors[Color_fg],
                                            pix_colors[Color_border]);
-      XDefineCursor (dpy, scrollBar.win, leftptr_cursor);
+      XDefineCursor (dpy, scrollBar.win, scrollBar.leftptr_cursor);
 
       XSelectInput (dpy, scrollBar.win,
                    ExposureMask | ButtonPressMask | ButtonReleaseMask
@@ -135,7 +132,6 @@ rxvt_term::resize_scrollbar ()
 
   if (delayed_init)
     XMapWindow (dpy, scrollBar.win);
-#endif
 }
 
 /*
@@ -145,7 +141,6 @@ int
 rxvt_term::scrollbar_show (int update)
 {
   int             ret = 0;
-#ifdef HAVE_SCROLLBARS
   int             top, bot, len, adj;
 
   if (!scrollBar.state)
@@ -159,22 +154,21 @@ rxvt_term::scrollbar_show (int update)
       adj = (((bot - top) * scrollbar_size ()) % len) > 0 ? 1 : 0;
 
       scrollBar.top = (scrollBar.beg + (top * scrollbar_size ()) / len);
-      scrollbar_len = ((bot - top) * scrollbar_size ()) / len +
+      scrollBar.len = ((bot - top) * scrollbar_size ()) / len +
                       scrollbar_minheight () + adj;
-      scrollBar.bot = (scrollBar.top + scrollbar_len);
+      scrollBar.bot = (scrollBar.top + scrollBar.len);
       /* no change */
-      if (scrollBar.top == last_top
-          && scrollBar.bot == last_bot
-          && (scrollBar.state == last_state || !scrollbar_isUpDn ()))
+      if (scrollBar.top == scrollBar.last_top
+          && scrollBar.bot == scrollBar.last_bot
+          && (scrollBar.state == scrollBar.last_state || !scrollbar_isUpDn ()))
         return 0;
     }
 
-  ret = (this->*scrollBar.update) (update, last_top, last_bot, scrollbar_len);
+  ret = (this->*scrollBar.update) (update, scrollBar.last_top, scrollBar.last_bot, scrollBar.len);
 
-  last_top = scrollBar.top;
-  last_bot = scrollBar.bot;
-  last_state = scrollBar.state;
-#endif
+  scrollBar.last_top = scrollBar.top;
+  scrollBar.last_bot = scrollBar.bot;
+  scrollBar.last_state = scrollBar.state;
 
   return ret;
 }
@@ -182,7 +176,6 @@ rxvt_term::scrollbar_show (int update)
 void
 rxvt_term::setup_scrollbar (const char *scrollalign, const char *scrollstyle, const char *thickness)
 {
-#ifdef HAVE_SCROLLBARS
   int             i;
   short           style, width;
 
@@ -231,21 +224,23 @@ rxvt_term::setup_scrollbar (const char *scrollalign, const char *scrollstyle, co
 
 # ifdef RXVT_SCROLLBAR
   if (! option (Opt_scrollBar_floating) && style == R_SB_RXVT)
-    sb_shadow = SHADOW_WIDTH;
+    scrollBar.shadow = SHADOW_WIDTH;
 # endif
 
   scrollBar.style = style;
   scrollBar.width = width;
 
-  /* scrollbar_align = R_SB_ALIGN_CENTRE; */
+  /* scrollBar.align = R_SB_ALIGN_CENTRE; */
   if (scrollalign)
     {
       if (strncasecmp (scrollalign, "top", 3) == 0)
-        scrollbar_align = R_SB_ALIGN_TOP;
+        scrollBar.align = R_SB_ALIGN_TOP;
       else if (strncasecmp (scrollalign, "bottom", 6) == 0)
-        scrollbar_align = R_SB_ALIGN_BOTTOM;
+        scrollBar.align = R_SB_ALIGN_BOTTOM;
     }
-#endif
+  scrollBar.last_bot = scrollBar.last_state = -1;
+  /* cursor scrollBar: Black-on-White */
+  scrollBar.leftptr_cursor = XCreateFontCursor (dpy, XC_left_ptr);
 }
 
 /*----------------------- end-of-file (C source) -----------------------*/

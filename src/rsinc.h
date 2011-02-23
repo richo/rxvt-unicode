@@ -23,14 +23,12 @@
   def (loginShell)
   def (jumpScroll)
   def (skipScroll)
-#ifdef HAVE_SCROLLBARS
   def (scrollBar)
   def (scrollBar_right)
   def (scrollBar_floating)
   def (scrollBar_align)
   def (scrollstyle)
   def (scrollBar_thickness)
-#endif
   def (scrollTtyOutput)
   def (scrollTtyKeypress)
   def (scrollWithBuffer)
@@ -52,7 +50,6 @@
 #ifndef NO_DELETE_KEY
   def (delete_key)
 #endif
-  def (selectstyle)
 #ifdef PRINTPIPE
   def (print_pipe)
 #endif
@@ -66,6 +63,7 @@
 #endif
 #if XFT
   def (depth)
+  def (buffered)
 #endif
 #if ENABLE_FRILLS
   def (transient_for)

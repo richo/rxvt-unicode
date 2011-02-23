@@ -14,12 +14,15 @@ require features such as Tektronix 4014 emulation and toolkit-style
 configurability. As a result, B<rxvt-unicode> uses much less swap space --
 a significant advantage on a machine serving many X sessions.
 
+This document is also available on the World-Wide-Web at
+L<http://pod.tst.eu/http://cvs.schmorp.de/rxvt-unicode/doc/rxvt.1.pod>.
+
 =head1 FREQUENTLY ASKED QUESTIONS
 
 See @@RXVT_NAME@@(7) (try C<man 7 @@RXVT_NAME@@>) for a list of
 frequently asked questions and answer to them and some common
 problems. That document is also accessible on the World-Wide-Web at
-L<http://cvs.schmorp.de/browse/rxvt-unicode/doc/rxvt.7.html>.
+L<http://pod.tst.eu/http://cvs.schmorp.de/rxvt-unicode/doc/rxvt.7.pod>.
 
 =head1 RXVT-UNICODE VS. RXVT
 
@@ -32,7 +35,7 @@ like tibetan or devanagari. Don't expect pretty output when using these
 scripts. Most other scripts, latin, cyrillic, kanji, thai etc. should work
 fine, though. A somewhat difficult case are right-to-left scripts, such
 as hebrew: B<rxvt-unicode> adopts the view that bidirectional algorithms
-belong into the application, not the terminal emulator (too many things --
+belong in the application, not the terminal emulator (too many things --
 such as cursor-movement while editing -- break otherwise), but that might
 change.
 
@@ -100,6 +103,11 @@ B<DISPLAY> environment variable is used.
 Compile I<xft>: Attempt to find a visual with the given bit depth;
 resource B<depth>.
 
+[Please note that many X servers (and libXft) are buggy with
+respect to C<-depth 32> and/or alpha channels, and will cause all sorts
+of graphical corruption. This is harmless, but we can't do anything about
+this, so watch out]
+
 =item B<-geometry> I<geom>
 
 Window geometry (B<-g> still respected); resource B<geometry>.
@@ -118,12 +126,10 @@ Turn on/off skip scrolling (allow multiple screens per refresh); resource B<skip
 
 =item B<-tr>|B<+tr>
 
-Turn on/off illusion of a transparent window background. Obsolete form of it is
-B<-ip> and it should not be used anymore; resource B<transparent>.
+Turn on/off illusion of a transparent window background; resource B<transparent>.
 
-I<Please note that old resource name of B<inheritPixmap> is obsolete and should be
-changed to B<transparent>. Backwards compatibility support for B<inheritPixmap> will
-be phased out in future versions of rxvt!>
+B<-ip> is still accepted as an obsolete alias but will be removed in
+future versions.
 
 I<Please address all transparency related issues to Sasha Vasko at
 sasha@aftercode.net. Read the FAQ (man 7 @@RXVT_NAME@@)!>
@@ -246,7 +252,7 @@ for details.
 
 =item B<-is>|B<+is>
 
-Compile I<font-styles>: Bold/Italic font styles imply high intensity
+Compile I<font-styles>: Bold/Blink font styles imply high intensity
 foreground/background (default). See resource B<intensityStyles> for
 details.
 
@@ -274,6 +280,15 @@ B<visualBell>.
 
 Turn on/off scrollbar; resource B<scrollBar>.
 
+=item B<-sr>|B<+sr>
+
+Put scrollbar on right/left; resource B<scrollBar_right>.
+
+=item B<-st>|B<+st>
+
+Display rxvt (non XTerm/NeXT) scrollbar without/with a trough;
+resource B<scrollBar_floating>.
+
 =item B<-si>|B<+si>
 
 Turn on/off scroll-to-bottom on TTY output inhibit; resource
@@ -289,15 +304,6 @@ B<scrollTtyKeypress>.
 Turn on/off scrolling with the scrollback buffer as new lines appear.
 This only takes effect if B<-si> is also given; resource
 B<scrollWithBuffer>.
-
-=item B<-sr>|B<+sr>
-
-Put scrollbar on right/left; resource B<scrollBar_right>.
-
-=item B<-st>|B<+st>
-
-Display rxvt (non XTerm/NeXT) scrollbar without/with a trough;
-resource B<scrollBar_floating>.
 
 =item B<-ptab>|B<+ptab>
 
@@ -419,8 +425,8 @@ for more info.
 
 Change the meaning of triple-click selection with the left mouse
 button. Only effective when the original (non-perl) selection code is
-in-use. Instead of selecting a full line it will extend the selection the
-end of the logical line only. resource B<tripleclickwords>.
+in-use. Instead of selecting a full line it will extend the selection to
+the end of the logical line only. resource B<tripleclickwords>.
 
 =item B<-insecure>
 
@@ -507,7 +513,8 @@ entries and will not tinker with pty/tty permissions - you have to do that
 yourself if you want that.
 
 As an extremely special case, specifying C<-1> will completely suppress
-pty/tty operations.
+pty/tty operations, which is probably only useful in conjunction with some
+perl extension that manages the terminal.
 
 Here is a example in perl that illustrates how this option can be used (a
 longer example is in F<doc/pty-fd>):
@@ -531,10 +538,11 @@ this terminal instance. See resource B<perl-ext> for details.
 
 =back
 
-=head1 RESOURCES (available also as long-options)
+=head1 RESOURCES
 
 Note: `@@RXVT_NAME@@ --help' gives a list of all resources (long
-options) compiled into your version.
+options) compiled into your version. All resources are also available as
+long-options.
 
 You can set and change the resources using X11 tools like B<xrdb>. Many
 distribution do also load settings from the B<~/.Xresources> file when X
@@ -565,6 +573,13 @@ extensions not documented here):
 
 Compile I<xft>: Attempt to find a visual with the given bit depth;
 option B<-depth>.
+
+=item B<buffered:> I<boolean>
+
+Compile I<xft>: Turn on/off double-buffering for xft (default enabled).
+On some card/driver combination enabling it slightly decreases
+performance, on most it greatly helps it. The slowdown is small, so it
+should normally be enabled.
 
 =item B<geometry:> I<geom>
 
@@ -658,14 +673,15 @@ B<False>: specify that everything is to be displayed, even
 if the refresh is too fast for the human eye to read anything (or the
 monitor to display anything); option B<+ss>.
 
-=item B<inheritPixmap:> I<boolean>
+=item B<transparent:> I<boolean>
 
-B<True>: make the background inherit the parent windows' pixmap, giving
-artificial transparency. B<False>: do not inherit the parent windows'
-pixmap.
+Turn on/off illusion of a transparent window background.
 
-I<Please note that transparency of any kind if completely unsupported by
-the author. Don't bug him with installation questions!>
+B<inheritPixmap> is still accepted as an obsolete alias but will be removed in
+future versions.
+
+I<Please address all transparency related issues to Sasha Vasko at
+sasha@aftercode.net. Read the FAQ (man 7 @@RXVT_NAME@@)!>
 
 =item B<fading:> I<number>
 
@@ -722,14 +738,14 @@ beyond 10 times its original size. The maximum permitted scale is 1000.
 Additional operations can be specified after colon B<:op1:op2...>.
 Supported operations are:
 
-  tile        force background image to be tiled and not scaled. Equivalent to 0x0,
-  propscale   will scale image keeping proportions, 
-  auto        will scale image to match window size. Equivalent to 100x100;
-  hscale      will scale image horizontally to the window size; 
-  vscale      will scale image vertically to the window size;
-  scale       will scale image to match window size;
+  tile        force background image to be tiled and not scaled. Equivalent to 0x0
+  propscale   will scale image keeping proportions
+  auto        will scale image to match window size. Equivalent to 100x100
+  hscale      will scale image horizontally to the window size
+  vscale      will scale image vertically to the window size
+  scale       will scale image to match window size
   root        will tile image as if it was a root window background, auto-adjusting
-              whenever terminal window moves. 
+              whenever terminal window moves
 
 If used in conjunction with B<-tr> option, the specified pixmap will be
 blended over transparency image using either alpha-blending, or any
@@ -804,22 +820,10 @@ text font will being used for the given style.
 =item B<intensityStyles:> I<boolean>
 
 When font styles are not enabled, or this option is enabled (B<True>,
-option B<-is>, the default), bold and italic font styles imply high
+option B<-is>, the default), bold/blink font styles imply high
 intensity foreground/background colours. Disabling this option (B<False>,
 option B<+is>) disables this behaviour, the high intensity colours are not
 reachable.
-
-=item B<selectstyle:> I<mode>
-
-Set mouse selection style to B<old> which is 2.20, B<oldword> which
-is xterm style with 2.20 old word selection, or anything else which
-gives xterm style selection. Only effective when the original (non-perl)
-selection code is in use.
-
-=item B<scrollstyle:> I<mode>
-
-Set scrollbar style to B<rxvt>, B<plain>, B<next> or B<xterm>. B<plain> is
-the author's favourite.
 
 =item B<title:> I<string>
 
@@ -874,6 +878,11 @@ Example:
 
 This creates a new file in your home directory with the screen contents
 every time you hit C<Print>.
+
+=item B<scrollstyle:> I<mode>
+
+Set scrollbar style to B<rxvt>, B<plain>, B<next> or B<xterm>. B<plain> is
+the author's favourite.
 
 =item B<scrollBar:> I<boolean>
 
@@ -1461,26 +1470,48 @@ on White.
 =head2 ALPHA CHANNEL SUPPORT
 
 If Xft support has been compiled in and as long as Xft/Xrender/X don't get
-their act together, rxvt-unicode will support C<rgba:rrrr/gggg/bbbb/aaaa>
-(recommended, but B<MUST> have 4 digits/component) colour specifications,
-in addition to the ones provided by X, where the additional A component
-specifies opacity (alpha) values. The minimum value of C<0> is completely
-transparent). You can also prefix any color with C<[percent]>, where
-C<percent> is a decimal percentage (0-100) that specifies the opacity of
-the color, where C<0> is completely transparent and C<100> is completelxy
-opaque.
+their act together, rxvt-unicode will do it's own alpha channel management:
 
-You probably need to specify B<"-depth 32">, too, and have the luck that
-your X-server uses ARGB pixel layout, as X is far from just supporting
-ARGB visuals out of the box, and rxvt-unicode just fudges around.
+You can prefix any color with an opaquenes percentage enclosed in
+brackets, i.e. C<[percent]>, where C<percent> is a decimal percentage
+(0-100) that specifies the opacity of the color, where C<0> is completely
+transparent and C<100> is completely opaque. For example, C<[50]red> is a
+half-transparent red, while C<[95]#00ff00> is an almost opaque green. This
+is the recommended format to specify transparency values, and works with
+all ways to specify a colour.
 
-For example, the following selects an almost completely transparent red
+For complete control, rxvt-unicode also supports
+C<rgba:rrrr/gggg/bbbb/aaaa> (exactly four hex digits/component) colour
+specifications, where the additional C<aaaa> component specifies opacity
+(alpha) values. The minimum value of C<0000> is completely transparent,
+while C<ffff> is completely opaque). The two example colours from
+earlier could also be specified as C<rgba:ff00/0000/0000/8000> and
+C<rgba:0000/ff00/0000/f332>.
+
+You probably need to specify B<"-depth 32">, too, to force a visual with
+alpha channels, and have the luck that your X-server uses ARGB pixel
+layout, as X is far from just supporting ARGB visuals out of the box, and
+rxvt-unicode just fudges around.
+
+For example, the following selects an almost completely transparent black
 background, and an almost opaque pink foreground:
 
-   @@RXVT_NAME@@ -depth 32 -bg rgba:0000/0000/0000/aaaa -fg "[80]pink"
+   @@RXVT_NAME@@ -depth 32 -bg rgba:0000/0000/0000/4444 -fg "[80]pink"
 
-I<Please note that transparency of any kind if completely unsupported by
-the author. Don't bug him with installation questions!>
+When not using a background image, then the interpretation of the
+alpha channel is up to your compositing manager (most interpret it as
+transparency of course).
+
+When using a background pixmap or pseudo-transparency, then the background
+colour will always behave as if it were completely transparent (so the
+background image shows instead), regardless of how it was specified, while
+other colours will either be transparent as specified (the background
+image will show through) on servers supporting the RENDER extension, or
+fully opaque on servers not supporting the RENDER EXTENSION.
+
+Please note that due to bugs in Xft, specifying alpha values might result
+in garbage being displayed when the X-server does not support the RENDER
+extension.
 
 =head1 ENVIRONMENT
 

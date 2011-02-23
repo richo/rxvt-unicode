@@ -4,29 +4,37 @@
  * Copyright (c) 2007 Marc Alexander Lehmann <libev@schmorp.de>
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without
- * modification, are permitted provided that the following conditions are
- * met:
+ * Redistribution and use in source and binary forms, with or without modifica-
+ * tion, are permitted provided that the following conditions are met:
+ * 
+ *   1.  Redistributions of source code must retain the above copyright notice,
+ *       this list of conditions and the following disclaimer.
+ * 
+ *   2.  Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+ * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
+ * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
+ * EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPE-
+ * CIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+ * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+ * OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ * WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTH-
+ * ERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+ * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
- *     * Redistributions of source code must retain the above copyright
- *       notice, this list of conditions and the following disclaimer.
- *
- *     * Redistributions in binary form must reproduce the above
- *       copyright notice, this list of conditions and the following
- *       disclaimer in the documentation and/or other materials provided
- *       with the distribution.
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
- * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
- * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
- * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
- * OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
- * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
- * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
- * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
- * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License ("GPL") version 2 or any later version,
+ * in which case the provisions of the GPL are applicable instead of
+ * the above. If you wish to allow the use of your version of this file
+ * only under the terms of the GPL and not to allow others to use your
+ * version of this file under the BSD license, indicate your decision
+ * by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL. If you do not delete the
+ * provisions above, a recipient may use your version of this file under
+ * either the BSD or the GPL.
  */
 
 #ifndef _WIN32
@@ -90,7 +98,7 @@ select_modify (EV_P_ int fd, int oev, int nev)
     int word = fd / NFDBITS;
     int mask = 1UL << (fd % NFDBITS);
 
-    if (vec_max < word + 1)
+    if (expect_false (vec_max < word + 1))
       {
         int new_max = word + 1;
 
@@ -134,7 +142,7 @@ select_poll (EV_P_ ev_tstamp timeout)
 
   res = select (vec_max * NFDBITS, (fd_set *)vec_ro, (fd_set *)vec_wo, 0, &tv);
 
-  if (res < 0)
+  if (expect_false (res < 0))
     {
       #if EV_SELECT_IS_WINSOCKET
       errno = WSAGetLastError ();
@@ -168,7 +176,7 @@ select_poll (EV_P_ ev_tstamp timeout)
           if (FD_ISSET (handle, (fd_set *)vec_ro)) events |= EV_READ;
           if (FD_ISSET (handle, (fd_set *)vec_wo)) events |= EV_WRITE;
 
-          if (events)
+          if (expect_true (events))
             fd_event (EV_A_ fd, events);
         }
   }
@@ -191,7 +199,7 @@ select_poll (EV_P_ ev_tstamp timeout)
               events |= word_r & mask ? EV_READ  : 0;
               events |= word_w & mask ? EV_WRITE : 0;
 
-              if (events)
+              if (expect_true (events))
                 fd_event (EV_A_ word * NFDBITS + bit, events);
             }
       }
@@ -200,10 +208,10 @@ select_poll (EV_P_ ev_tstamp timeout)
 #endif
 }
 
-static int
+int inline_size
 select_init (EV_P_ int flags)
 {
-  backend_fudge  = 1e-2; /* needed to compensate for select returning early, very conservative */
+  backend_fudge  = 0.; /* posix says this is zero */
   backend_modify = select_modify;
   backend_poll   = select_poll;
 
@@ -224,7 +232,7 @@ select_init (EV_P_ int flags)
   return EVBACKEND_SELECT;
 }
 
-static void
+void inline_size
 select_destroy (EV_P)
 {
   ev_free (vec_ri);

@@ -31,7 +31,6 @@
 
 #include "ev_cpp.h"
 
-#include "rxvtlib.h"
 #include "rxvtutil.h"
 
 #include "callback.h"
@@ -76,7 +75,7 @@ enum {
   XA_XEMBED_INFO,
 #endif
 #if !ENABLE_MINIMAL
-  // these are usually allocated by other subsystens, but we do it
+  // these are usually allocated by other subsystems, but we do it
   // here to avoid a server roundtrip.
   XA_SCREEN_RESOURCES,
   XA_XDCCC_LINEAR_RGB_CORRECTION,
@@ -103,7 +102,8 @@ struct im_watcher;
 struct xevent_watcher;
 
 template<class watcher>
-struct event_vec : vector<watcher *> {
+struct event_vec : vector<watcher *>
+{
   void erase_unordered (unsigned int pos)
   {
     watcher *w = (*this)[this->size () - 1];
@@ -115,7 +115,8 @@ struct event_vec : vector<watcher *> {
   }
 };
 
-struct rxvt_watcher {
+struct rxvt_watcher
+{
   int active; /* 0 == inactive, else index into respective vector */
 
   bool is_active () { return active; }
@@ -123,7 +124,8 @@ struct rxvt_watcher {
   rxvt_watcher () : active (0) { }
 };
 
-struct refcounted {
+struct refcounted
+{
   int referenced;
   char *id;
 
@@ -134,7 +136,8 @@ struct refcounted {
 };
 
 template<class T>
-struct refcache : vector<T *> {
+struct refcache : vector<T *>
+{
   T *get (const char *id);
   void put (T *obj);
   void clear ();
@@ -149,7 +152,8 @@ struct refcache : vector<T *> {
 
 struct rxvt_screen;
 
-struct rxvt_drawable {
+struct rxvt_drawable
+{
   rxvt_screen *screen;
   Drawable drawable;
   operator Drawable() { return drawable; }
@@ -175,7 +179,8 @@ struct rxvt_drawable {
 /////////////////////////////////////////////////////////////////////////////
 
 #ifdef USE_XIM
-struct rxvt_xim : refcounted {
+struct rxvt_xim : refcounted
+{
   void destroy ();
   rxvt_display *display;
 
@@ -188,7 +193,8 @@ struct rxvt_xim : refcounted {
 };
 #endif
 
-struct rxvt_screen {
+struct rxvt_screen
+{
   rxvt_display *display;
   Display *dpy;
   int depth;
@@ -210,10 +216,12 @@ struct rxvt_screen {
   void clear ();
 };
 
-struct rxvt_display : refcounted {
+struct rxvt_display : refcounted
+{
   event_vec<xevent_watcher> xw;
 
-  ev::io x_ev; void x_cb (ev::io &w, int revents);
+  ev::prepare flush_ev; void flush_cb (ev::prepare &w, int revents);
+  ev::io      x_ev    ; void x_cb     (ev::io      &w, int revents);
 
 #ifdef USE_XIM
   refcache<rxvt_xim> xims;
@@ -240,7 +248,11 @@ struct rxvt_display : refcounted {
   void ref_next ();
   ~rxvt_display ();
 
-  void flush ();
+  void flush ()
+  {
+    flush_ev.start ();
+  }
+
   Atom atom (const char *name);
   void set_selection_owner (rxvt_term *owner);
 
@@ -258,11 +270,6 @@ struct rxvt_display : refcounted {
 
 #ifdef USE_XIM
 struct im_watcher : rxvt_watcher, callback<void (void)> {
-  template<class O, class M>
-  im_watcher (O object, M method)
-  : callback<void (void)> (object, method)
-  { }
-
   void start (rxvt_display *display)
   {
     display->reg (this);
@@ -275,13 +282,9 @@ struct im_watcher : rxvt_watcher, callback<void (void)> {
 };
 #endif
 
-struct xevent_watcher : rxvt_watcher, callback<void (XEvent &)> {
+struct xevent_watcher : rxvt_watcher, callback<void (XEvent &)>
+{
   Window window;
-
-  template<class O, class M>
-  xevent_watcher (O object, M method)
-  : callback<void (XEvent &)> (object, method)
-  { }
 
   void start (rxvt_display *display, Window window)
   {
@@ -301,7 +304,8 @@ extern refcache<rxvt_display> displays;
 
 typedef unsigned long Pixel;
 
-struct rgba {
+struct rgba
+{
   unsigned short r, g, b, a;
 
   enum { MIN_CC = 0x0000, MAX_CC  = 0xffff };
@@ -314,7 +318,8 @@ struct rgba {
   { }
 };
 
-struct rxvt_color {
+struct rxvt_color
+{
 #if XFT
   XftColor c;
 #else
@@ -325,6 +330,15 @@ struct rxvt_color {
 
   bool operator == (const rxvt_color &b) const { return Pixel (*this) == Pixel (b); }
   bool operator != (const rxvt_color &b) const { return Pixel (*this) != Pixel (b); }
+
+  bool is_opaque () const
+  {
+#if XFT
+    return c.color.alpha == rgba::MAX_CC;
+#else
+    return 1;
+#endif
+  }
 
   bool alloc (rxvt_screen *screen, const rgba &color);
   void free (rxvt_screen *screen);

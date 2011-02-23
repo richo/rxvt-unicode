@@ -27,7 +27,8 @@
  * Copyright (c) 2001      Marius Gedminas
  *				- Ctrl/Mod4+Tab works like Meta+Tab (options)
  * Copyright (c) 2003      Rob McMullen <robm@flipturn.org>
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2007      Emanuele Giaquinta <e.giaquinta@glauco.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -200,7 +201,7 @@ rxvt_term::iso14755_51 (unicode_t ch, rend_t r, int x, int y)
 
   int width = wcswidth (fname, wcslen (fname));
 
-  max_it (width, 8+5); // for char + hey
+  max_it (width, 8+5); // for char + hex
   max_it (width, strlen (attr));
 
   if (y >= 0)
@@ -222,7 +223,7 @@ rxvt_term::iso14755_51 (unicode_t ch, rend_t r, int x, int y)
       sprintf (buf, "%8x", ch);
       scr_overlay_set (0, y, buf);
       scr_overlay_set (9, y, '=');
-# if !UNICODE3
+# if !UNICODE_3
       if (ch >= 0x10000)
         ch = 0xfffd;
 # endif
@@ -1043,15 +1044,14 @@ rxvt_term::flush ()
   display->flush ();
 }
 
+/* checks wether a refresh is requested and starts the refresh timer */
 void
-rxvt_term::prepare_cb (ev::prepare &w, int revents)
+rxvt_term::refresh_check ()
 {
-  make_current ();
+  if (want_refresh && !flush_ev.is_active ())
+    flush_ev.start (1. / 60.); // refresh at max. 60 Hz normally
 
   display->flush ();
-
-  if (want_refresh && !flush_ev.active)
-    flush_ev.start (1. / 60.); // refresh at max. 60 Hz normally
 }
 
 void
@@ -1069,6 +1069,7 @@ rxvt_term::cursor_blink_cb (ev::timer &w, int revents)
 {
   hidden_cursor = !hidden_cursor;
   want_refresh = 1;
+  refresh_check ();
 }
 #endif
 
@@ -1080,7 +1081,10 @@ rxvt_term::text_blink_cb (ev::timer &w, int revents)
     {
       hidden_text = !hidden_text;
       want_refresh = 1;
+      refresh_check ();
     }
+  else
+    w.stop ();
 }
 #endif
 
@@ -1088,9 +1092,12 @@ rxvt_term::text_blink_cb (ev::timer &w, int revents)
 void
 rxvt_term::cont_scroll_cb (ev::timer &w, int revents)
 {
-  if ((scrollbar_isUp() || scrollbar_isDn()) &&
-      scr_page (scrollbar_isUp() ? UP : DN, 1))
-    want_refresh = 1;
+  if ((scrollbar_isUp () || scrollbar_isDn ())
+      && scr_page (scrollbar_isUp () ? UP : DN, 1))
+    {
+      want_refresh = 1;
+      refresh_check ();
+    }
   else
     w.stop ();
 }
@@ -1104,6 +1111,7 @@ rxvt_term::sel_scroll_cb (ev::timer &w, int revents)
     {
       selection_extend (selection_save_x, selection_save_y, selection_save_state);
       want_refresh = 1;
+      refresh_check ();
     }
   else
     w.stop ();
@@ -1114,17 +1122,17 @@ rxvt_term::sel_scroll_cb (ev::timer &w, int revents)
 void
 rxvt_term::slip_wheel_cb (ev::timer &w, int revents)
 {
-  if (mouse_slip_wheel_speed == 0
-      || mouse_slip_wheel_speed < 0 ? scr_page (DN, -mouse_slip_wheel_speed)
-                                    : scr_page (UP,  mouse_slip_wheel_speed))
+  if (scr_changeview (view_start - mouse_slip_wheel_speed))
     {
-      if (view_start == top_row || view_start == 0)
-        mouse_slip_wheel_speed = 0;
-
       want_refresh = 1;
+      refresh_check ();
     }
-  else
-    w.stop ();
+
+  if (view_start == top_row || view_start == 0 || mouse_slip_wheel_speed == 0)
+    {
+      mouse_slip_wheel_speed = 0;
+      w.stop ();
+    }
 }
 #endif
 
@@ -1206,6 +1214,8 @@ rxvt_term::pty_cb (ev::io &w, int revents)
 
   if (revents & ev::WRITE)
     pty_write ();
+
+  refresh_check ();
 }
 
 void
@@ -1430,9 +1440,9 @@ rxvt_term::x_cb (XEvent &ev)
         break;
 
       case ConfigureNotify:
-      /* fprintf (stderr, "ConfigureNotify for %X, parent is %X, geom is %dx%d%+d%+d, old geom was %dx%d\n",
+        /*fprintf (stderr, "ConfigureNotify for %X, parent is %X, geom is %dx%d%+d%+d, old geom was %dx%d\n",
               ev.xconfigure.window, parent[0], ev.xconfigure.width, ev.xconfigure.height, ev.xconfigure.x, ev.xconfigure.y,
-              szHint.width, szHint.height); */
+              szHint.width, szHint.height);*/
         if (ev.xconfigure.window == parent[0])
           {
             while (XCheckTypedWindowEvent (dpy, ev.xconfigure.window, ConfigureNotify, &ev))
@@ -1447,9 +1457,15 @@ rxvt_term::x_cb (XEvent &ev)
               {
 #ifdef HAVE_BG_PIXMAP
                 if (bgPixmap.window_position_sensitive ())
-                  update_background ();
+                  {
+                    if (mapped)
+                      update_background ();
+                    else
+                      bgPixmap.invalidate ();
+                  }
 #endif
               }
+
             HOOK_INVOKE ((this, HOOK_CONFIGURE_NOTIFY, DT_XEVENT, &ev, DT_END));
           }
         break;
@@ -1476,9 +1492,25 @@ rxvt_term::x_cb (XEvent &ev)
         break;
 
       case MapNotify:
+#ifdef HAVE_BG_PIXMAP
+        /* This is needed spcifically to fix the case of no window manager or a
+         * non-reparenting window manager. In those cases we never get first
+         * ConfigureNotify. Also that speeds startup under normal WM, by taking
+         * care of multiplicity of ConfigureNotify events arriwing while WM does
+         * reparenting.
+         * We should not render background immidiately, as there could be several
+         * ConfigureNotify's to follow. Lets take care of all of them in one scoop
+         * by scheduling background redraw as soon as we can, but giving a short
+         * bit of time for ConfigureNotifies to arrive.
+         * We should render background PRIOR to drawing any text, but AFTER all
+         * of ConfigureNotifys for the best results.
+         */
+        if (bgPixmap.flags & bgPixmap_t::isInvalid)
+          update_background_ev.start (0.025);
+#endif
         mapped = 1;
 #ifdef TEXT_BLINK
-        text_blink_ev.start (TEXT_BLINK_INTERVAL);
+        text_blink_ev.start ();
 #endif
         HOOK_INVOKE ((this, HOOK_MAP_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
@@ -1509,6 +1541,7 @@ rxvt_term::x_cb (XEvent &ev)
                 scr_expose (ev.xexpose.x, ev.xexpose.y,
                             ev.xexpose.width, ev.xexpose.height, False);
               }
+
             want_refresh = 1;
           }
         else
@@ -1520,7 +1553,7 @@ rxvt_term::x_cb (XEvent &ev)
             while (XCheckTypedWindowEvent (dpy, ev.xany.window, GraphicsExpose, &unused_event))
               ;
 
-            if (isScrollbarWindow (ev.xany.window))
+            if (scrollBar.state && ev.xany.window == scrollBar.win)
               {
                 scrollBar.setIdle ();
                 scrollbar_show (0);
@@ -1579,7 +1612,7 @@ rxvt_term::x_cb (XEvent &ev)
                         /* don't clobber the current delay if we are
                          * already in the middle of scrolling.
                          */
-                        if (!sel_scroll_ev.active)
+                        if (!sel_scroll_ev.is_active ())
                           sel_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
 
                         /* save the event params so we can highlight
@@ -1612,8 +1645,7 @@ rxvt_term::x_cb (XEvent &ev)
                         /* we are within the text window, so we
                          * shouldn't be scrolling
                          */
-                        if (sel_scroll_ev.active)
-                          sel_scroll_ev.stop();
+                        sel_scroll_ev.stop();
                       }
 #endif
 #ifdef MOUSE_THRESHOLD
@@ -1621,7 +1653,7 @@ rxvt_term::x_cb (XEvent &ev)
 #endif
               }
           }
-        else if (isScrollbarWindow (ev.xany.window) && scrollbar_isMotion ())
+        else if (scrollbar_isMotion () && ev.xany.window == scrollBar.win)
           {
             while (XCheckTypedWindowEvent (dpy, scrollBar.win,
                                            MotionNotify, &ev))
@@ -1666,6 +1698,8 @@ rxvt_term::x_cb (XEvent &ev)
         pointer_blank ();
     }
 #endif
+
+  refresh_check ();
 }
 
 void
@@ -1687,7 +1721,7 @@ rxvt_term::focus_in ()
 #endif
 #if CURSOR_BLINK
       if (option (Opt_cursorBlink))
-        cursor_blink_ev.start (CURSOR_BLINK_INTERVAL, CURSOR_BLINK_INTERVAL);
+        cursor_blink_ev.again ();
 #endif
 #if OFF_FOCUS_FADING
       if (rs[Rs_fade])
@@ -1785,9 +1819,12 @@ rxvt_term::rootwin_cb (XEvent &ev)
             bgPixmap.set_root_pixmap ();
             update_background ();
           }
+
         break;
     }
 # endif
+
+  refresh_check ();
 }
 #endif
 
@@ -1910,8 +1947,15 @@ rxvt_term::button_press (XButtonEvent &ev)
   /*
    * Scrollbar window processing of button press
    */
-  if (isScrollbarWindow (ev.window))
+  if (scrollBar.state && ev.window == scrollBar.win)
     {
+      int upordown = 0;
+
+      if (scrollBar.upButton (ev.y))
+        upordown = -1; /* up */
+      else if (scrollBar.dnButton (ev.y))
+        upordown = 1;  /* down */
+
       scrollBar.setIdle ();
       /*
        * Rxvt-style scrollbar:
@@ -1931,15 +1975,9 @@ rxvt_term::button_press (XButtonEvent &ev)
            * arrow buttons - send up/down
            * click on scrollbar - send pageup/down
            */
-          if ((scrollBar.style == R_SB_NEXT
-               && scrollbarnext_upButton (ev.y))
-              || (scrollBar.style == R_SB_RXVT
-                  && scrollbarrxvt_upButton (ev.y)))
+          if (upordown < 0)
             tt_printf ("\033[A");
-          else if ((scrollBar.style == R_SB_NEXT
-                    && scrollbarnext_dnButton (ev.y))
-                   || (scrollBar.style == R_SB_RXVT
-                       && scrollbarrxvt_dnButton (ev.y)))
+          else if (upordown > 0)
             tt_printf ("\033[B");
           else
             switch (ev.button)
@@ -1959,26 +1997,11 @@ rxvt_term::button_press (XButtonEvent &ev)
 #endif /* NO_SCROLLBAR_REPORT */
 
         {
-          char            upordown = 0;
-
-          if (scrollBar.style == R_SB_NEXT)
-            {
-              if (scrollbarnext_upButton (ev.y))
-                upordown = -1;	/* up */
-              else if (scrollbarnext_dnButton (ev.y))
-                upordown = 1;	/* down */
-            }
-          else if (scrollBar.style == R_SB_RXVT)
-            {
-              if (scrollbarrxvt_upButton (ev.y))
-                upordown = -1;	/* up */
-              else if (scrollbarrxvt_dnButton (ev.y))
-                upordown = 1;	/* down */
-            }
           if (upordown)
             {
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-              cont_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
+              if (!cont_scroll_ev.is_active ())
+                cont_scroll_ev.start (SCROLLBAR_INITIAL_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
 #endif
               if (scr_page (upordown < 0 ? UP : DN, 1))
                 {
@@ -1992,7 +2015,7 @@ rxvt_term::button_press (XButtonEvent &ev)
             switch (ev.button)
               {
                 case Button2:
-                  switch (scrollbar_align)
+                  switch (scrollBar.align)
                     {
                       case R_SB_ALIGN_TOP:
                         csrO = 0;
@@ -2014,7 +2037,7 @@ rxvt_term::button_press (XButtonEvent &ev)
                   break;
 
                 case Button1:
-                  if (scrollbar_align == R_SB_ALIGN_CENTRE)
+                  if (scrollBar.align == R_SB_ALIGN_CENTRE)
                     csrO = ev.y - scrollBar.top;
                   /* FALLTHROUGH */
 
@@ -2068,8 +2091,7 @@ rxvt_term::button_release (XButtonEvent &ev)
     }
 
 #ifdef SELECTION_SCROLLING
-  if (sel_scroll_ev.active)
-    sel_scroll_ev.stop();
+  sel_scroll_ev.stop();
 #endif
 
   if (ev.window == vt)
@@ -2151,16 +2173,15 @@ rxvt_term::button_release (XButtonEvent &ev)
                   if (mouse_slip_wheel_speed < -nrow) mouse_slip_wheel_speed = -nrow;
                   if (mouse_slip_wheel_speed > +nrow) mouse_slip_wheel_speed = +nrow;
 
-                  slip_wheel_ev.start (SCROLLBAR_CONTINUOUS_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
+                  if (!slip_wheel_ev.is_active ())
+                    slip_wheel_ev.start (SCROLLBAR_CONTINUOUS_DELAY, SCROLLBAR_CONTINUOUS_DELAY);
                 }
               else
-                {
 # endif
+                {
                   scr_page (v, i);
                   scrollbar_show (1);
-# ifdef MOUSE_SLIP_WHEELING
                 }
-# endif
             }
             break;
 #endif
@@ -2753,7 +2774,8 @@ rxvt_term::process_csi_seq ()
   priv = 0;
   ch = cmd_getc ();
   if (ch >= '<' && ch <= '?')
-    {	/* '<' '=' '>' '?' */
+    {
+      /* '<' '=' '>' '?' */
       priv = ch;
       ch = cmd_getc ();
     }
@@ -2812,6 +2834,7 @@ rxvt_term::process_csi_seq ()
                 tt_printf ("\033[>%d;95;0c", 'U');
               }
             break;
+
           case '?':
             if (ch == 'h' || ch == 'l' || ch == 'r' || ch == 's' || ch == 't')
               process_terminal_mode (ch, priv, nargs, arg);
@@ -3337,9 +3360,11 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
             process_color_seq (op, color, name, resp);
           }
         break;
+      case Rxvt_restoreFG:
       case XTerm_Color00:
         process_color_seq (op, Color_fg, str, resp);
         break;
+      case Rxvt_restoreBG:
       case XTerm_Color01:
         process_color_seq (op, Color_bg, str, resp);
         break;
@@ -3375,10 +3400,12 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
         process_color_seq (op, Color_tint, str, resp);
         {
           bool changed = false;
+
           if (ISSET_PIXCOLOR (Color_tint))
             changed = bgPixmap.set_tint (pix_colors_focused [Color_tint]);
           else
             changed = bgPixmap.unset_tint ();
+
           if (changed)
             update_background ();
         }
@@ -3411,6 +3438,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
                 if (str == NULL)
                   bgPixmap.set_defaultGeometry ();
               }
+
             while (str)
               {
                 str++;
@@ -3418,18 +3446,12 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
                   changed++;
                 str = strchr (str, ';');
               }
+
             if (changed)
-                update_background ();
+              update_background ();
           }
         break;
 #endif
-
-      case Rxvt_restoreFG:
-        set_window_color (Color_fg, str);
-        break;
-      case Rxvt_restoreBG:
-        set_window_color (Color_bg, str);
-        break;
 
       case XTerm_logfile:
         // TODO, when secure mode?
@@ -3583,7 +3605,6 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
                   { 67, PrivMode_BackSpace },
 #endif
                   { 1000, PrivMode_MouseX11 },
-                 // 1001 Use Hilite Mouse Tracking. NYI, TODO
                   { 1002, PrivMode_MouseBtnEvent },
                   { 1003, PrivMode_MouseAnyEvent },
                   { 1010, PrivMode_TtyOutputInh }, // rxvt extension
@@ -3595,6 +3616,7 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
                  // 1048 save and restore cursor
                   { 1049, PrivMode_Screen }, /* xterm extension, clear screen on ti rather than te */
                  // 1051, 1052, 1060, 1061 keyboard emulation NYI
+                  { 2004, PrivMode_BracketPaste },
                 };
 
   if (nargs == 0)
@@ -3652,7 +3674,10 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
               break;
             case 3:			/* 80/132 */
               if (priv_modes & PrivMode_132OK)
-                set_widthheight (((state ? 132 : 80) * fwidth), height);
+                {
+                  scr_poweron ();
+                  set_widthheight (((state ? 132 : 80) * fwidth), 24 * fheight);
+                }
               break;
             case 4:			/* smooth scrolling */
               set_option (Opt_jumpScroll, !state);
@@ -3694,10 +3719,6 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
               if (state)		/* orthogonal */
                 priv_modes &= ~(PrivMode_MouseX10|PrivMode_MouseBtnEvent|PrivMode_MouseAnyEvent);
               break;
-#if 0
-            case 1001:
-              break;		/* X11 mouse highlighting */
-#endif
             case 1002:
             case 1003:
               if (state)
@@ -3896,7 +3917,8 @@ rxvt_term::process_graphics ()
   unicode_t ch, cmd = cmd_getc ();
 
   if (cmd == 'Q')
-    {		/* query graphics */
+    {
+      /* query graphics */
       tt_printf ("\033G0\012");	/* no graphics */
       return;
     }

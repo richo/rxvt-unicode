@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------*
  * File:	rxvtfont.C
  *----------------------------------------------------------------------*
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
  *				- original version.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,6 @@
 
 #include "../config.h"
 #include "rxvt.h"
-#include "rxvtlib.h"
 #include "rxvtutil.h"
 #include "rxvtfont.h"
 
@@ -239,22 +238,22 @@ rxvt_font::clear_rect (rxvt_drawable &d, int x, int y, int w, int h, int color) 
   else if (color >= 0)
     {
 #if XFT
-      bool done = false;
-#ifdef HAVE_BG_PIXMAP
-      if (term->bgPixmap.pixmap && color >= 0 && term->pix_colors[color].c.color.alpha < 0x0ff00)
+      Picture dst;
+
+# ifdef HAVE_BG_PIXMAP
+      if (term->bgPixmap.pixmap
+          && !term->pix_colors[color].is_opaque ()
+          && ((dst = XftDrawPicture (d))))
         {
-          Picture dst = XftDrawPicture (d);
-          if (dst != 0)
-            {
-              XClearArea (disp, d, x, y, w, h, false);
-              Picture solid_color_pict = XftDrawSrcPicture (d, &term->pix_colors[color].c);
-              XRenderComposite (disp, PictOpOver, solid_color_pict, None, dst, 0, 0, 0, 0, x, y, w, h);
-              done = true;
-            }
+          XClearArea (disp, d, x, y, w, h, false);
+
+          Picture solid_color_pict = XftDrawSrcPicture (d, &term->pix_colors[color].c);
+          XRenderComposite (disp, PictOpOver, solid_color_pict, None, dst, 0, 0, 0, 0, x, y, w, h);
         }
-#endif
-      if (!done)
+      else
+# endif
         XftDrawRect (d, &term->pix_colors[color].c, x, y, w, h);
+
 #else
       XSetForeground (disp, gc, term->pix_colors[color]);
       XFillRectangle (disp, d, gc, x, y, w, h);
@@ -612,7 +611,7 @@ rxvt_font_x11::set_properties (rxvt_fontprop &p, const char *name)
 
 // fix the size of scalable fonts
 static bool
-replace_field (char *buf, const char *name, int index, const char old, const char *replace)
+replace_field (char **ptr, const char *name, int index, const char old, const char *replace)
 {
   int slashes = 0;
   const char *field, *end;
@@ -632,17 +631,17 @@ replace_field (char *buf, const char *name, int index, const char old, const cha
 
   if (slashes >= 13 && (!old || *field == old))
     {
-      // TODO: check for overflow in font-name
-      strncpy (buf, name, field - name);
-      buf += field - name;
-      strcpy (buf, replace);
-      strcat (buf, end);
+      size_t len = field - name;
+      *ptr = (char *)malloc (len + strlen (replace) + strlen (end) + 1);
+      memcpy (*ptr, name, len);
+      strcpy (*ptr + len, replace);
+      strcat (*ptr, end);
 
       return true;
     }
   else
     {
-      strcpy (buf, name);
+      *ptr = strdup (name);
 
       return false;
     }
@@ -660,7 +659,7 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
   // first morph the font if required
   if (force_prop)
     {
-      char fname[1024];
+      char *fname;
 
       if (name[0] != '-')
         {
@@ -682,18 +681,18 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
 
       if (prop.weight != rxvt_fontprop::unset)
         {
-          replace_field (fname, name, 2, 0,
+          replace_field (&fname, name, 2, 0,
                          prop.weight < rxvt_fontprop::bold
                            ? "medium" : "bold");
-          set_name (strdup (fname));
+          set_name (fname);
         }
 
       if (prop.slant != rxvt_fontprop::unset)
         {
-          replace_field (fname, name, 3, 0,
+          replace_field (&fname, name, 3, 0,
                          prop.slant < rxvt_fontprop::italic
                            ? "r" : "i"); // TODO: handle "o"blique, too
-          set_name (strdup (fname));
+          set_name (fname);
         }
     }
 
@@ -728,14 +727,18 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
   for (int i = 0; i < count; i++)
     {
       rxvt_fontprop p;
-      char fname[1024];
+      char *fname;
 
       int diff = 0;
 
-      if (replace_field (fname, list[i], 6, '0', field_str))
+      if (replace_field (&fname, list[i], 6, '0', field_str))
         diff += 10; // slightly penalize scalable fonts
-      else if (replace_field (fname, list[i], 11, '0', "0"))
-        diff += 300; // more heavily penalize what looks like scaled bitmap fonts
+      else
+        {
+          free (fname);
+          if (replace_field (&fname, list[i], 11, '0', "0"))
+            diff += 300; // more heavily penalize what looks like scaled bitmap fonts
+        }
 
       if (!set_properties (p, fname))
         continue;
@@ -749,7 +752,7 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
       if (prop.slant  != rxvt_fontprop::unset) diff += abs (prop.slant  - p.slant);
       //if (prop.width  != rxvt_fontprop::unset) diff += abs (prop.width  - p.width);
 
-      fonts[i].name = strdup (fname);
+      fonts[i].name = fname;
       fonts[i].diff = diff;
     }
 
@@ -1295,15 +1298,9 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
   int w = term->fwidth * len;
   int h = term->fheight;
 
-  /* TODO: this logic needs some more thinking, since we no longer do pseudo-transparency.
-   * Maybe make buffering into a resource flag? Compile time option doesn't seems like a
-   * good idea from the perspective of packaging for wide variety of user configs.
-   */
-  bool buffered = true
-#ifdef FORCE_UNBUFFERED_XFT
-                  && bg >= 0
-#endif
-                  ;
+  bool buffered = bg >= Color_transparent
+                  && term->option (Opt_buffered);
+
   // cut trailing spaces
   while (len && text [len - 1] == ' ')
     len--;
@@ -1339,67 +1336,61 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
 
   if (buffered)
     {
-      bool back_rendered = false;
       if (ep != enc)
         {
           rxvt_drawable &d2 = d.screen->scratch_drawable (w, h);
 
 #ifdef HAVE_BG_PIXMAP
-          if (term->bgPixmap.pixmap)
+          Picture dst = 0; // the only assignment is done conditionally in the following if condition
+
+          if (term->bgPixmap.pixmap
+              && (bg == Color_transparent || bg == Color_bg
+                  || (bg >= 0 && !term->pix_colors[bg].is_opaque () && ((dst = XftDrawPicture (d2))))))
             {
-              Picture dst = 0;
+              int src_x = x, src_y = y;
 
-              if (bg >= 0 && term->pix_colors[bg].c.color.alpha < 0x0ff00)
-                dst = XftDrawPicture (d2);
-
-              if (bg < 0 || dst != 0)
+              if (term->bgPixmap.is_parentOrigin ())
                 {
-                  int src_x = x, src_y = y ;
+                  src_x += term->window_vt_x;
+                  src_y += term->window_vt_y;
+                }
 
-                  if (term->bgPixmap.is_parentOrigin ())
-                    {
-                      src_x += term->window_vt_x;
-                      src_y += term->window_vt_y;
-                    }
+              if (term->bgPixmap.pmap_width >= src_x + w
+                  && term->bgPixmap.pmap_height >= src_y + h)
+                {
+                  XCopyArea (disp, term->bgPixmap.pixmap, d2, gc,
+                             src_x, src_y, w, h, 0, 0);
+                }
+              else
+                {
+                  XGCValues gcv;
 
-                  if (term->bgPixmap.pmap_width >= src_x+w
-                      && term->bgPixmap.pmap_height >= src_y+h)
-                    {
-                      XCopyArea (disp, term->bgPixmap.pixmap, d2, gc,
-                                 src_x, src_y, w, h, 0, 0);
-                    }
-                  else
-                    {
-                      XGCValues gcv;
+                  gcv.fill_style  = FillTiled;
+                  gcv.tile        = term->bgPixmap.pixmap;
+                  gcv.ts_x_origin = -src_x;
+                  gcv.ts_y_origin = -src_y;
 
-                      gcv.fill_style  = FillTiled;
-                      gcv.tile        = term->bgPixmap.pixmap;
-                      gcv.ts_x_origin = -src_x;
-                      gcv.ts_y_origin = -src_y;
+                  XChangeGC (disp, gc,
+                             GCTile | GCTileStipXOrigin | GCTileStipYOrigin | GCFillStyle,
+                             &gcv);
 
-                      XChangeGC (disp, gc,
-                                 GCTile | GCTileStipXOrigin | GCTileStipYOrigin | GCFillStyle,
-                                 &gcv);
+                  XFillRectangle (disp, d2, gc, 0, 0, w, h);
 
-                      XFillRectangle (disp, d2, gc, 0, 0, w, h);
+                  gcv.fill_style = FillSolid;
+                  XChangeGC (disp, gc, GCFillStyle, &gcv);
+                }
 
-                      gcv.fill_style = FillSolid;
-                      XChangeGC (disp, gc, GCFillStyle, &gcv);
-                    }
+              if (dst)
+                {
+                  Picture solid_color_pict = XftDrawSrcPicture (d2, &term->pix_colors[bg].c);
 
-                  if (bg >= 0)
-                    {
-                      Picture solid_color_pict = XftDrawSrcPicture (d2, &term->pix_colors[bg].c);
-                      XRenderComposite (disp, PictOpOver, solid_color_pict, None, dst, 0, 0, 0, 0, 0, 0, w, h);
-                    }
-
-                  back_rendered = true;
+                  // dst can only be set when bg >= 0
+                  XRenderComposite (disp, PictOpOver, solid_color_pict, None, dst, 0, 0, 0, 0, 0, 0, w, h);
                 }
             }
+          else
 #endif
-
-          if (bg >= 0 && !back_rendered)
-            XftDrawRect (d2, &term->pix_colors[bg].c, 0, 0, w, h);
+            XftDrawRect (d2, &term->pix_colors[bg >= 0 ? bg : Color_bg].c, 0, 0, w, h);
 
           XftDrawGlyphSpec (d2, &term->pix_colors[fg].c, f, enc, ep - enc);
           XCopyArea (disp, d2, d, gc, 0, 0, w, h, x, y);
@@ -1531,7 +1522,7 @@ rxvt_fontset::add_fonts (const char *desc)
 
           if (end - desc < 511)
             {
-              strncpy (buf, desc, end - desc);
+              memcpy (buf, desc, end - desc);
               buf[end - desc] = 0;
 
               fonts.push_back (new_font (buf, cs));

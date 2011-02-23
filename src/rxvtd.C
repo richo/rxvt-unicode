@@ -3,7 +3,7 @@
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,10 +48,11 @@ struct server : rxvt_connection {
   int getfd (int remote_fd);
 
   server (int fd)
-  : read_ev (this, &server::read_cb),
-    log_cb (this, &server::log_msg),
-    getfd_cb (this, &server::getfd)
   {
+    read_ev.set <server, &server::read_cb> (this);
+    log_cb.set  <server, &server::log_msg> (this);
+    getfd_cb.set<server, &server::getfd>   (this);
+
     this->fd = fd;
     fcntl (fd, F_SETFD, FD_CLOEXEC);
     fcntl (fd, F_SETFL, 0);
@@ -70,8 +71,9 @@ struct unix_listener {
 };
 
 unix_listener::unix_listener (const char *sockname)
-: accept_ev (this, &unix_listener::accept_cb)
 {
+  accept_ev.set<unix_listener, &unix_listener::accept_cb> (this);
+
   sockaddr_un sa;
 
   if (strlen (sockname) >= sizeof(sa.sun_path))
@@ -196,11 +198,11 @@ void server::read_cb (ev::io &w, int revents)
             term->log_hook = &log_cb;
             term->getfd_hook = &getfd_cb;
 
-            bool success;
+            bool success = true;
 
             try
               {
-                success = term->init (argv, envv);
+                term->init (argv, envv);
               }
             catch (const class rxvt_failure_exception &e)
               {
