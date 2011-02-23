@@ -136,7 +136,7 @@
  * Define to remove support for XCopyArea () support.  XCopyArea () is useful
  * for scrolling on non-local X displays
  */
-#undef NO_SLOW_LINK_SUPPORT
+#define NO_SLOW_LINK_SUPPORT
 
 /*
  * Printer pipe which will be used for emulation of attached vt100 printer
@@ -300,6 +300,11 @@
 #define SB_WIDTH_MAXIMUM 	100
 
 /*
+ * rxvt scrollbar shadow width in pixels, must be 1 or 2
+ */
+#define SHADOW_WIDTH 1
+
+/*
  * When using Rxvt scrollbar, clicking above or below the slider will move
  * 1/4 of the screen height, if possible.  Setting RXVT_SCROLL_FULL will move
  * it one screen height less one line, if possible
@@ -374,6 +379,16 @@
  * corresponds to the delay given in the terminfo flash code.
  */
 #define VISUAL_BELL_DURATION .020
+
+/*--------------------------------OTHER---------------------------------*/
+
+/*
+ * Enable the linux yield/usleep hack, which can dramatically improve
+ * performance without hurting. See command.C for details.
+ */
+#if __linux__
+# define LINUX_YIELD_HACK 1
+#endif
 
 #endif
 

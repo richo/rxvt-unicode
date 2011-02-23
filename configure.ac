@@ -47,7 +47,7 @@ if test x$GCC = xyes && test x$GXX = xyes; then
    LIBS="$LIBS -lsupc++"
    LINKER="$CC"
    AC_LINK_IFELSE(
-      [AC_LANG_PROGRAM([struct test { }; void f() try { throw new test; } catch (...) { throw; }])],
+      [AC_LANG_PROGRAM([struct test { }; void f() try { throw new test; } catch (...) { throw; }],[])],
       [AC_MSG_RESULT(ok)],
       [
          AC_MSG_RESULT([no, making everything bigger and slower])
@@ -59,14 +59,13 @@ if test x$GCC = xyes && test x$GXX = xyes; then
 fi
 AC_SUBST(LINKER,[$LINKER])
 
-AC_LANG(C++)
 dnl# --------------------------------------------------------------------------
 dnl# Supply default CXXFLAGS, if not specified by `CXXFLAGS=flags ./configure'
 dnl#
 if test -z "$orig_CXXFLAGS"; then
   if test x$GCC = xyes && test "x$GXX" = xyes; then
      CXXFLAGS="-g -O3 -fno-threadsafe-statics -fno-enforce-eh-specs"
-    AC_COMPILE_IFELSE([AC_LANG_PROGRAM()], [], [CXXFLAGS="-g -O3"])
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[])], [], [CXXFLAGS="-g -O3"])
   else
     CXXFLAGS="-O"
   fi
@@ -275,12 +274,6 @@ AC_ARG_ENABLE(plain-scroll,
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_scroll_plain=$enableval
   fi])
-
-dnl AC_ARG_ENABLE(half-shadow,
-dnl   [  --enable-half-shadow    use half width/height shadow on rxvt scrollbar],
-dnl   [if test x$enableval = xyes; then
-dnl     AC_DEFINE(HALFSHADOW, 1, Define if you want the depth of scrollbars and menus to be less)
-dnl   fi])
 
 AC_ARG_WITH(codesets,
   [  --with-codesets=NAME,.. compile in additional codesets (jp,jp_ext,kr,zh,zh_ext,all)],
@@ -540,6 +533,20 @@ fi
 LIBS=$ac_save_LIBS
 CFLAGS=$ac_save_CFLAGS
 
+AC_CACHE_CHECK([for XLIB_ILLEGAL_ACCESS], rxvt_xlib_illegal_access,
+[AC_COMPILE_IFELSE(
+   [AC_LANG_PROGRAM([
+#define XLIB_ILLEGAL_ACCESS
+#include <X11/Xlib.h>
+   ],[
+      Display *dpy;
+      dpy->xdefaults = (char *)0;
+   ])],
+   [rxvt_xlib_illegal_access=yes],[rxvt_xlib_illegal_access=no]
+)])
+if test x$rxvt_xlib_illegal_access = xyes; then
+   AC_DEFINE(XLIB_ILLEGAL_ACCESS, 1, Define ONLY iff Xlib.h supports it)
+fi
 
 AC_C_CONST
 AC_C_INLINE
@@ -885,16 +892,17 @@ AC_SUBST(PERL)
 AC_SUBST(IF_PERL)
 AC_SUBST(PERL_O)
 
+     AC_TRY_LINK([
+#include <EXTERN.h>
+#include <perl.h>
+#include <XSUB.h>
+],[
+     PerlInterpreter *perl = perl_alloc ();
+],[rxvt_perl_link=yes],[rxvt_perl_link=no])
 if test x$support_perl = xyes; then
    support_frills=yes
 fi
 
-dnl> AC_CHECK_FUNCS(gettimeofday putenv select socket)
-
-CFLAGS=${CFLAGS--O}
-LDFLAGS=${LDFLAGS--O}
-
-CPPFLAGS="$CPPFLAGS"
 AC_SUBST(DEBUG)
 AC_SUBST(DINCLUDE)
 AC_SUBST(CFLAGS)
@@ -955,7 +963,7 @@ echo "Configuration:
   Source code location:       $srcdir
   Install path:               ${prefix}/bin
   Compiler:                   $CXX
-  Compiler flags:             $CFLAGS
+  Compiler flags:             $CXXFLAGS
   Linker:                     $LINKER"
 
 if test x$support_xpm = xyes; then

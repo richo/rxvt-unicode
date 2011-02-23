@@ -1,4 +1,4 @@
-/*--------------------------------*-C-*---------------------------------*
+/*----------------------------------------------------------------------*
  * File:	scrollbar.C
  *----------------------------------------------------------------------*
  *
@@ -6,7 +6,7 @@
  * Copyright (c) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
  *				- N*XTstep like scrollbars
  * Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
- * Copyright (c) 2004      Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@
 int
 rxvt_term::scrollbar_mapping (int map)
 {
-  int             change = 0;
+  int change = 0;
 
 #ifdef HAVE_SCROLLBARS
   if (map)
@@ -46,17 +46,18 @@ rxvt_term::scrollbar_mapping (int map)
 
       if (scrollBar.win)
         {
-          XMapWindow (xdisp, scrollBar.win);
+          XMapWindow (dpy, scrollBar.win);
           change = 1;
         }
     }
   else
     {
       scrollBar.state = 0;
-      XUnmapWindow (xdisp, scrollBar.win);
+      XUnmapWindow (dpy, scrollBar.win);
       change = 1;
     }
 #endif
+
   return change;
 }
 
@@ -111,7 +112,7 @@ rxvt_term::resize_scrollbar ()
   if (!scrollBar.win)
     {
       /* create the scrollbar window */
-      scrollBar.win = XCreateSimpleWindow (xdisp,
+      scrollBar.win = XCreateSimpleWindow (dpy,
                                            parent[0],
                                            window_sb_x, 0,
                                            scrollbar_TotalWidth (),
@@ -119,9 +120,9 @@ rxvt_term::resize_scrollbar ()
                                            0,
                                            pix_colors[Color_fg],
                                            pix_colors[Color_border]);
-      XDefineCursor (xdisp, scrollBar.win, leftptr_cursor);
+      XDefineCursor (dpy, scrollBar.win, leftptr_cursor);
 
-      XSelectInput (xdisp, scrollBar.win,
+      XSelectInput (dpy, scrollBar.win,
                    ExposureMask | ButtonPressMask | ButtonReleaseMask
                    | Button1MotionMask | Button2MotionMask
                    | Button3MotionMask);
@@ -133,7 +134,7 @@ rxvt_term::resize_scrollbar ()
   scrollbar_show (1);
 
   if (delayed_init)
-    XMapWindow (xdisp, scrollBar.win);
+    XMapWindow (dpy, scrollBar.win);
 #endif
 }
 
@@ -230,7 +231,7 @@ rxvt_term::setup_scrollbar (const char *scrollalign, const char *scrollstyle, co
 
 # ifdef RXVT_SCROLLBAR
   if (! OPTION (Opt_scrollBar_floating) && style == R_SB_RXVT)
-    sb_shadow = 2;
+    sb_shadow = SHADOW_WIDTH;
 # endif
 
   scrollBar.style = style;

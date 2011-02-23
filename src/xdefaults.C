@@ -1,4 +1,4 @@
-/*--------------------------------*-C-*---------------------------------*
+/*----------------------------------------------------------------------*
  * File:	xdefaults.C
  *----------------------------------------------------------------------*
  *
@@ -23,12 +23,12 @@
  * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *----------------------------------------------------------------------*/
 
-#include "../config.h"		/* NECESSARY */
-#include "rxvt.h"		/* NECESSARY */
+#include "../config.h"
+#include "rxvt.h"
 #include "version.h"
 
 #ifdef KEYSYM_RESOURCE
-#include "keyboard.h"
+# include "keyboard.h"
 #endif
 
 /* place holders used for parsing command-line options */
@@ -36,7 +36,7 @@
 #define Optflag_Boolean              0x80000000UL
 #define Optflag_mask                 0x3fffffffUL
 
-/*{{{ monolithic option/resource structure: */
+/* monolithic option/resource structure: */
 /*
  * `string' options MUST have a usage argument
  * `switch' and `boolean' options have no argument
@@ -268,7 +268,6 @@ optList[] = {
 #undef RSTRG
 #undef SWCH
 #undef BOOL
-/*}}} */
 
 static const char releasestring[] = "rxvt-unicode (" RXVTNAME ") v" VERSION " - released: " DATE "\n";
 static const char optionsstring[] = "options: "
@@ -388,6 +387,10 @@ static const char optionsstring[] = "options: "
 
 #define INDENT 18
 
+const char rxvt_term::resval_undef [] = "<undef>";
+const char rxvt_term::resval_on []    = "on";
+const char rxvt_term::resval_off []   = "off";
+
 /*{{{ usage: */
 /*----------------------------------------------------------------------*/
 static void
@@ -405,7 +408,7 @@ rxvt_usage (int type)
         for (col = 1, i = 0; i < optList_size; i++)
           if (optList[i].desc != NULL)
             {
-              int             len = 0;
+              int len = 0;
 
               if (!optList_isBool (i))
                 {
@@ -482,8 +485,7 @@ rxvt_usage (int type)
 void
 rxvt_term::get_options (int argc, const char *const *argv)
 {
-  int             i, bad_option = 0;
-  static const char On[3] = "ON", Off[4] = "OFF";
+  int i, bad_option = 0;
 
   for (i = 1; i < argc; i++)
     {
@@ -494,13 +496,15 @@ rxvt_term::get_options (int argc, const char *const *argv)
 
       if (*opt == '-')
         {
-          flag = On;
+          flag = resval_on;
+
           if (*++opt == '-')
             longopt = *opt++;	/* long option */
         }
       else if (*opt == '+')
         {
-          flag = Off;
+          flag = resval_off;
+
           if (*++opt == '+')
             longopt = *opt++;	/* long option */
         }
@@ -513,6 +517,7 @@ rxvt_term::get_options (int argc, const char *const *argv)
 
       if (!strcmp (opt, "help"))
         rxvt_usage (longopt ? 2 : 1);
+
       if (!strcmp (opt, "h"))
         rxvt_usage (0);
 
@@ -526,7 +531,7 @@ rxvt_term::get_options (int argc, const char *const *argv)
       if (entry < optList_size)
         {
           if (optList_isReverse (entry))
-            flag = flag == On ? Off : On;
+            flag = flag == resval_on ? resval_off : resval_on;
 
           if (optList_strlen (entry))
             {
@@ -537,12 +542,16 @@ rxvt_term::get_options (int argc, const char *const *argv)
                */
 
               if (optList[entry].doff != -1)
-                rs[optList[entry].doff] = flag == On && argv[i+1]
-                                          ? argv[++i] : 0;
+                {
+                  if (flag == resval_on && !argv [i+1])
+                    rxvt_fatal ("option '%s' needs an argument, aborting.\n", argv [i]);
+
+                  rs[optList[entry].doff] = flag == resval_on ? argv[++i] : resval_undef;
+                }
             }
           else
             {		/* boolean value */
-              set_option (optList[entry].flag & Optflag_mask, flag == On);
+              set_option (optList[entry].flag & Optflag_mask, flag == resval_on);
 
               if (optList[entry].doff != -1)
                 rs[optList[entry].doff] = flag;
@@ -767,7 +776,7 @@ get_res (XrmDatabase database, const char *program, const char *option)
 const char *
 rxvt_term::x_resource (const char *name)
 {
-  XrmDatabase database = XrmGetDatabase (xdisp);
+  XrmDatabase database = XrmGetDatabase (dpy);
 
   const char *p = get_res (database, rs[Rs_name], name);
   const char *p0 = get_res (database, "!INVALIDPROGRAMMENAMEDONTMATCH!", name);
@@ -829,7 +838,7 @@ rxvt_term::extract_resources ()
    * [R5 or later]: enumerate the resource database
    */
 #  ifdef KEYSYM_RESOURCE
-  XrmDatabase database = XrmGetDatabase (xdisp);
+  XrmDatabase database = XrmGetDatabase (dpy);
   XrmName name_prefix[3];
   XrmClass class_prefix[3];
 

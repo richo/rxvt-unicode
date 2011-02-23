@@ -4,7 +4,7 @@
  *
  * Copyright (c) 1997,1998 mj olesen <olesen@me.QueensU.CA>
  * Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
- * Copyright (c) 2004      Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,8 +40,7 @@ rxvt_term::scrollbar_show_plain (int update, int last_top, int last_bot, int scr
       scrollBar.init |= R_SB_PLAIN;
       gcvalue.foreground = pix_colors_focused[Color_scroll];
 
-      pscrollbarGC = XCreateGC (xdisp, scrollBar.win,
-                                GCForeground, &gcvalue);
+      pscrollbarGC = XCreateGC (dpy, scrollBar.win, GCForeground, &gcvalue);
     }
 
   xsb = OPTION (Opt_scrollBar_right) ? 1 : 0;
@@ -49,21 +48,21 @@ rxvt_term::scrollbar_show_plain (int update, int last_top, int last_bot, int scr
   if (update)
     {
       if (last_top < scrollBar.top)
-        XClearArea (xdisp, scrollBar.win,
-                    sb_shadow + xsb, last_top,
-                    sbwidth + 1, (scrollBar.top - last_top), False);
+        XClearArea (dpy, scrollBar.win,
+                    sb_shadow, last_top,
+                    sbwidth + 1, scrollBar.top - last_top, False);
 
       if (scrollBar.bot < last_bot)
-        XClearArea (xdisp, scrollBar.win,
-                    sb_shadow + xsb, scrollBar.bot,
-                    sbwidth + 1, (last_bot - scrollBar.bot), False);
+        XClearArea (dpy, scrollBar.win,
+                    sb_shadow, scrollBar.bot,
+                    sbwidth + 1, last_bot - scrollBar.bot, False);
     }
   else
-    XClearWindow (xdisp, scrollBar.win);
+    XClearWindow (dpy, scrollBar.win);
 
   /* scrollbar slider */
-  XFillRectangle (xdisp, scrollBar.win, pscrollbarGC,
-                  xsb + 1, scrollBar.top, sbwidth, scrollbar_len);
+  XFillRectangle (dpy, scrollBar.win, pscrollbarGC,
+                  1 - xsb, scrollBar.top, sbwidth, scrollbar_len);
 
   return 1;
 }

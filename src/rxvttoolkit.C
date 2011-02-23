@@ -1,9 +1,9 @@
-/*--------------------------------*-C-*---------------------------------*
+/*----------------------------------------------------------------------*
  * File:	rxvttoolkit.C
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 2003-2004 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -28,11 +28,8 @@
 #include <fcntl.h>
 
 #include <sys/utsname.h>
-
-#ifndef NO_SLOW_LINK_SUPPORT
-# include <sys/socket.h>
-# include <sys/un.h>
-#endif
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #if XFT
 # include <X11/extensions/Xrender.h>
@@ -179,7 +176,7 @@ rxvt_xim::ref_init ()
 {
   display = GET_R->display; //HACK: TODO
 
-  xim = XOpenIM (display->display, NULL, NULL, NULL);
+  xim = XOpenIM (display->dpy, 0, 0, 0);
 
   if (!xim)
     return false;
@@ -188,7 +185,7 @@ rxvt_xim::ref_init ()
   ximcallback.client_data = (XPointer)this;
   ximcallback.callback = im_destroy_cb;
 
-  XSetIMValues (xim, XNDestroyCallback, &ximcallback, NULL);
+  XSetIMValues (xim, XNDestroyCallback, &ximcallback, 0);
 
   return true;
 }
@@ -203,13 +200,63 @@ rxvt_xim::~rxvt_xim ()
 
 /////////////////////////////////////////////////////////////////////////////
 
+#if XFT
+rxvt_drawable::~rxvt_drawable ()
+{
+  if (xftdrawable)
+    XftDrawDestroy (xftdrawable);
+}
+
+rxvt_drawable::operator XftDraw *()
+{
+  if (!xftdrawable)
+    xftdrawable = XftDrawCreate (screen->dpy, drawable, screen->visual, screen->cmap);
+
+  return xftdrawable;
+}
+#endif
+
+/////////////////////////////////////////////////////////////////////////////
+
+#if XFT
+
+// not strictly necessary as it is only used with superclass of zero_initialised
+rxvt_screen::rxvt_screen ()
+: scratch_area (0)
+{
+}
+
+rxvt_drawable &rxvt_screen::scratch_drawable (int w, int h)
+{
+  // it's actually faster to re-allocate every time. don't ask me
+  // why, but its likely no big deal there are no roundtrips
+  // (I think/hope).
+  if (!scratch_area || w > scratch_w || h > scratch_h || 1/*D*/)
+    {
+      if (scratch_area)
+        {
+          XFreePixmap (dpy, scratch_area->drawable);
+          delete scratch_area;
+        }
+
+      Pixmap pm = XCreatePixmap (dpy, RootWindowOfScreen (ScreenOfDisplay (dpy, display->screen)),
+                                 scratch_w = w, scratch_h = h, depth);
+
+      scratch_area = new rxvt_drawable (this, pm);
+    }
+
+  return *scratch_area;
+}
+
+#endif
+
 void
 rxvt_screen::set (rxvt_display *disp)
 {
   display = disp;
-  xdisp   = disp->display;
+  dpy     = disp->dpy;
 
-  Screen *screen = ScreenOfDisplay (xdisp, disp->screen);
+  Screen *screen = ScreenOfDisplay (dpy, disp->screen);
 
   depth   = DefaultDepthOfScreen    (screen);
   visual  = DefaultVisualOfScreen   (screen);
@@ -224,11 +271,11 @@ rxvt_screen::set (rxvt_display *disp, int bitdepth)
 #if XFT
   XVisualInfo vinfo;
 
-  if (XMatchVisualInfo (xdisp, display->screen, bitdepth, TrueColor, &vinfo))
+  if (XMatchVisualInfo (dpy, display->screen, bitdepth, TrueColor, &vinfo))
     {
       depth  = bitdepth;
       visual = vinfo.visual;
-      cmap   = XCreateColormap (xdisp, disp->root, visual, AllocNone);
+      cmap   = XCreateColormap (dpy, disp->root, visual, AllocNone);
     }
 #endif
 }
@@ -236,8 +283,16 @@ rxvt_screen::set (rxvt_display *disp, int bitdepth)
 void
 rxvt_screen::clear ()
 {
-  if (cmap != DefaultColormapOfScreen (ScreenOfDisplay (xdisp, display->screen)))
-    XFreeColormap (xdisp, cmap);
+#if XFT
+  if (scratch_area)
+    {
+      XFreePixmap (dpy, scratch_area->drawable);
+      delete scratch_area;
+    }
+#endif
+
+  if (cmap != DefaultColormapOfScreen (ScreenOfDisplay (dpy, display->screen)))
+    XFreeColormap (dpy, cmap);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -250,7 +305,7 @@ rxvt_display::rxvt_display (const char *id)
 }
 
 XrmDatabase
-rxvt_display::get_resources ()
+rxvt_display::get_resources (bool refresh)
 {
   char *homedir = (char *)getenv ("HOME");
   char fname[1024];
@@ -259,9 +314,7 @@ rxvt_display::get_resources ()
    * get resources using the X library function
    */
   char *displayResource, *xe;
-  XrmDatabase database, rdb1;
-
-  database = NULL;
+  XrmDatabase rdb1, database = 0;
 
   // for ordering, see for example http://www.faqs.org/faqs/Xt-FAQ/ Subject: 20
 
@@ -281,9 +334,42 @@ rxvt_display::get_resources ()
 
   // 4. User's defaults file.
   /* Get any Xserver defaults */
-  displayResource = XResourceManagerString (display);
+  if (refresh)
+    {
+      // fucking xlib keeps a copy of the rm string
+      Atom actual_type;
+      int actual_format;
+      unsigned long nitems, nremaining;
+      char *val = 0;
 
-  if (displayResource != NULL)
+#if XLIB_ILLEGAL_ACCESS
+      if (dpy->xdefaults)
+        XFree (dpy->xdefaults);
+#endif
+
+      if (XGetWindowProperty (dpy, RootWindow (dpy, 0), XA_RESOURCE_MANAGER,
+                              0L, 100000000L, False,
+                              XA_STRING, &actual_type, &actual_format,
+                              &nitems, &nremaining,
+                              (unsigned char **)&val) == Success
+          && actual_type == XA_STRING
+          && actual_format == 8)
+         displayResource = val;
+       else
+         {
+           displayResource = 0;
+           if (val)
+             XFree(val);
+         }
+
+#if XLIB_ILLEGAL_ACCESS
+      dpy->xdefaults = displayResource;
+#endif
+    }
+  else
+    displayResource = XResourceManagerString (dpy);
+
+  if (displayResource)
     {
       if ((rdb1 = XrmGetStringDatabase (displayResource)))
         XrmMergeDatabases (rdb1, &database);
@@ -296,10 +382,15 @@ rxvt_display::get_resources ()
         XrmMergeDatabases (rdb1, &database);
     }
 
-  /* Get screen specific resources */
-  displayResource = XScreenResourceString (ScreenOfDisplay (display, screen));
+#if !XLIB_ILLEGAL_ACCESS
+  if (refresh && displayResource)
+    XFree (displayResource);
+#endif
 
-  if (displayResource != NULL)
+  /* Get screen specific resources */
+  displayResource = XScreenResourceString (ScreenOfDisplay (dpy, screen));
+
+  if (displayResource)
     {
       if ((rdb1 = XrmGetStringDatabase (displayResource)))
         /* Merge with screen-independent resources */
@@ -337,41 +428,40 @@ bool rxvt_display::ref_init ()
       val = rxvt_malloc (5 + strlen (id) + 1);
       strcpy (val, "unix/");
       strcat (val, id);
-      display = XOpenDisplay (val);
+      dpy = XOpenDisplay (val);
       free (val);
     }
   else
 #endif
-    display = 0;
+    dpy = 0;
 
-  if (!display)
-    display = XOpenDisplay (id);
+  if (!dpy)
+    dpy = XOpenDisplay (id);
 
-  if (!display)
+  if (!dpy)
     return false;
 
-  screen = DefaultScreen (display);
-  root   = DefaultRootWindow (display);
+  screen = DefaultScreen     (dpy);
+  root   = DefaultRootWindow (dpy);
 
   assert (sizeof (xa_names) / sizeof (char *) == NUM_XA);
-  XInternAtoms (display, (char **)xa_names, NUM_XA, False, xa);
+  XInternAtoms (dpy, (char **)xa_names, NUM_XA, False, xa);
 
-  XrmSetDatabase (display, get_resources ());
+  XrmSetDatabase (dpy, get_resources (false));
 
 #ifdef POINTER_BLANK
   XColor blackcolour;
   blackcolour.red   = 0;
   blackcolour.green = 0;
   blackcolour.blue  = 0;
-  Font f = XLoadFont (display, "fixed");
-  blank_cursor = XCreateGlyphCursor (display, f, f, ' ', ' ',
+  Font f = XLoadFont (dpy, "fixed");
+  blank_cursor = XCreateGlyphCursor (dpy, f, f, ' ', ' ',
                                      &blackcolour, &blackcolour);
-  XUnloadFont (display, f);
+  XUnloadFont (dpy, f);
 #endif
 
-  int fd = XConnectionNumber (display);
+  int fd = XConnectionNumber (dpy);
 
-#ifndef NO_SLOW_LINK_SUPPORT
   // try to detect wether we have a local connection.
   // assume unix domains socket == local, everything else not
   // TODO: might want to check for inet/127.0.0.1
@@ -381,12 +471,11 @@ bool rxvt_display::ref_init ()
 
   if (!getsockname (fd, (sockaddr *)&sa, &sl))
     is_local = sa.sun_family == AF_LOCAL;
-#endif
 
   x_ev.start (fd, EVENT_READ);
   fcntl (fd, F_SETFD, FD_CLOEXEC);
 
-  XSelectInput (display, root, PropertyChangeMask);
+  XSelectInput (dpy, root, PropertyChangeMask);
 
   flush ();
 
@@ -397,24 +486,24 @@ void
 rxvt_display::ref_next ()
 {
   // TODO: somehow check wether the database files/resources changed
-  // before re-loading/parsing
-  XrmDestroyDatabase (XrmGetDatabase (display));
-  XrmSetDatabase (display, get_resources ());
+  // before affording re-loading/parsing
+  XrmDestroyDatabase (XrmGetDatabase (dpy));
+  XrmSetDatabase (dpy, get_resources (true));
 }
 
 rxvt_display::~rxvt_display ()
 {
-  if (!display)
+  if (!dpy)
     return;
 
 #ifdef POINTER_BLANK
-  XFreeCursor (display, blank_cursor);
+  XFreeCursor (dpy, blank_cursor);
 #endif
   x_ev.stop ();
 #ifdef USE_XIM
   xims.clear ();
 #endif
-  XCloseDisplay (display);
+  XCloseDisplay (dpy);
 }
 
 #ifdef USE_XIM
@@ -432,7 +521,7 @@ void rxvt_display::im_change_check ()
   int actual_format;
   unsigned long nitems, bytes_after;
 
-  if (XGetWindowProperty (display, root, xa[XA_XIM_SERVERS], 0L, 1000000L,
+  if (XGetWindowProperty (dpy, root, xa[XA_XIM_SERVERS], 0L, 1000000L,
                           False, XA_ATOM, &actual_type, &actual_format,
                           &nitems, &bytes_after, (unsigned char **)&atoms)
       != Success )
@@ -440,7 +529,7 @@ void rxvt_display::im_change_check ()
 
   if (actual_type == XA_ATOM  && actual_format == 32)
     for (int i = 0; i < nitems; i++)
-      if (XGetSelectionOwner (display, atoms[i]))
+      if (XGetSelectionOwner (dpy, atoms[i]))
         {
           im_change_cb ();
           break;
@@ -455,7 +544,7 @@ void rxvt_display::x_cb (io_watcher &w, short revents)
   do
     {
       XEvent xev;
-      XNextEvent (display, &xev);
+      XNextEvent (dpy, &xev);
 
 #ifdef USE_XIM
       if (!XFilterEvent (&xev, None))
@@ -476,17 +565,17 @@ void rxvt_display::x_cb (io_watcher &w, short revents)
         }
 #endif
     }
-  while (XEventsQueued (display, QueuedAlready));
+  while (XEventsQueued (dpy, QueuedAlready));
 
-  XFlush (display);
+  XFlush (dpy);
 }
 
 void rxvt_display::flush ()
 {
-  if (XEventsQueued (display, QueuedAlready))
+  if (XEventsQueued (dpy, QueuedAlready))
     x_cb (x_ev, EVENT_READ);
 
-  XFlush (display);
+  XFlush (dpy);
 }
 
 void rxvt_display::reg (xevent_watcher *w)
@@ -510,6 +599,7 @@ void rxvt_display::set_selection_owner (rxvt_term *owner)
 }
 
 #ifdef USE_XIM
+
 void rxvt_display::reg (im_watcher *w)
 {
   imw.push_back (w);
@@ -543,15 +633,16 @@ rxvt_xim *rxvt_display::get_xim (const char *locale, const char *modifiers)
 
 void rxvt_display::put_xim (rxvt_xim *xim)
 {
-#if XLIB_IS_RACEFREE
+# if XLIB_IS_RACEFREE
   xims.put (xim);
-#endif
+# endif
 }
+
 #endif
 
 Atom rxvt_display::atom (const char *name)
 {
-  return XInternAtom (display, name, False);
+  return XInternAtom (dpy, name, False);
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -562,27 +653,27 @@ refcache<rxvt_display> displays;
 /////////////////////////////////////////////////////////////////////////////
  
 bool
-rxvt_color::alloc (rxvt_screen *screen, rxvt_rgba rgba)
+rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
 {
 #if XFT
   XRenderPictFormat *format;
 
-  // FUCKING Xft gets it wrong, of course, so work around it
-  // transparency users should eat shit and die, and then
+  // FUCKING Xft gets it wrong, of course, so work around it.
+  // Transparency users should eat shit and die, and then
   // XRenderQueryPictIndexValues themselves plenty.
-  if ((screen->visual->c_class == TrueColor || screen->visual->c_class == DirectColor)
-      && (format = XRenderFindVisualFormat (screen->xdisp, screen->visual)))
+  if ((screen->visual->c_class == TrueColor)
+      && (format = XRenderFindVisualFormat (screen->dpy, screen->visual)))
     {
       // the fun lies in doing everything manually...
-      c.color.red   = rgba.r;
-      c.color.green = rgba.g;
-      c.color.blue  = rgba.b;
-      c.color.alpha = rgba.a;
+      c.color.red   = color.r;
+      c.color.green = color.g;
+      c.color.blue  = color.b;
+      c.color.alpha = color.a;
 
-      c.pixel = ((rgba.r * format->direct.redMask   / rxvt_rgba::MAX_CC) << format->direct.red  )
-              | ((rgba.g * format->direct.greenMask / rxvt_rgba::MAX_CC) << format->direct.green)
-              | ((rgba.b * format->direct.blueMask  / rxvt_rgba::MAX_CC) << format->direct.blue )
-              | ((rgba.a * format->direct.alphaMask / rxvt_rgba::MAX_CC) << format->direct.alpha);
+      c.pixel = ((color.r * format->direct.redMask   / rgba::MAX_CC) << format->direct.red  )
+              | ((color.g * format->direct.greenMask / rgba::MAX_CC) << format->direct.green)
+              | ((color.b * format->direct.blueMask  / rgba::MAX_CC) << format->direct.blue )
+              | ((color.a * format->direct.alphaMask / rgba::MAX_CC) << format->direct.alpha);
 
       return true;
     }
@@ -590,43 +681,35 @@ rxvt_color::alloc (rxvt_screen *screen, rxvt_rgba rgba)
     {
       XRenderColor d;
 
-      d.red   = rgba.r;
-      d.green = rgba.g;
-      d.blue  = rgba.b;
-      d.alpha = rgba.a;
+      d.red   = color.r;
+      d.green = color.g;
+      d.blue  = color.b;
+      d.alpha = color.a;
 
-      return XftColorAllocValue (screen->xdisp, screen->visual, screen->cmap, &d, &c);
+      return XftColorAllocValue (screen->dpy, screen->visual, screen->cmap, &d, &c);
     }
 #else
-  if (screen->visual->c_class == TrueColor || screen->visual->c_class == DirectColor)
+  c.red   = color.r;
+  c.green = color.g;
+  c.blue  = color.b;
+
+  if (screen->visual->c_class == TrueColor)
     {
-      p = (rgba.r * (screen->visual->red_mask   >> ctz (screen->visual->red_mask  ))
-                  / rxvt_rgba::MAX_CC) << ctz (screen->visual->red_mask  )
-        | (rgba.g * (screen->visual->green_mask >> ctz (screen->visual->green_mask))
-                  / rxvt_rgba::MAX_CC) << ctz (screen->visual->green_mask)
-        | (rgba.b * (screen->visual->blue_mask  >> ctz (screen->visual->blue_mask ))
-                  / rxvt_rgba::MAX_CC) << ctz (screen->visual->blue_mask );
+      c.pixel = (color.r * (screen->visual->red_mask   >> ctz (screen->visual->red_mask  ))
+                         / rgba::MAX_CC) << ctz (screen->visual->red_mask  )
+              | (color.g * (screen->visual->green_mask >> ctz (screen->visual->green_mask))
+                         / rgba::MAX_CC) << ctz (screen->visual->green_mask)
+              | (color.b * (screen->visual->blue_mask  >> ctz (screen->visual->blue_mask ))
+                         / rgba::MAX_CC) << ctz (screen->visual->blue_mask );
 
       return true;
     }
+  else if (XAllocColor (screen->dpy, screen->cmap, &c))
+    return true;
   else
-    {
-      XColor xc;
-
-      xc.red   = rgba.r;
-      xc.green = rgba.g;
-      xc.blue  = rgba.b;
-
-      if (XAllocColor (screen->xdisp, screen->cmap, &xc))
-	{
-	  p = xc.pixel;
-	  return true;
-	}
-      else
-        p = (rgba.r + rgba.g + rgba.b) > 128*3
-            ? WhitePixelOfScreen (DefaultScreenOfDisplay (screen->xdisp))
-            : BlackPixelOfScreen (DefaultScreenOfDisplay (screen->xdisp));
-    }
+    c.pixel = (color.r + color.g + color.b) > 128*3
+            ? WhitePixelOfScreen (DefaultScreenOfDisplay (screen->dpy))
+            : BlackPixelOfScreen (DefaultScreenOfDisplay (screen->dpy));
 #endif
 
   return false;
@@ -635,31 +718,25 @@ rxvt_color::alloc (rxvt_screen *screen, rxvt_rgba rgba)
 bool
 rxvt_color::set (rxvt_screen *screen, const char *name)
 {
-  rxvt_rgba c;
+  rgba c;
   char eos;
   int skip;
 
-  if (1 <= sscanf (name, "[%hx]%n", &c.a, &skip))
+  // parse the nonstandard "[alphapercent]" prefix
+  if (1 <= sscanf (name, "[%hd]%n", &c.a, &skip))
     {
-      switch (skip)
-        {
-          case 2 + 1: c.a *= rxvt_rgba::MAX_CC / 0x000f; break;
-          case 2 + 2: c.a *= rxvt_rgba::MAX_CC / 0x00ff; break;
-          case 2 + 3: c.a *= rxvt_rgba::MAX_CC / 0x0fff; break;
-          case 2 + 4: c.a *= rxvt_rgba::MAX_CC / 0xffff; break;
-        }
-
+      c.a = lerp<int, int, int> (0, rgba::MAX_CC, c.a);
       name += skip;
     }
   else
-    c.a = rxvt_rgba::MAX_CC;
+    c.a = rgba::MAX_CC;
 
-  // parse the non-standard rgba format
-  if (strlen (name) != 4+5*4 || 4 != sscanf (name, "rgba:%hx/%hx/%hx/%hx%c", &c.r, &c.g, &c.b, &c.a, &eos))
+  // parse the non-standard "rgba:rrrr/gggg/bbbb/aaaa" format
+  if (strlen (name) != 4+5*4 || 4 != sscanf (name, "rgba:%4hx/%4hx/%4hx/%4hx%c", &c.r, &c.g, &c.b, &c.a, &eos))
     {
       XColor xc, xc_exact;
 
-      if (XParseColor (screen->xdisp, screen->cmap, name, &xc))
+      if (XParseColor (screen->dpy, screen->cmap, name, &xc))
         {
           c.r = xc.red;
           c.g = xc.green;
@@ -679,9 +756,9 @@ rxvt_color::set (rxvt_screen *screen, const char *name)
 }
 
 bool
-rxvt_color::set (rxvt_screen *screen, rxvt_rgba rgba)
+rxvt_color::set (rxvt_screen *screen, const rgba &color)
 {
-  bool got = alloc (screen, rgba);
+  bool got = alloc (screen, color);
 
 #if !ENABLE_MINIMAL
   int cmap_size = screen->visual->map_entries;
@@ -695,16 +772,18 @@ rxvt_color::set (rxvt_screen *screen, rxvt_rgba rgba)
       for (int i = 0; i < cmap_size; i++)
         colors [i].pixel = i;
  
-      XQueryColors (screen->xdisp, screen->cmap, colors, cmap_size);
+      // many kilobytes transfer per colour, but pseudocolor isn't worth
+      // many extra optimisations.
+      XQueryColors (screen->dpy, screen->cmap, colors, cmap_size);
 
       int diff = 0x7fffffffUL;
       XColor *best = colors;
 
       for (int i = 0; i < cmap_size; i++)
         {
-          int d = (squared_diff<int> (rgba.r >> 2, colors [i].red   >> 2))
-                + (squared_diff<int> (rgba.g >> 2, colors [i].green >> 2))
-                + (squared_diff<int> (rgba.b >> 2, colors [i].blue  >> 2));
+          int d = (squared_diff<int> (color.r >> 2, colors [i].red   >> 2))
+                + (squared_diff<int> (color.g >> 2, colors [i].green >> 2))
+                + (squared_diff<int> (color.b >> 2, colors [i].blue  >> 2));
 
           if (d < diff)
             {
@@ -714,9 +793,9 @@ rxvt_color::set (rxvt_screen *screen, rxvt_rgba rgba)
         }
 
       //rxvt_warn ("could not allocate %04x %04x %04x, getting %04x %04x %04x instead (%d)\n",
-      //    rgba.r, rgba.g, rgba.b, best->red, best->green, best->blue, diff);
+      //    color.r, color.g, color.b, best->red, best->green, best->blue, diff);
           
-      got = alloc (screen, rxvt_rgba (best->red, best->green, best->blue));
+      got = alloc (screen, rgba (best->red, best->green, best->blue));
 
       delete colors;
     }
@@ -726,72 +805,60 @@ rxvt_color::set (rxvt_screen *screen, rxvt_rgba rgba)
 }
 
 void
-rxvt_color::get (rxvt_screen *screen, rxvt_rgba &rgba)
+rxvt_color::get (rgba &color)
 {
 #if XFT
-  rgba.r = c.color.red;
-  rgba.g = c.color.green;
-  rgba.b = c.color.blue;
-  rgba.a = c.color.alpha;
+  color.r = c.color.red;
+  color.g = c.color.green;
+  color.b = c.color.blue;
+  color.a = c.color.alpha;
 #else
-  XColor c;
-
-  c.pixel = p;
-  XQueryColor (screen->xdisp, screen->cmap, &c);
-
-  rgba.r = c.red;
-  rgba.g = c.green;
-  rgba.b = c.blue;
-  rgba.a = rxvt_rgba::MAX_CC;
+  color.r = c.red;
+  color.g = c.green;
+  color.b = c.blue;
+  color.a = rgba::MAX_CC;
 #endif
+}
+
+void
+rxvt_color::get (XColor &color)
+{
+  rgba c;
+  get (c);
+
+  color.red   = c.r;
+  color.green = c.g;
+  color.blue  = c.b;
+  color.pixel = (Pixel)*this;
 }
 
 void 
 rxvt_color::free (rxvt_screen *screen)
 {
+  if (screen->visual->c_class == TrueColor)
+    return; // nothing to do
+
 #if XFT
-  XftColorFree (screen->xdisp, screen->visual, screen->cmap, &c);
+  XftColorFree (screen->dpy, screen->visual, screen->cmap, &c);
 #else
-  XFreeColors (screen->xdisp, screen->cmap, &p, 1, AllPlanes);
+  XFreeColors (screen->dpy, screen->cmap, &c.pixel, 1, AllPlanes);
 #endif
 }
 
-rxvt_color
-rxvt_color::fade (rxvt_screen *screen, int percent)
+void
+rxvt_color::fade (rxvt_screen *screen, int percent, rxvt_color &result, const rgba &to)
 {
-  rxvt_color faded;
+  rgba c;
+  get (c);
 
-  rxvt_rgba c;
-  get (screen, c);
-
-  c.r = lerp (0, c.r, percent);
-  c.g = lerp (0, c.g, percent);
-  c.b = lerp (0, c.b, percent);
-
-  faded.set (screen, c);
-
-  return faded;
-}
-
-rxvt_color
-rxvt_color::fade (rxvt_screen *screen, int percent, rxvt_color &fadeto)
-{
-  rxvt_rgba c, fc;
-  rxvt_color faded;
-  
-  get (screen, c);
-  fadeto.get (screen, fc);
-
-  faded.set (
+  result.set (
     screen,
-    rxvt_rgba (
-      lerp (fc.r, c.r, percent),
-      lerp (fc.g, c.g, percent),
-      lerp (fc.b, c.b, percent),
-      lerp (fc.a, c.a, percent)
+    rgba (
+      lerp (c.r, to.r, percent),
+      lerp (c.g, to.g, percent),
+      lerp (c.b, to.b, percent),
+      lerp (c.a, to.a, percent)
     )
   );
-
-  return faded;
 }
 

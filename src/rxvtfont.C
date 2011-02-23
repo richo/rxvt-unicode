@@ -1,4 +1,4 @@
-/*--------------------------------*-C-*---------------------------------*
+/*----------------------------------------------------------------------*
  * File:	rxvtfont.C
  *----------------------------------------------------------------------*
  * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
@@ -160,26 +160,8 @@ static uint16_t extent_test_chars[] = {
 
 #define NUM_EXTENT_TEST_CHARS (sizeof (extent_test_chars) / sizeof (extent_test_chars[0]))
 
-#define dTermDisplay Display *disp = term->xdisp
+#define dTermDisplay Display *disp = term->dpy
 #define dTermGC      GC gc = term->gc
-
-/////////////////////////////////////////////////////////////////////////////
-
-#if XFT
-rxvt_drawable::~rxvt_drawable ()
-{
-  if (xftdrawable)
-    XftDrawDestroy (xftdrawable);
-}
-
-rxvt_drawable::operator XftDraw *()
-{
-  if (!xftdrawable)
-    xftdrawable = XftDrawCreate (screen->xdisp, drawable, screen->visual, screen->cmap);
-
-  return xftdrawable;
-}
-#endif
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -252,9 +234,9 @@ rxvt_font::clear_rect (rxvt_drawable &d, int x, int y, int w, int h, int color) 
   dTermDisplay;
   dTermGC;
   
-  if (color == Color_bg)
+  if (color < 0 || color == Color_bg)
     XClearArea (disp, d, x, y, w, h, false);
-  else if (color >= 0)
+  else
     {
 #if XFT
       XftDrawRect (d, &term->pix_colors[color].c, x, y, w, h);
@@ -516,7 +498,7 @@ rxvt_font_x11::get_property (XFontStruct *f, Atom property, const char *repl) co
   unsigned long value;
 
   if (XGetFontProperty (f, property, &value))
-    return XGetAtomName (term->xdisp, value);
+    return XGetAtomName (term->dpy, value);
   else
     return rxvt_strdup (repl);
 }
@@ -549,7 +531,7 @@ rxvt_font_x11::set_properties (rxvt_fontprop &p, XFontStruct *f)
   unsigned long height;
 
 #if 0
-  if (!XGetFontProperty (f, XInternAtom (term->xdisp, "PIXEL_SIZE", 0), &height))
+  if (!XGetFontProperty (f, XInternAtom (term->dpy, "PIXEL_SIZE", 0), &height))
     return false;
 #else
   height = f->ascent + f->descent;
@@ -894,7 +876,7 @@ rxvt_font_x11::clear ()
 {
   if (f)
     {
-      XFreeFont (term->xdisp, f);
+      XFreeFont (term->dpy, f);
       f = 0;
     }
 }
@@ -1076,7 +1058,7 @@ rxvt_font_xft::clear ()
 {
   if (f)
     {
-      XftFontClose (term->xdisp, f);
+      XftFontClose (term->dpy, f);
       f = 0;
     }
 }
@@ -1253,7 +1235,7 @@ rxvt_font_xft::has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &car
 {
   careful = false;
 
-  if (!XftCharExists (term->xdisp, f, unicode))
+  if (!XftCharExists (term->dpy, f, unicode))
     return false;
 
   if (!prop || prop->width == rxvt_fontprop::unset)
@@ -1262,7 +1244,7 @@ rxvt_font_xft::has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &car
   // check character against base font bounding box
   FcChar32 ch = unicode;
   XGlyphInfo g;
-  XftTextExtents32 (term->xdisp, f, &ch, 1, &g);
+  XftTextExtents32 (term->dpy, f, &ch, 1, &g);
 
   int w = g.width - g.x;
   int wcw = max (WCWIDTH (unicode), 1);
@@ -1284,8 +1266,6 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
                      const text_t *text, int len,
                      int fg, int bg)
 {
-  clear_rect (d, x, y, term->fwidth * len, term->fheight, bg);
-
   XGlyphInfo extents;
   XftGlyphSpec *enc = (XftGlyphSpec *)rxvt_temp_buf (len * sizeof (XftGlyphSpec));
   XftGlyphSpec *ep = enc;
@@ -1293,9 +1273,22 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
   dTermDisplay;
   dTermGC;
 
+  int w = term->fwidth * len;
+  int h = term->fheight;
+
+  bool buffered = 0
+#if defined(XPM_BACKGROUND) || defined(TRANSPARENT)
+                  || !term->am_transparent        // we aren't transparent
+                  || term->am_pixmap_trans        // we have a pixmap
+#endif
+                  || bg >= 0;                     // we don't use a transparent bg
+
   // cut trailing spaces
   while (len && text [len - 1] == ' ')
     len--;
+
+  int x_ = buffered ? 0 : x;
+  int y_ = buffered ? 0 : y;
 
   while (len)
     {
@@ -1311,21 +1304,61 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
           XftGlyphExtents (disp, f, &glyph, 1, &extents);
 
           ep->glyph = glyph;
-          ep->x = x + (cwidth - extents.xOff >> 1);
-          ep->y = y + ascent;
+          ep->x = x_ + (cwidth - extents.xOff >> 1);
+          ep->y = y_ + ascent;
 
           if (extents.xOff == 0)
-            ep->x = x + cwidth;
+            ep->x = x_ + cwidth;
 
           ep++;
         }
 
-      x += cwidth;
+      x_ += cwidth;
     }
 
-  if (ep != enc)
-    XftDrawGlyphSpec (d, &term->pix_colors[fg].c, f, enc, ep - enc);
+  if (buffered)
+    {
+      if (ep != enc)
+        {
+          rxvt_drawable &d2 = d.screen->scratch_drawable (w, h);
+
+#if defined(XPM_BACKGROUND) || defined(TRANSPARENT)
+          if (bg < 0 && term->am_pixmap_trans)
+            XCopyArea (disp, term->pixmap, d2, gc, x, y, w, h, 0, 0);
+          else if (bg < 0 && term->bgPixmap.pixmap)
+            {
+              XGCValues gcv;
+
+              gcv.fill_style  = FillTiled;
+              gcv.tile        = term->pixmap;
+              gcv.ts_x_origin = -x;
+              gcv.ts_y_origin = -y;
+
+              GC gc2 = XCreateGC (disp, d2,
+                                  GCTile | GCTileStipXOrigin | GCTileStipYOrigin | GCFillStyle,
+                                  &gcv);
+
+              XFillRectangle (disp, d2, gc2, 0, 0, w, h);
+
+              XFreeGC (disp, gc2);
+            }
+          else
+#endif
+            XftDrawRect (d2, &term->pix_colors[bg].c, 0, 0, w, h);
+
+          XftDrawGlyphSpec (d2, &term->pix_colors[fg].c, f, enc, ep - enc);
+          XCopyArea (disp, d2, d, gc, 0, 0, w, h, x, y);
+        }
+      else
+        clear_rect (d, x, y, w, h, bg);
+    }
+  else
+    {
+      clear_rect (d, x, y, w, h, bg);
+      XftDrawGlyphSpec (d, &term->pix_colors[fg].c, f, enc, ep - enc);
+    }
 }
+
 #endif
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1578,7 +1611,7 @@ rxvt_fontset::find_font (unicode_t unicode)
               //FcPatternAddBool    (p, FC_ANTIALIAS, 1);
 
               XftResult result;
-              FcPattern *match = XftFontMatch (term->xdisp, term->display->screen, p, &result);
+              FcPattern *match = XftFontMatch (term->dpy, term->display->screen, p, &result);
 
               FcPatternDestroy (p);
 

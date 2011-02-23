@@ -1,4 +1,4 @@
-/*--------------------------------*-C-*---------------------------------*
+/*----------------------------------------------------------------------*
  * File:        main.C
  *----------------------------------------------------------------------*
  *
@@ -200,6 +200,7 @@ void rxvt_term::emergency_cleanup ()
   if (cmd_pid)
     kill (-cmd_pid, SIGHUP);
 
+  pty_ev.stop ();
   delete pty; pty = 0;
 }
 
@@ -224,40 +225,48 @@ rxvt_term::~rxvt_term ()
       im_destroy ();
 #endif
 #ifdef XTERM_SCROLLBAR
-      if (xscrollbarGC) XFreeGC (xdisp, xscrollbarGC);
-      if (ShadowGC)     XFreeGC (xdisp, ShadowGC);
+      if (xscrollbarGC) XFreeGC (dpy, xscrollbarGC);
+      if (ShadowGC)     XFreeGC (dpy, ShadowGC);
 #endif
 #ifdef PLAIN_SCROLLBAR
-      if (pscrollbarGC) XFreeGC (xdisp, pscrollbarGC);
+      if (pscrollbarGC) XFreeGC (dpy, pscrollbarGC);
 #endif
 #ifdef NEXT_SCROLLBAR
-      if (blackGC)      XFreeGC (xdisp, blackGC);
-      if (whiteGC)      XFreeGC (xdisp, whiteGC);
-      if (grayGC)       XFreeGC (xdisp, grayGC);
-      if (darkGC)       XFreeGC (xdisp, darkGC);
-      if (stippleGC)    XFreeGC (xdisp, stippleGC);
-      if (dimple)       XFreePixmap (xdisp, dimple);
-      if (upArrow)      XFreePixmap (xdisp, upArrow);
-      if (downArrow)    XFreePixmap (xdisp, downArrow);
-      if (upArrowHi)    XFreePixmap (xdisp, upArrowHi);
-      if (downArrowHi)  XFreePixmap (xdisp, downArrowHi);
+      if (blackGC)      XFreeGC (dpy, blackGC);
+      if (whiteGC)      XFreeGC (dpy, whiteGC);
+      if (grayGC)       XFreeGC (dpy, grayGC);
+      if (darkGC)       XFreeGC (dpy, darkGC);
+      if (stippleGC)    XFreeGC (dpy, stippleGC);
+      if (dimple)       XFreePixmap (dpy, dimple);
+      if (upArrow)      XFreePixmap (dpy, upArrow);
+      if (downArrow)    XFreePixmap (dpy, downArrow);
+      if (upArrowHi)    XFreePixmap (dpy, upArrowHi);
+      if (downArrowHi)  XFreePixmap (dpy, downArrowHi);
 #endif
 #ifdef RXVT_SCROLLBAR
-      if (topShadowGC)  XFreeGC (xdisp, topShadowGC);
-      if (botShadowGC)  XFreeGC (xdisp, botShadowGC);
-      if (scrollbarGC)  XFreeGC (xdisp, scrollbarGC);
+      if (topShadowGC)  XFreeGC (dpy, topShadowGC);
+      if (botShadowGC)  XFreeGC (dpy, botShadowGC);
+      if (scrollbarGC)  XFreeGC (dpy, scrollbarGC);
 #endif
-      if (gc)   XFreeGC (xdisp, gc);
+      if (gc)   XFreeGC (dpy, gc);
 
       delete drawable;
       // destroy all windows
       if (parent[0])
-        XDestroyWindow (xdisp, parent[0]);
+        XDestroyWindow (dpy, parent[0]);
+
+      for (int i = 0; i < TOTAL_COLORS; i++)
+        if (ISSET_PIXCOLOR (i))
+          {
+            pix_colors_focused   [i].free (this);
+#if OFF_FOCUS_FADING
+            pix_colors_unfocused [i].free (this);
+#endif
+          }
 
       clear ();
     }
 
-  // TODO: free pixcolours, colours should become part of rxvt_display
   delete pix_colors_focused;
 #if OFF_FOCUS_FADING
   delete pix_colors_unfocused;
@@ -482,7 +491,7 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
   scr_reset (); // initialize screen
 
 #if 0
-  XSynchronize (xdisp, True);
+  XSynchronize (dpy, True);
 #endif
 
 #ifdef HAVE_SCROLLBARS
@@ -492,7 +501,7 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 #ifdef TRANSPARENT
   if (OPTION (Opt_transparent))
     {
-      XSelectInput (xdisp, display->root, PropertyChangeMask);
+      XSelectInput (dpy, display->root, PropertyChangeMask);
       check_our_parents ();
       rootwin_ev.start (display, display->root);
     }
@@ -516,13 +525,13 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
     {
       long info[2] = { 0, XEMBED_MAPPED };
 
-      XChangeProperty (xdisp, parent[0], xa[XA_XEMBED_INFO], xa[XA_XEMBED_INFO],
+      XChangeProperty (dpy, parent[0], xa[XA_XEMBED_INFO], xa[XA_XEMBED_INFO],
                        32, PropModeReplace, (unsigned char *)&info, 2);
     }
 #endif
 
-  XMapWindow (xdisp, vt);
-  XMapWindow (xdisp, parent[0]);
+  XMapWindow (dpy, vt);
+  XMapWindow (dpy, parent[0]);
 
   return true;
 }
@@ -693,13 +702,14 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
     {
       sb_w = scrollbar_TotalWidth ();
       szHint.base_width += sb_w;
+
       if (!OPTION (Opt_scrollBar_right))
         window_vt_x += sb_w;
     }
 
-  szHint.width_inc = fwidth;
+  szHint.width_inc  = fwidth;
   szHint.height_inc = fheight;
-  szHint.min_width = szHint.base_width + szHint.width_inc;
+  szHint.min_width  = szHint.base_width + szHint.width_inc;
   szHint.min_height = szHint.base_height + szHint.height_inc;
 
   if (newwidth && newwidth - szHint.base_width < max_width)
@@ -728,10 +738,10 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
     window_sb_x = szHint.width - sb_w;
 
   if (recalc_x)
-    szHint.x += DisplayWidth  (xdisp, display->screen) - szHint.width  - 2 * ext_bwidth;
+    szHint.x += DisplayWidth  (dpy, display->screen) - szHint.width  - 2 * ext_bwidth;
 
   if (recalc_y)
-    szHint.y += DisplayHeight (xdisp, display->screen) - szHint.height - 2 * ext_bwidth;
+    szHint.y += DisplayHeight (dpy, display->screen) - szHint.height - 2 * ext_bwidth;
 
   ncol = width / fwidth;
   nrow = height / fheight;
@@ -844,7 +854,7 @@ rxvt_term::set_fonts ()
 
 void rxvt_term::set_string_property (Atom prop, const char *str, int len)
 {
-  XChangeProperty (xdisp, parent[0],
+  XChangeProperty (dpy, parent[0],
                    prop, XA_STRING, 8, PropModeReplace,
                    (const unsigned char *)str, len >= 0 ? len : strlen (str));
 }
@@ -854,7 +864,7 @@ void rxvt_term::set_utf8_property (Atom prop, const char *str, int len)
   wchar_t *ws = rxvt_mbstowcs (str, len);
   char *s = rxvt_wcstoutf8 (ws);
 
-  XChangeProperty (xdisp, parent[0],
+  XChangeProperty (dpy, parent[0],
                    prop, xa[XA_UTF8_STRING], 8, PropModeReplace,
                    (const unsigned char *)s, strlen (s));
 
@@ -889,9 +899,13 @@ rxvt_term::set_window_color (int idx, const char *color)
 {
   rxvt_color xcol;
   int i;
-
+  
   if (color == NULL || *color == '\0')
     return;
+
+  color = strdup (color);
+  allocated.push_back ((void *)color);
+  rs[Rs_color + idx] = color;
 
   /* handle color aliases */
   if (isdigit (*color))
@@ -902,41 +916,24 @@ rxvt_term::set_window_color (int idx, const char *color)
         {        /* bright colors */
           i -= 8;
           pix_colors_focused[idx] = pix_colors_focused[minBrightCOLOR + i];
-          SET_PIXCOLOR (idx);
           goto done;
         }
 
       if (i >= 0 && i <= 7)
         { /* normal colors */
           pix_colors_focused[idx] = pix_colors_focused[minCOLOR + i];
-          SET_PIXCOLOR (idx);
           goto done;
         }
     }
 
-  if (!set_color (xcol, color))
-    return;
-
-  /* XStoreColor (xdisp, display->cmap, XColor*); */
+  set_color (xcol, color);
 
   /*
    * FIXME: should free colors here, but no idea how to do it so instead,
    * so just keep gobbling up the colormap
    */
-# if 0
-  for (i = Color_Black; i <= Color_White; i++)
-    if (pix_colors[idx] == pix_colors[i])
-      break;
-  if (i > Color_White)
-    {
-      /* fprintf (stderr, "XFreeColors: pix_colors [%d] = %lu\n", idx, pix_colors [idx]); */
-      XFreeColors (xdisp, display->cmap, (pix_colors + idx), 1,
-                   DisplayPlanes (xdisp, display->screen));
-    }
-# endif
 
   pix_colors_focused[idx] = xcol;
-  SET_PIXCOLOR (idx);
 
   /* XSetWindowAttributes attr; */
   /* Cursor cursor; */
@@ -944,7 +941,11 @@ done:
 
 #if OFF_FOCUS_FADING
   if (rs[Rs_fade])
-    pix_colors_unfocused[idx] = pix_colors_focused[idx].fade (this, atoi (rs[Rs_fade]), pix_colors[Color_fade]);
+    {
+      rgba c;
+      pix_colors [Color_fade].get (c);
+      pix_colors_focused [idx].fade (this, atoi (rs[Rs_fade]), pix_colors_unfocused [idx], c);
+    }
 #endif
 
   /*TODO: handle Color_BD, scrollbar background, etc. */
@@ -960,17 +961,17 @@ done:
 void
 rxvt_term::recolour_cursor ()
 {
-  XColor xcol[2];
+  XColor fg, bg;
 
-  xcol[0].pixel = ISSET_PIXCOLOR (Color_pointer_fg)
-                     ? pix_colors_focused[Color_pointer_fg]
-                     : pix_colors_focused[Color_fg];
-  xcol[1].pixel = ISSET_PIXCOLOR (Color_pointer_bg)
-                     ? pix_colors_focused[Color_pointer_bg]
-                     : pix_colors_focused[Color_bg];
+  (ISSET_PIXCOLOR (Color_pointer_fg)
+     ? pix_colors_focused[Color_pointer_fg]
+     : pix_colors_focused[Color_fg]).get (fg);
 
-  XQueryColors (xdisp, cmap, xcol, 2);
-  XRecolorCursor (xdisp, TermWin_cursor, xcol + 0, xcol + 1);
+  (ISSET_PIXCOLOR (Color_pointer_bg)
+     ? pix_colors_focused[Color_pointer_bg]
+     : pix_colors_focused[Color_bg]).get (bg);
+
+  XRecolorCursor (dpy, TermWin_cursor, &fg, &bg);
 }
 
 /*----------------------------------------------------------------------*/
@@ -1018,6 +1019,12 @@ rxvt_term::set_color (rxvt_color &color, const char *name)
   return false;
 }
 
+void
+rxvt_term::alias_color (int dst, int src)
+{
+  pix_colors[dst].set (this, rs[Rs_color + dst] = rs[Rs_color + src]);
+}
+
 /* -------------------------------------------------------------------- *
  * -                         WINDOW RESIZING                          - *
  * -------------------------------------------------------------------- */
@@ -1029,7 +1036,9 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
   int old_height = szHint.height;
 
   window_calc (newwidth, newheight);
-  XSetWMNormalHints (xdisp, parent[0], &szHint);
+
+  if (!HOOK_INVOKE ((this, HOOK_RESIZE_ALL_WINDOWS, DT_INT, newwidth, DT_INT, newheight, DT_END)))
+    XSetWMNormalHints (dpy, parent[0], &szHint);
 
   if (!ignoreparent)
     {
@@ -1043,9 +1052,9 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
       unsigned int unused_w1, unused_h1, unused_b1, unused_d1;
       Window unused_cr;
 
-      XTranslateCoordinates (xdisp, parent[0], display->root,
+      XTranslateCoordinates (dpy, parent[0], display->root,
                              0, 0, &x, &y, &unused_cr);
-      XGetGeometry (xdisp, parent[0], &unused_cr, &x1, &y1,
+      XGetGeometry (dpy, parent[0], &unused_cr, &x1, &y1,
                     &unused_w1, &unused_h1, &unused_b1, &unused_d1);
       /*
        * if display->root isn't the parent window, a WM will probably have offset
@@ -1057,8 +1066,8 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
           y -= y1;
         }
 
-      x1 = (DisplayWidth  (xdisp, display->screen) - old_width ) / 2;
-      y1 = (DisplayHeight (xdisp, display->screen) - old_height) / 2;
+      x1 = (DisplayWidth  (dpy, display->screen) - old_width ) / 2;
+      y1 = (DisplayHeight (dpy, display->screen) - old_height) / 2;
       dx = old_width  - szHint.width;
       dy = old_height - szHint.height;
 
@@ -1072,10 +1081,10 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
       else if (y == y1)       /* exact center */
         dy /= 2;
 
-      XMoveResizeWindow (xdisp, parent[0], x + dx, y + dy,
+      XMoveResizeWindow (dpy, parent[0], x + dx, y + dy,
                          szHint.width, szHint.height);
 #else
-      XResizeWindow (xdisp, parent[0], szHint.width, szHint.height);
+      XResizeWindow (dpy, parent[0], szHint.width, szHint.height);
 #endif
     }
 
@@ -1085,13 +1094,13 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
     {
       if (scrollBar.state)
         {
-          XMoveResizeWindow (xdisp, scrollBar.win,
+          XMoveResizeWindow (dpy, scrollBar.win,
                              window_sb_x, 0,
                              scrollbar_TotalWidth (), szHint.height);
           resize_scrollbar ();
         }
 
-      XMoveResizeWindow (xdisp, vt,
+      XMoveResizeWindow (dpy, vt,
                          window_vt_x, window_vt_y,
                          width, height);
 
@@ -1104,13 +1113,16 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
   if (fix_screen || old_height == 0)
     scr_reset ();
 
+  // TODO, with nvidia-8178, resizes kill the alpha channel, report if not fixed in newer version
+  //scr_touch (false);
+
 #ifdef XPM_BACKGROUND
   if (pixmap)
     scr_touch (false);
 #endif
 
 #ifdef USE_XIM
-  IMSetStatusPosition ();
+  IMSetPosition ();
 #endif
 }
 
@@ -1125,7 +1137,7 @@ rxvt_term::set_widthheight (unsigned int newwidth, unsigned int newheight)
 
   if (newwidth == 0 || newheight == 0)
     {
-      XGetWindowAttributes (xdisp, display->root, &wattr);
+      XGetWindowAttributes (dpy, display->root, &wattr);
 
       if (newwidth == 0)
         newwidth = wattr.width - szHint.base_width;
@@ -1149,8 +1161,8 @@ rxvt_term::set_widthheight (unsigned int newwidth, unsigned int newheight)
 void
 rxvt_term::im_set_color (unsigned long &fg, unsigned long &bg)
 {
-  fg = pix_colors[Color_fg];
-  bg = pix_colors[Color_bg];
+  fg = pix_colors [Color_fg];
+  bg = pix_colors [Color_bg];
 }
 
 void
@@ -1197,8 +1209,8 @@ rxvt_term::IMisRunning ()
       if ((p = strchr (server + 1, '@')) != NULL)      /* first one only */
         *p = '\0';
 
-      atom = XInternAtom (xdisp, server, False);
-      win = XGetSelectionOwner (xdisp, atom);
+      atom = XInternAtom (dpy, server, False);
+      win = XGetSelectionOwner (dpy, atom);
 
       if (win != None)
         return True;
@@ -1432,7 +1444,7 @@ foundpet:
                fheight + 1, fheight - 1,
                fheight - 2, fheight + 2);
 
-      fs = XCreateFontSet (xdisp, rs[Rs_imFont] ? rs[Rs_imFont] : pat,
+      fs = XCreateFontSet (dpy, rs[Rs_imFont] ? rs[Rs_imFont] : pat,
                            &missing_charset_list, &missing_charset_count, &def_string);
 
       if (missing_charset_list)
@@ -1517,8 +1529,8 @@ foundpet:
                              status_attr, NULL);
 
   if (preedit_attr) XFree (preedit_attr);
-  if (status_attr) XFree (status_attr);
-  if (fs) XFreeFontSet (xdisp, fs);
+  if (status_attr)  XFree (status_attr);
+  if (fs)           XFreeFontSet (dpy, fs);
 
   if (Input_Context == NULL)
     {
@@ -1533,8 +1545,7 @@ foundpet:
     vt_select_input ();
 #endif
 
-  if (input_style & XIMPreeditArea)
-    IMSetStatusPosition ();
+  IMSetPosition ();
 
   return true;
 }
@@ -1602,34 +1613,47 @@ done:
 }
 
 void
-rxvt_term::IMSetStatusPosition ()
+rxvt_term::IMSetPosition ()
 {
   XRectangle preedit_rect, status_rect, *needed_rect;
   XVaNestedList preedit_attr, status_attr;
 
   if (!Input_Context
       || !focus
-      || !(input_style & XIMPreeditArea)
+      || !(input_style & (XIMPreeditArea | XIMPreeditPosition))
       || !IMisRunning ())
     return;
 
-  /* Getting the necessary width of preedit area */
-  status_attr = XVaCreateNestedList (0, XNAreaNeeded, &needed_rect, NULL);
-  XGetICValues (Input_Context, XNStatusAttributes, status_attr, NULL);
-  XFree (status_attr);
+  if (input_style & XIMPreeditPosition)
+    {
+      im_set_size (preedit_rect);
+      preedit_attr = XVaCreateNestedList (0, XNArea, &preedit_rect, NULL);
+    
+      XSetICValues (Input_Context,
+                    XNPreeditAttributes, preedit_attr, NULL);
+    }
+  else
+    {
+      /* Getting the necessary width of preedit area */
+      status_attr = XVaCreateNestedList (0, XNAreaNeeded, &needed_rect, NULL);
+      XGetICValues (Input_Context, XNStatusAttributes, status_attr, NULL);
+      XFree (status_attr);
 
-  im_set_preedit_area (preedit_rect, status_rect, *needed_rect);
-  XFree (needed_rect);
+      im_set_preedit_area (preedit_rect, status_rect, *needed_rect);
+      XFree (needed_rect);
 
-  preedit_attr = XVaCreateNestedList (0, XNArea, &preedit_rect, NULL);
-  status_attr = XVaCreateNestedList (0, XNArea, &status_rect, NULL);
+      preedit_attr = XVaCreateNestedList (0, XNArea, &preedit_rect, NULL);
+      status_attr  = XVaCreateNestedList (0, XNArea, &status_rect,  NULL);
 
-  XSetICValues (Input_Context,
-                XNPreeditAttributes, preedit_attr,
-                XNStatusAttributes, status_attr, NULL);
+      XSetICValues (Input_Context,
+                    XNPreeditAttributes, preedit_attr,
+                    XNStatusAttributes,  status_attr,
+                    NULL);
 
-  XFree (preedit_attr);
-  XFree (status_attr);
+      XFree (status_attr);
+    }
+
+   XFree (preedit_attr);
 }
 #endif                          /* USE_XIM */
 

@@ -1,4 +1,4 @@
-// all resource indices, used by rxvt.h anf rxvtperl.xs
+// all resource indices, used by rxvt.h and rxvtperl.xs
 
   def (display_name)
   def (term_name)
@@ -6,7 +6,7 @@
   def (geometry)
   def (reverseVideo)
   def (color)
-  reserve (color, NRS_COLORS)
+  reserve (color, TOTAL_COLORS)
   def (font)
 #if ENABLE_STYLES
   def (boldFont)

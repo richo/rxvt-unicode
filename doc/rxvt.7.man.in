@@ -129,7 +129,7 @@
 .\" ========================================================================
 .\"
 .IX Title "rxvt 7"
-.TH rxvt 7 "2006-01-31" "7.5" "RXVT-UNICODE"
+.TH rxvt 7 "2006-02-21" "7.7" "RXVT-UNICODE"
 .SH "NAME"
 RXVT REFERENCE \- FAQ, command sequences and other background information
 .SH "SYNOPSIS"
@@ -155,146 +155,134 @@ all escape sequences, and other background information.
 .PP
 The newest version of this document is also available on the World Wide Web at
 <http://cvs.schmorp.de/browse/*checkout*/rxvt\-unicode/doc/rxvt.7.html>.
-.SH "FREQUENTLY ASKED QUESTIONS"
-.IX Header "FREQUENTLY ASKED QUESTIONS"
-.Sh "The new selection selects pieces that are too big, how can I select single words?"
-.IX Subsection "The new selection selects pieces that are too big, how can I select single words?"
-If you want to select e.g. alphanumeric words, you can use the following
-setting:
+.SH "RXVT\-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS"
+.IX Header "RXVT-UNICODE/URXVT FREQUENTLY ASKED QUESTIONS"
+.Sh "Meta, Features & Commandline Issues"
+.IX Subsection "Meta, Features & Commandline Issues"
+\fIMy question isn't answered here, can I ask a human?\fR
+.IX Subsection "My question isn't answered here, can I ask a human?"
+.PP
+Before sending me mail, you could go to \s-1IRC:\s0 \f(CW\*(C`irc.freenode.net\*(C'\fR,
+channel \f(CW\*(C`#rxvt\-unicode\*(C'\fR has some rxvt-unicode enthusiasts that might be
+interested in learning about new and exciting problems (but not FAQs :).
+.PP
+\fIDoes it support tabs, can I have a tabbed rxvt\-unicode?\fR
+.IX Subsection "Does it support tabs, can I have a tabbed rxvt-unicode?"
+.PP
+Beginning with version 7.3, there is a perl extension that implements a
+simple tabbed terminal. It is installed by default, so any of these should
+give you tabs:
 .PP
 .Vb 1
-\&   URxvt.selection.pattern-0: ([[:word:]]+)
+\&   @@URXVT_NAME@@ -pe tabbed
 .Ve
-.PP
-If you click more than twice, the selection will be extended
-more and more.
-.PP
-To get a selection that is very similar to the old code, try this pattern:
 .PP
 .Vb 1
-\&   URxvt.selection.pattern-0: ([^"&'()*,;<=>?@[\e\e\e\e]^`{|})]+)
+\&   URxvt.perl-ext-common: default,tabbed
 .Ve
 .PP
-Please also note that the \fILeftClick Shift-LeftClik\fR combination also
-selects words like the old code.
-.Sh "I don't like the new selection/popups/hotkeys/perl, how do I change/disable it?"
-.IX Subsection "I don't like the new selection/popups/hotkeys/perl, how do I change/disable it?"
-You can disable the perl extension completely by setting the
-\&\fBperl-ext-common\fR resource to the empty string, which also keeps
-rxvt-unicode from initialising perl, saving memory.
+It will also work fine with tabbing functionality of many window managers
+or similar tabbing programs, and its embedding-features allow it to be
+embedded into other programs, as witnessed by \fIdoc/rxvt\-tabbed\fR or
+the upcoming \f(CW\*(C`Gtk2::URxvt\*(C'\fR perl module, which features a tabbed urxvt
+(murxvt) terminal as an example embedding application.
 .PP
-If you only want to disable specific features, you first have to
-identify which perl extension is responsible. For this, read the section
-\&\fB\s-1PREPACKAGED\s0 \s-1EXTENSIONS\s0\fR in the @@RXVT_NAME@@\fIperl\fR\|(3) manpage. For
-example, to disable the \fBselection-popup\fR and \fBoption-popup\fR, specify
-this \fBperl-ext-common\fR resource:
+\fIHow do I know which rxvt-unicode version I'm using?\fR
+.IX Subsection "How do I know which rxvt-unicode version I'm using?"
 .PP
-.Vb 1
-\&   URxvt.perl-ext-common: default,-selection-popup,-option-popup
+The version number is displayed with the usage (\-h). Also the escape
+sequence \f(CW\*(C`ESC [ 8 n\*(C'\fR sets the window title to the version number. When
+using the @@URXVT_NAME@@c client, the version displayed is that of the
+daemon.
+.PP
+\fIRxvt-unicode uses gobs of memory, how can I reduce that?\fR
+.IX Subsection "Rxvt-unicode uses gobs of memory, how can I reduce that?"
+.PP
+Rxvt-unicode tries to obey the rule of not charging you for something you
+don't use. One thing you should try is to configure out all settings that
+you don't need, for example, Xft support is a resource hog by design,
+when used. Compiling it out ensures that no Xft font will be loaded
+accidentally when rxvt-unicode tries to find a font for your characters.
+.PP
+Also, many people (me included) like large windows and even larger
+scrollback buffers: Without \f(CW\*(C`\-\-enable\-unicode3\*(C'\fR, rxvt-unicode will use
+6 bytes per screen cell. For a 160x?? window this amounts to almost a
+kilobyte per line. A scrollback buffer of 10000 lines will then (if full)
+use 10 Megabytes of memory. With \f(CW\*(C`\-\-enable\-unicode3\*(C'\fR it gets worse, as
+rxvt-unicode then uses 8 bytes per screen cell.
+.PP
+\fIHow can I start @@URXVT_NAME@@d in a race-free way?\fR
+.IX Subsection "How can I start @@URXVT_NAME@@d in a race-free way?"
+.PP
+Try \f(CW\*(C`@@URXVT_NAME@@d \-f \-o\*(C'\fR, which tells @@URXVT_NAME@@d to open the
+display, create the listening socket and then fork.
+.PP
+\fIHow can I start @@URXVT_NAME@@d automatically when I run URXVT_NAME@@c?\fR
+.IX Subsection "How can I start @@URXVT_NAME@@d automatically when I run URXVT_NAME@@c?"
+.PP
+If you want to start @@URXVT_NAME@@d automatically whenever you run
+@@URXVT_NAME@@c and the daemon isn't running yet, use this script:
+.PP
+.Vb 6
+\&   #!/bin/sh
+\&   @@URXVT_NAME@@c "$@"
+\&   if [ $? -eq 2 ]; then
+\&      @@URXVT_NAME@@d -q -o -f
+\&      @@URXVT_NAME@@c "$@"
+\&   fi
 .Ve
 .PP
-This will keep the default extensions, but disable the two popup
-extensions. Some extensions can also be configured, for example,
-scrollback search mode is triggered by \fBM\-s\fR. You can move it to any
-other combination either by setting the \fBsearchable-scrollback\fR resource:
+This tries to create a new terminal, and if fails with exit status 2,
+meaning it couldn't connect to the daemon, it will start the daemon and
+re-run the command. Subsequent invocations of the script will re-use the
+existing daemon.
 .PP
-.Vb 1
-\&   URxvt.searchable-scrollback: CM-s
-.Ve
-.Sh "The cursor moves when selecting text in the current input line, how do I switch this off?"
-.IX Subsection "The cursor moves when selecting text in the current input line, how do I switch this off?"
-See next entry.
-.Sh "During rlogin/ssh/telnet/etc. sessions, clicking near the cursor outputs strange escape sequences, how do I fix this?"
-.IX Subsection "During rlogin/ssh/telnet/etc. sessions, clicking near the cursor outputs strange escape sequences, how do I fix this?"
-These are caused by the \f(CW\*(C`readline\*(C'\fR perl extension. Under normal
-circumstances, it will move your cursor around when you click into the
-line that contains it. It tries hard not to do this at the wrong moment,
-but when running a program that doesn't parse cursor movements or in some
-cases during rlogin sessions, it fails to detect this properly.
+\fIHow do I distinguish wether I'm running rxvt-unicode or a regular xterm? I need this to decide about setting colors etc.\fR
+.IX Subsection "How do I distinguish wether I'm running rxvt-unicode or a regular xterm? I need this to decide about setting colors etc."
 .PP
-You can permamently switch this feature off by disabling the \f(CW\*(C`readline\*(C'\fR
-extension:
+The original rxvt and rxvt-unicode always export the variable \*(L"\s-1COLORTERM\s0\*(R",
+so you can check and see if that is set. Note that several programs, \s-1JED\s0,
+slrn, Midnight Commander automatically check this variable to decide
+whether or not to use color.
 .PP
-.Vb 1
-\&   URxvt.perl-ext-common: default,-readline
-.Ve
-.Sh "Why doesn't rxvt-unicode read my resources?"
-.IX Subsection "Why doesn't rxvt-unicode read my resources?"
-Well, why, indeed? It does, in a way very similar to other X
-applications. Most importantly, this means that if you or your \s-1OS\s0 loads
-resources into the X display (the right way to do it), rxvt-unicode will
-ignore any resource files in your home directory. It will only read
-\&\fI$HOME/.Xdefaults\fR when no resources are attached to the display.
+\fIHow do I set the correct, full \s-1IP\s0 address for the \s-1DISPLAY\s0 variable?\fR
+.IX Subsection "How do I set the correct, full IP address for the DISPLAY variable?"
 .PP
-If you have or use an \fI$HOME/.Xresources\fR file, chances are that
-resources are loaded into your X\-server. In this case, you have to
-re-login after every change (or run \fIxrdb \-merge \f(CI$HOME\fI/.Xresources\fR).
+If you've compiled rxvt-unicode with \s-1DISPLAY_IS_IP\s0 and have enabled
+insecure mode then it is possible to use the following shell script
+snippets to correctly set the display. If your version of rxvt-unicode
+wasn't also compiled with \s-1ESCZ_ANSWER\s0 (as assumed in these snippets) then
+the \s-1COLORTERM\s0 variable can be used to distinguish rxvt-unicode from a
+regular xterm.
 .PP
-Also consider the form resources have to use:
+Courtesy of Chuck Blake <cblake@BBN.COM> with the following shell script
+snippets:
 .PP
-.Vb 1
-\&  URxvt.resource: value
+.Vb 12
+\&   # Bourne/Korn/POSIX family of shells:
+\&   [ ${TERM:-foo} = foo ] && TERM=xterm # assume an xterm if we don't know
+\&   if [ ${TERM:-foo} = xterm ]; then
+\&      stty -icanon -echo min 0 time 15 # see if enhanced rxvt or not
+\&      echo -n '^[Z'
+\&      read term_id
+\&      stty icanon echo
+\&      if [ ""${term_id} = '^[[?1;2C' -a ${DISPLAY:-foo} = foo ]; then
+\&         echo -n '^[[7n'        # query the rxvt we are in for the DISPLAY string
+\&         read DISPLAY           # set it in our local shell
+\&      fi
+\&   fi
 .Ve
 .PP
-If you want to use another form (there are lots of different ways of
-specifying resources), make sure you understand wether and why it
-works. If unsure, use the form above.
-.Sh "I can't get transparency working, what am I doing wrong?"
-.IX Subsection "I can't get transparency working, what am I doing wrong?"
-First of all, transparency isn't officially supported in rxvt\-unicode, so
-you are mostly on your own. Do not bug the author about it (but you may
-bug everybody else). Also, if you can't get it working consider it a rite
-of passage: ... and you failed.
+\fIHow do I compile the manual pages on my own?\fR
+.IX Subsection "How do I compile the manual pages on my own?"
 .PP
-Here are four ways to get transparency. \fBDo\fR read the manpage and option
-descriptions for the programs mentioned and rxvt\-unicode. Really, do it!
+You need to have a recent version of perl installed as \fI/usr/bin/perl\fR,
+one that comes with \fIpod2man\fR, \fIpod2text\fR and \fIpod2html\fR. Then go to
+the doc subdirectory and enter \f(CW\*(C`make alldoc\*(C'\fR.
 .PP
-1. Use inheritPixmap:
+\fIIsn't rxvt-unicode supposed to be small? Don't all those features bloat?\fR
+.IX Subsection "Isn't rxvt-unicode supposed to be small? Don't all those features bloat?"
 .PP
-.Vb 2
-\&   Esetroot wallpaper.jpg
-\&   @@RXVT_NAME@@ -ip -tint red -sh 40
-.Ve
-.PP
-That works. If you think it doesn't, you lack transparency and tinting
-support, or you are unable to read.
-.PP
-2. Use a simple pixmap and emulate pseudo\-transparency. This enables you
-to use effects other than tinting and shading: Just shade/tint/whatever
-your picture with gimp:
-.PP
-.Vb 2
-\&   convert wallpaper.jpg -blur 20x20 -modulate 30 background.xpm
-\&   @@RXVT_NAME@@ -pixmap background.xpm -pe automove-background
-.Ve
-.PP
-That works. If you think it doesn't, you lack \s-1XPM\s0 and Perl support, or you
-are unable to read.
-.PP
-3. Use an \s-1ARGB\s0 visual:
-.PP
-.Vb 1
-\&   @@RXVT_NAME@@ -depth 32 -fg grey90 -bg rgba:0000/0000/4444/cccc
-.Ve
-.PP
-This requires \s-1XFT\s0 support, and the support of your X\-server. If that
-doesn't work for you, blame Xorg and Keith Packard. \s-1ARGB\s0 visuals aren't
-there yet, no matter what they claim. Rxvt-Unicode contains the neccessary
-bugfixes and workarounds for Xft and Xlib to make it work, but that
-doesn't mean that your \s-1WM\s0 has the required kludges in place.
-.PP
-4. Use xcompmgr and let it do the job:
-.PP
-.Vb 2
-\&  xprop -frame -f _NET_WM_WINDOW_OPACITY 32c \e
-\&        -set _NET_WM_WINDOW_OPACITY 0xc0000000
-.Ve
-.PP
-Then click on a window you want to make transparent. Replace \f(CW0xc0000000\fR
-by other values to change the degree of opacity. If it doesn't work and
-your server crashes, you got to keep the pieces.
-.Sh "Isn't rxvt supposed to be small? Don't all those features bloat?"
-.IX Subsection "Isn't rxvt supposed to be small? Don't all those features bloat?"
 I often get asked about this, and I think, no, they didn't cause extra
 bloat. If you compare a minimal rxvt and a minimal urxvt, you can see
 that the urxvt binary is larger (due to some encoding tables always being
@@ -309,7 +297,7 @@ already in use in this mode.
 \&  188985    9048   66616   18222    1788 urxvt --disable-everything
 .Ve
 .PP
-When you \f(CW\*(C`\-\-enable\-everything\*(C'\fR (which _is_ unfair, as this involves xft
+When you \f(CW\*(C`\-\-enable\-everything\*(C'\fR (which \fIis\fR unfair, as this involves xft
 and full locale/XIM support which are quite bloaty inside libX11 and my
 libc), the two diverge, but not unreasnobaly so.
 .PP
@@ -338,8 +326,10 @@ still fares rather well. And compared to some monsters like gnome-terminal
 43180k in daemons that stay around after exit, plus half a minute of
 startup time, including the hundreds of warnings it spits out), it fares
 extremely well *g*.
-.Sh "Why \*(C+, isn't that unportable/bloated/uncool?"
+.PP
+\fIWhy \*(C+, isn't that unportable/bloated/uncool?\fR
 .IX Subsection "Why , isn't that unportable/bloated/uncool?"
+.PP
 Is this a question? :) It comes up very often. The simple answer is: I had
 to write it, and \*(C+ allowed me to write and maintain it in a fraction
 of the time and effort (which is a scarce resource for me). Put even
@@ -375,83 +365,733 @@ And here is rxvt\-unicode:
 .PP
 No large bloated libraries (of course, none were linked in statically),
 except maybe libX11 :)
-.Sh "Does it support tabs, can I have a tabbed rxvt\-unicode?"
-.IX Subsection "Does it support tabs, can I have a tabbed rxvt-unicode?"
-Beginning with version 7.3, there is a perl extension that implements a
-simple tabbed terminal. It is installed by default, so any of these should
-give you tabs:
+.Sh "Rendering, Font & Look and Feel Issues"
+.IX Subsection "Rendering, Font & Look and Feel Issues"
+\fII can't get transparency working, what am I doing wrong?\fR
+.IX Subsection "I can't get transparency working, what am I doing wrong?"
 .PP
-.Vb 1
-\&   @@RXVT_NAME@@ -pe tabbed
+First of all, transparency isn't officially supported in rxvt\-unicode, so
+you are mostly on your own. Do not bug the author about it (but you may
+bug everybody else). Also, if you can't get it working consider it a rite
+of passage: ... and you failed.
+.PP
+Here are four ways to get transparency. \fBDo\fR read the manpage and option
+descriptions for the programs mentioned and rxvt\-unicode. Really, do it!
+.PP
+1. Use inheritPixmap:
+.PP
+.Vb 2
+\&   Esetroot wallpaper.jpg
+\&   @@URXVT_NAME@@ -ip -tint red -sh 40
 .Ve
 .PP
-.Vb 1
-\&   URxvt.perl-ext-common: default,tabbed
+That works. If you think it doesn't, you lack transparency and tinting
+support, or you are unable to read.
+.PP
+2. Use a simple pixmap and emulate pseudo\-transparency. This enables you
+to use effects other than tinting and shading: Just shade/tint/whatever
+your picture with gimp or any other tool:
+.PP
+.Vb 2
+\&   convert wallpaper.jpg -blur 20x20 -modulate 30 background.xpm
+\&   @@URXVT_NAME@@ -pixmap background.xpm -pe automove-background
 .Ve
 .PP
-It will also work fine with tabbing functionality of many window managers
-or similar tabbing programs, and its embedding-features allow it to be
-embedded into other programs, as witnessed by \fIdoc/rxvt\-tabbed\fR or
-the upcoming \f(CW\*(C`Gtk2::URxvt\*(C'\fR perl module, which features a tabbed urxvt
-(murxvt) terminal as an example embedding application.
-.Sh "How do I know which rxvt-unicode version I'm using?"
-.IX Subsection "How do I know which rxvt-unicode version I'm using?"
-The version number is displayed with the usage (\-h). Also the escape
-sequence \f(CW\*(C`ESC [ 8 n\*(C'\fR sets the window title to the version number. When
-using the @@RXVT_NAME@@c client, the version displayed is that of the
-daemon.
-.Sh "I am using Debian GNU/Linux and have a problem..."
-.IX Subsection "I am using Debian GNU/Linux and have a problem..."
-The Debian GNU/Linux package of rxvt-unicode in sarge contains large
-patches that considerably change the behaviour of rxvt-unicode (but
-unfortunately this notice has been removed). Before reporting a bug to
-the original rxvt-unicode author please download and install the genuine
-version (<http://software.schmorp.de#rxvt\-unicode>) and try to reproduce
-the problem. If you cannot, chances are that the problems are specific to
-Debian GNU/Linux, in which case it should be reported via the Debian Bug
-Tracking System (use \f(CW\*(C`reportbug\*(C'\fR to report the bug).
+That works. If you think it doesn't, you lack \s-1XPM\s0 and Perl support, or you
+are unable to read.
 .PP
-For other problems that also affect the Debian package, you can and
-probably should use the Debian \s-1BTS\s0, too, because, after all, it's also a
-bug in the Debian version and it serves as a reminder for other users that
-might encounter the same issue.
-.Sh "I am maintaining rxvt-unicode for distribution/OS \s-1XXX\s0, any recommendation?"
-.IX Subsection "I am maintaining rxvt-unicode for distribution/OS XXX, any recommendation?"
-You should build one binary with the default options. \fIconfigure\fR
-now enables most useful options, and the trend goes to making them
-runtime\-switchable, too, so there is usually no drawback to enbaling them,
-except higher disk and possibly memory usage. The perl interpreter should
-be enabled, as important functionality (menus, selection, likely more in
-the future) depends on it.
+3. Use an \s-1ARGB\s0 visual:
 .PP
-You should not overwrite the \f(CW\*(C`perl\-ext\-common\*(C'\fR snd \f(CW\*(C`perl\-ext\*(C'\fR resources
-system-wide (except maybe with \f(CW\*(C`defaults\*(C'\fR). This will result in useful
-behaviour. If your distribution aims at low memory, add an empty
-\&\f(CW\*(C`perl\-ext\-common\*(C'\fR resource to the app-defaults file. This will keep the
-perl interpreter disabled until the user enables it.
+.Vb 1
+\&   @@URXVT_NAME@@ -depth 32 -fg grey90 -bg rgba:0000/0000/4444/cccc
+.Ve
 .PP
-If you can/want build more binaries, I recommend building a minimal
-one with \f(CW\*(C`\-\-disable\-everything\*(C'\fR (very useful) and a maximal one with
-\&\f(CW\*(C`\-\-enable\-everything\*(C'\fR (less useful, it will be very big due to a lot of
-encodings built-in that increase download times and are rarely used).
-.Sh "I need to make it setuid/setgid to support utmp/ptys on my \s-1OS\s0, is this safe?"
-.IX Subsection "I need to make it setuid/setgid to support utmp/ptys on my OS, is this safe?"
-It should be, starting with release 7.1. You are encouraged to properly
-install urxvt with privileges necessary for your \s-1OS\s0 now.
+This requires \s-1XFT\s0 support, and the support of your X\-server. If that
+doesn't work for you, blame Xorg and Keith Packard. \s-1ARGB\s0 visuals aren't
+there yet, no matter what they claim. Rxvt-Unicode contains the neccessary
+bugfixes and workarounds for Xft and Xlib to make it work, but that
+doesn't mean that your \s-1WM\s0 has the required kludges in place.
 .PP
-When rxvt-unicode detects that it runs setuid or setgid, it will fork
-into a helper process for privileged operations (pty handling on some
-systems, utmp/wtmp/lastlog handling on others) and drop privileges
-immediately. This is much safer than most other terminals that keep
-privileges while running (but is more relevant to urxvt, as it contains
-things as perl interpreters, which might be \*(L"helpful\*(R" to attackers).
+4. Use xcompmgr and let it do the job:
 .PP
-This forking is done as the very first within \fImain()\fR, which is very early
-and reduces possible bugs to initialisation code run before \fImain()\fR, or
-things like the dynamic loader of your system, which should result in very
-little risk.
-.Sh "When I log-in to another system it tells me about missing terminfo data?"
+.Vb 2
+\&  xprop -frame -f _NET_WM_WINDOW_OPACITY 32c \e
+\&        -set _NET_WM_WINDOW_OPACITY 0xc0000000
+.Ve
+.PP
+Then click on a window you want to make transparent. Replace \f(CW0xc0000000\fR
+by other values to change the degree of opacity. If it doesn't work and
+your server crashes, you got to keep the pieces.
+.PP
+\fIWhy does rxvt-unicode sometimes leave pixel droppings?\fR
+.IX Subsection "Why does rxvt-unicode sometimes leave pixel droppings?"
+.PP
+Most fonts were not designed for terminal use, which means that character
+size varies a lot. A font that is otherwise fine for terminal use might
+contain some characters that are simply too wide. Rxvt-unicode will avoid
+these characters. For characters that are just \*(L"a bit\*(R" too wide a special
+\&\*(L"careful\*(R" rendering mode is used that redraws adjacent characters.
+.PP
+All of this requires that fonts do not lie about character sizes,
+however: Xft fonts often draw glyphs larger than their acclaimed bounding
+box, and rxvt-unicode has no way of detecting this (the correct way is to
+ask for the character bounding box, which unfortunately is wrong in these
+cases).
+.PP
+It's not clear (to me at least), wether this is a bug in Xft, freetype,
+or the respective font. If you encounter this problem you might try using
+the \f(CW\*(C`\-lsp\*(C'\fR option to give the font more height. If that doesn't work, you
+might be forced to use a different font.
+.PP
+All of this is not a problem when using X11 core fonts, as their bounding
+box data is correct.
+.PP
+\fIHow can I keep rxvt-unicode from using reverse video so much?\fR
+.IX Subsection "How can I keep rxvt-unicode from using reverse video so much?"
+.PP
+First of all, make sure you are running with the right terminal settings
+(\f(CW\*(C`TERM=rxvt\-unicode\*(C'\fR), which will get rid of most of these effects. Then
+make sure you have specified colours for italic and bold, as otherwise
+rxvt-unicode might use reverse video to simulate the effect:
+.PP
+.Vb 2
+\&   URxvt.colorBD:  white
+\&   URxvt.colorIT:  green
+.Ve
+.PP
+\fISome programs assume totally weird colours (red instead of blue), how can I fix that?\fR
+.IX Subsection "Some programs assume totally weird colours (red instead of blue), how can I fix that?"
+.PP
+For some unexplainable reason, some rare programs assume a very weird
+colour palette when confronted with a terminal with more than the standard
+8 colours (rxvt\-unicode supports 88). The right fix is, of course, to fix
+these programs not to assume non-ISO colours without very good reasons.
+.PP
+In the meantime, you can either edit your \f(CW\*(C`rxvt\-unicode\*(C'\fR terminfo
+definition to only claim 8 colour support or use \f(CW\*(C`TERM=rxvt\*(C'\fR, which will
+fix colours but keep you from using other rxvt-unicode features.
+.PP
+\fICan I switch the fonts at runtime?\fR
+.IX Subsection "Can I switch the fonts at runtime?"
+.PP
+Yes, using an escape sequence. Try something like this, which has the same
+effect as using the \f(CW\*(C`\-fn\*(C'\fR switch, and takes effect immediately:
+.PP
+.Vb 1
+\&   printf '\ee]50;%s\e007' "9x15bold,xft:Kochi Gothic"
+.Ve
+.PP
+This is useful if you e.g. work primarily with japanese (and prefer a
+japanese font), but you have to switch to chinese temporarily, where
+japanese fonts would only be in your way.
+.PP
+You can think of this as a kind of manual \s-1ISO\-2022\s0 switching.
+.PP
+\fIWhy do italic characters look as if clipped?\fR
+.IX Subsection "Why do italic characters look as if clipped?"
+.PP
+Many fonts have difficulties with italic characters and hinting. For
+example, the otherwise very nicely hinted font \f(CW\*(C`xft:Bitstream Vera Sans
+Mono\*(C'\fR completely fails in it's italic face. A workaround might be to
+enable freetype autohinting, i.e. like this:
+.PP
+.Vb 2
+\&   URxvt.italicFont:        xft:Bitstream Vera Sans Mono:italic:autohint=true
+\&   URxvt.boldItalicFont:    xft:Bitstream Vera Sans Mono:bold:italic:autohint=true
+.Ve
+.PP
+\fICan I speed up Xft rendering somehow?\fR
+.IX Subsection "Can I speed up Xft rendering somehow?"
+.PP
+Yes, the most obvious way to speed it up is to avoid Xft entirely, as
+it is simply slow. If you still want Xft fonts you might try to disable
+antialiasing (by appending \f(CW\*(C`:antialias=false\*(C'\fR), which saves lots of
+memory and also speeds up rendering considerably.
+.PP
+\fIRxvt-unicode doesn't seem to anti-alias its fonts, what is wrong?\fR
+.IX Subsection "Rxvt-unicode doesn't seem to anti-alias its fonts, what is wrong?"
+.PP
+Rxvt-unicode will use whatever you specify as a font. If it needs to
+fall back to it's default font search list it will prefer X11 core
+fonts, because they are small and fast, and then use Xft fonts. It has
+antialiasing disabled for most of them, because the author thinks they
+look best that way.
+.PP
+If you want antialiasing, you have to specify the fonts manually.
+.PP
+\fIWhat's with this bold/blink stuff?\fR
+.IX Subsection "What's with this bold/blink stuff?"
+.PP
+If no bold colour is set via \f(CW\*(C`colorBD:\*(C'\fR, bold will invert text using the
+standard foreground colour.
+.PP
+For the standard background colour, blinking will actually make the
+text blink when compiled with \f(CW\*(C`\-\-enable\-blinking\*(C'\fR. with standard
+colours. Without \f(CW\*(C`\-\-enable\-blinking\*(C'\fR, the blink attribute will be
+ignored.
+.PP
+On \s-1ANSI\s0 colours, bold/blink attributes are used to set high-intensity
+foreground/background colors.
+.PP
+color0\-7 are the low-intensity colors.
+.PP
+color8\-15 are the corresponding high-intensity colors.
+.PP
+\fII don't like the screen colors.  How do I change them?\fR
+.IX Subsection "I don't like the screen colors.  How do I change them?"
+.PP
+You can change the screen colors at run-time using \fI~/.Xdefaults\fR
+resources (or as long\-options).
+.PP
+Here are values that are supposed to resemble a \s-1VGA\s0 screen,
+including the murky brown that passes for low-intensity yellow:
+.PP
+.Vb 8
+\&   URxvt.color0:   #000000
+\&   URxvt.color1:   #A80000
+\&   URxvt.color2:   #00A800
+\&   URxvt.color3:   #A8A800
+\&   URxvt.color4:   #0000A8
+\&   URxvt.color5:   #A800A8
+\&   URxvt.color6:   #00A8A8
+\&   URxvt.color7:   #A8A8A8
+.Ve
+.PP
+.Vb 8
+\&   URxvt.color8:   #000054
+\&   URxvt.color9:   #FF0054
+\&   URxvt.color10:  #00FF54
+\&   URxvt.color11:  #FFFF54
+\&   URxvt.color12:  #0000FF
+\&   URxvt.color13:  #FF00FF
+\&   URxvt.color14:  #00FFFF
+\&   URxvt.color15:  #FFFFFF
+.Ve
+.PP
+And here is a more complete set of non-standard colors.
+.PP
+.Vb 18
+\&   URxvt.cursorColor:  #dc74d1
+\&   URxvt.pointerColor: #dc74d1
+\&   URxvt.background:   #0e0e0e
+\&   URxvt.foreground:   #4ad5e1
+\&   URxvt.color0:       #000000
+\&   URxvt.color8:       #8b8f93
+\&   URxvt.color1:       #dc74d1
+\&   URxvt.color9:       #dc74d1
+\&   URxvt.color2:       #0eb8c7
+\&   URxvt.color10:      #0eb8c7
+\&   URxvt.color3:       #dfe37e
+\&   URxvt.color11:      #dfe37e
+\&   URxvt.color5:       #9e88f0
+\&   URxvt.color13:      #9e88f0
+\&   URxvt.color6:       #73f7ff
+\&   URxvt.color14:      #73f7ff
+\&   URxvt.color7:       #e1dddd
+\&   URxvt.color15:      #e1dddd
+.Ve
+.PP
+They have been described (not by me) as \*(L"pretty girly\*(R".
+.PP
+\fIWhy do some characters look so much different than others?\fR
+.IX Subsection "Why do some characters look so much different than others?"
+.PP
+See next entry.
+.PP
+\fIHow does rxvt-unicode choose fonts?\fR
+.IX Subsection "How does rxvt-unicode choose fonts?"
+.PP
+Most fonts do not contain the full range of Unicode, which is
+fine. Chances are that the font you (or the admin/package maintainer of
+your system/os) have specified does not cover all the characters you want
+to display.
+.PP
+\&\fBrxvt-unicode\fR makes a best-effort try at finding a replacement
+font. Often the result is fine, but sometimes the chosen font looks
+bad/ugly/wrong. Some fonts have totally strange characters that don't
+resemble the correct glyph at all, and rxvt-unicode lacks the artificial
+intelligence to detect that a specific glyph is wrong: it has to believe
+the font that the characters it claims to contain indeed look correct.
+.PP
+In that case, select a font of your taste and add it to the font list,
+e.g.:
+.PP
+.Vb 1
+\&   @@URXVT_NAME@@ -fn basefont,font2,font3...
+.Ve
+.PP
+When rxvt-unicode sees a character, it will first look at the base
+font. If the base font does not contain the character, it will go to the
+next font, and so on. Specifying your own fonts will also speed up this
+search and use less resources within rxvt-unicode and the X\-server.
+.PP
+The only limitation is that none of the fonts may be larger than the base
+font, as the base font defines the terminal character cell size, which
+must be the same due to the way terminals work.
+.PP
+\fIWhy do some chinese characters look so different than others?\fR
+.IX Subsection "Why do some chinese characters look so different than others?"
+.PP
+This is because there is a difference between script and language \*(--
+rxvt-unicode does not know which language the text that is output is,
+as it only knows the unicode character codes. If rxvt-unicode first
+sees a japanese/chinese character, it might choose a japanese font for
+display. Subsequent japanese characters will use that font. Now, many
+chinese characters aren't represented in japanese fonts, so when the first
+non-japanese character comes up, rxvt-unicode will look for a chinese font
+\&\*(-- unfortunately at this point, it will still use the japanese font for
+chinese characters that are also in the japanese font.
+.PP
+The workaround is easy: just tag a chinese font at the end of your font
+list (see the previous question). The key is to view the font list as
+a preference list: If you expect more japanese, list a japanese font
+first. If you expect more chinese, put a chinese font first.
+.PP
+In the future it might be possible to switch language preferences at
+runtime (the internal data structure has no problem with using different
+fonts for the same character at the same time, but no interface for this
+has been designed yet).
+.PP
+Until then, you might get away with switching fonts at runtime (see \*(L"Can I switch the fonts at runtime?\*(R" later in this document).
+.Sh "Keyboard, Mouse & User Interaction"
+.IX Subsection "Keyboard, Mouse & User Interaction"
+\fIThe new selection selects pieces that are too big, how can I select single words?\fR
+.IX Subsection "The new selection selects pieces that are too big, how can I select single words?"
+.PP
+If you want to select e.g. alphanumeric words, you can use the following
+setting:
+.PP
+.Vb 1
+\&   URxvt.selection.pattern-0: ([[:word:]]+)
+.Ve
+.PP
+If you click more than twice, the selection will be extended
+more and more.
+.PP
+To get a selection that is very similar to the old code, try this pattern:
+.PP
+.Vb 1
+\&   URxvt.selection.pattern-0: ([^"&'()*,;<=>?@[\e\e\e\e]^`{|})]+)
+.Ve
+.PP
+Please also note that the \fILeftClick Shift-LeftClik\fR combination also
+selects words like the old code.
+.PP
+\fII don't like the new selection/popups/hotkeys/perl, how do I change/disable it?\fR
+.IX Subsection "I don't like the new selection/popups/hotkeys/perl, how do I change/disable it?"
+.PP
+You can disable the perl extension completely by setting the
+\&\fBperl-ext-common\fR resource to the empty string, which also keeps
+rxvt-unicode from initialising perl, saving memory.
+.PP
+If you only want to disable specific features, you first have to
+identify which perl extension is responsible. For this, read the section
+\&\fB\s-1PREPACKAGED\s0 \s-1EXTENSIONS\s0\fR in the @@URXVT_NAME@@\fIperl\fR\|(3) manpage. For
+example, to disable the \fBselection-popup\fR and \fBoption-popup\fR, specify
+this \fBperl-ext-common\fR resource:
+.PP
+.Vb 1
+\&   URxvt.perl-ext-common: default,-selection-popup,-option-popup
+.Ve
+.PP
+This will keep the default extensions, but disable the two popup
+extensions. Some extensions can also be configured, for example,
+scrollback search mode is triggered by \fBM\-s\fR. You can move it to any
+other combination either by setting the \fBsearchable-scrollback\fR resource:
+.PP
+.Vb 1
+\&   URxvt.searchable-scrollback: CM-s
+.Ve
+.PP
+\fIThe cursor moves when selecting text in the current input line, how do I switch this off?\fR
+.IX Subsection "The cursor moves when selecting text in the current input line, how do I switch this off?"
+.PP
+See next entry.
+.PP
+\fIDuring rlogin/ssh/telnet/etc. sessions, clicking near the cursor outputs strange escape sequences, how do I fix this?\fR
+.IX Subsection "During rlogin/ssh/telnet/etc. sessions, clicking near the cursor outputs strange escape sequences, how do I fix this?"
+.PP
+These are caused by the \f(CW\*(C`readline\*(C'\fR perl extension. Under normal
+circumstances, it will move your cursor around when you click into the
+line that contains it. It tries hard not to do this at the wrong moment,
+but when running a program that doesn't parse cursor movements or in some
+cases during rlogin sessions, it fails to detect this properly.
+.PP
+You can permamently switch this feature off by disabling the \f(CW\*(C`readline\*(C'\fR
+extension:
+.PP
+.Vb 1
+\&   URxvt.perl-ext-common: default,-readline
+.Ve
+.PP
+\fIMy numerical keypad acts weird and generates differing output?\fR
+.IX Subsection "My numerical keypad acts weird and generates differing output?"
+.PP
+Some Debian GNUL/Linux users seem to have this problem, although no
+specific details were reported so far. It is possible that this is caused
+by the wrong \f(CW\*(C`TERM\*(C'\fR setting, although the details of wether and how
+this can happen are unknown, as \f(CW\*(C`TERM=rxvt\*(C'\fR should offer a compatible
+keymap. See the answer to the previous question, and please report if that
+helped.
+.PP
+\fIMy Compose (Multi_key) key is no longer working.\fR
+.IX Subsection "My Compose (Multi_key) key is no longer working."
+.PP
+The most common causes for this are that either your locale is not set
+correctly, or you specified a \fBpreeditStyle\fR that is not supported by
+your input method. For example, if you specified \fBOverTheSpot\fR and
+your input method (e.g. the default input method handling Compose keys)
+does not support this (for instance because it is not visual), then
+rxvt-unicode will continue without an input method.
+.PP
+In this case either do not specify a \fBpreeditStyle\fR or specify more than
+one pre-edit style, such as \fBOverTheSpot,Root,None\fR.
+.PP
+\fII cannot type \f(CI\*(C`Ctrl\-Shift\-2\*(C'\fI to get an \s-1ASCII\s0 \s-1NUL\s0 character due to \s-1ISO\s0 14755\fR
+.IX Subsection "I cannot type Ctrl-Shift-2 to get an ASCII NUL character due to ISO 14755"
+.PP
+Either try \f(CW\*(C`Ctrl\-2\*(C'\fR alone (it often is mapped to \s-1ASCII\s0 \s-1NUL\s0 even on
+international keyboards) or simply use \s-1ISO\s0 14755 support to your
+advantage, typing <Ctrl\-Shift\-0> to get a \s-1ASCII\s0 \s-1NUL\s0. This works for other
+codes, too, such as \f(CW\*(C`Ctrl\-Shift\-1\-d\*(C'\fR to type the default telnet escape
+character and so on.
+.PP
+\fIMouse cut/paste suddenly no longer works.\fR
+.IX Subsection "Mouse cut/paste suddenly no longer works."
+.PP
+Make sure that mouse reporting is actually turned off since killing
+some editors prematurely may leave the mouse in mouse report mode. I've
+heard that tcsh may use mouse reporting unless it otherwise specified. A
+quick check is to see if cut/paste works when the Alt or Shift keys are
+depressed.
+.PP
+\fIWhat's with the strange Backspace/Delete key behaviour?\fR
+.IX Subsection "What's with the strange Backspace/Delete key behaviour?"
+.PP
+Assuming that the physical Backspace key corresponds to the
+BackSpace keysym (not likely for Linux ... see the following
+question) there are two standard values that can be used for
+Backspace: \f(CW\*(C`^H\*(C'\fR and \f(CW\*(C`^?\*(C'\fR.
+.PP
+Historically, either value is correct, but rxvt-unicode adopts the debian
+policy of using \f(CW\*(C`^?\*(C'\fR when unsure, because it's the one only only correct
+choice :).
+.PP
+Rxvt-unicode tries to inherit the current stty settings and uses the value
+of `erase' to guess the value for backspace.  If rxvt-unicode wasn't
+started from a terminal (say, from a menu or by remote shell), then the
+system value of `erase', which corresponds to \s-1CERASE\s0 in <termios.h>, will
+be used (which may not be the same as your stty setting).
+.PP
+For starting a new rxvt\-unicode:
+.PP
+.Vb 3
+\&   # use Backspace = ^H
+\&   $ stty erase ^H
+\&   $ @@URXVT_NAME@@
+.Ve
+.PP
+.Vb 3
+\&   # use Backspace = ^?
+\&   $ stty erase ^?
+\&   $ @@URXVT_NAME@@
+.Ve
+.PP
+Toggle with \f(CW\*(C`ESC [ 36 h\*(C'\fR / \f(CW\*(C`ESC [ 36 l\*(C'\fR.
+.PP
+For an existing rxvt\-unicode:
+.PP
+.Vb 3
+\&   # use Backspace = ^H
+\&   $ stty erase ^H
+\&   $ echo -n "^[[36h"
+.Ve
+.PP
+.Vb 3
+\&   # use Backspace = ^?
+\&   $ stty erase ^?
+\&   $ echo -n "^[[36l"
+.Ve
+.PP
+This helps satisfy some of the Backspace discrepancies that occur, but
+if you use Backspace = \f(CW\*(C`^H\*(C'\fR, make sure that the termcap/terminfo value
+properly reflects that.
+.PP
+The Delete key is a another casualty of the ill-defined Backspace problem.
+To avoid confusion between the Backspace and Delete keys, the Delete
+key has been assigned an escape sequence to match the vt100 for Execute
+(\f(CW\*(C`ESC [ 3 ~\*(C'\fR) and is in the supplied termcap/terminfo.
+.PP
+Some other Backspace problems:
+.PP
+some editors use termcap/terminfo, 
+some editors (vim I'm told) expect Backspace = ^H,
+\&\s-1GNU\s0 Emacs (and Emacs-like editors) use ^H for help.
+.PP
+Perhaps someday this will all be resolved in a consistent manner.
+.PP
+\fII don't like the key\-bindings.  How do I change them?\fR
+.IX Subsection "I don't like the key-bindings.  How do I change them?"
+.PP
+There are some compile-time selections available via configure. Unless
+you have run \*(L"configure\*(R" with the \f(CW\*(C`\-\-disable\-resources\*(C'\fR option you can
+use the `keysym' resource to alter the keystrings associated with keysyms.
+.PP
+Here's an example for a URxvt session started using \f(CW\*(C`@@URXVT_NAME@@ \-name URxvt\*(C'\fR
+.PP
+.Vb 20
+\&   URxvt.keysym.Home:          \e033[1~
+\&   URxvt.keysym.End:           \e033[4~
+\&   URxvt.keysym.C-apostrophe:  \e033<C-'>
+\&   URxvt.keysym.C-slash:       \e033<C-/>
+\&   URxvt.keysym.C-semicolon:   \e033<C-;>
+\&   URxvt.keysym.C-grave:       \e033<C-`>
+\&   URxvt.keysym.C-comma:       \e033<C-,>
+\&   URxvt.keysym.C-period:      \e033<C-.>
+\&   URxvt.keysym.C-0x60:        \e033<C-`>
+\&   URxvt.keysym.C-Tab:         \e033<C-Tab>
+\&   URxvt.keysym.C-Return:      \e033<C-Return>
+\&   URxvt.keysym.S-Return:      \e033<S-Return>
+\&   URxvt.keysym.S-space:       \e033<S-Space>
+\&   URxvt.keysym.M-Up:          \e033<M-Up>
+\&   URxvt.keysym.M-Down:        \e033<M-Down>
+\&   URxvt.keysym.M-Left:        \e033<M-Left>
+\&   URxvt.keysym.M-Right:       \e033<M-Right>
+\&   URxvt.keysym.M-C-0:         list \e033<M-C- 0123456789 >
+\&   URxvt.keysym.M-C-a:         list \e033<M-C- abcdefghijklmnopqrstuvwxyz >
+\&   URxvt.keysym.F12:           command:\e033]701;zh_CN.GBK\e007
+.Ve
+.PP
+See some more examples in the documentation for the \fBkeysym\fR resource.
+.PP
+\fII'm using keyboard model \s-1XXX\s0 that has extra Prior/Next/Insert keys. How do I make use of them? For example, the Sun Keyboard type 4 has the following map\fR
+.IX Subsection "I'm using keyboard model XXX that has extra Prior/Next/Insert keys. How do I make use of them? For example, the Sun Keyboard type 4 has the following map"
+.PP
+.Vb 6
+\&   KP_Insert == Insert
+\&   F22 == Print
+\&   F27 == Home
+\&   F29 == Prior
+\&   F33 == End
+\&   F35 == Next
+.Ve
+.PP
+Rather than have rxvt-unicode try to accommodate all the various possible
+keyboard mappings, it is better to use `xmodmap' to remap the keys as
+required for your particular machine.
+.Sh "Terminal Configuration"
+.IX Subsection "Terminal Configuration"
+\fICan I see a typical configuration?\fR
+.IX Subsection "Can I see a typical configuration?"
+.PP
+The default configuration tries to be xterm\-like, which I don't like that
+much, but it's least surprise to regular users.
+.PP
+As a rxvt or rxvt-unicode user, you are practically supposed to invest
+time into customising your terminal. To get you started, here is the
+author's .Xdefaults entries, with comments on what they do. It's certainly
+not \fItypical\fR, but what's typical...
+.PP
+.Vb 2
+\&   URxvt.cutchars: "()*,<>[]{}|'
+\&   URxvt.print-pipe: cat >/tmp/xxx
+.Ve
+.PP
+These are just for testing stuff.
+.PP
+.Vb 2
+\&   URxvt.imLocale: ja_JP.UTF-8
+\&   URxvt.preeditType: OnTheSpot,None
+.Ve
+.PP
+This tells rxvt-unicode to use a special locale when communicating with
+the X Input Method, and also tells it to only use the OnTheSpot pre-edit
+type, which requires the \f(CW\*(C`xim\-onthespot\*(C'\fR perl extension but rewards me
+with correct-looking fonts.
+.PP
+.Vb 6
+\&   URxvt.perl-lib: /root/lib/urxvt
+\&   URxvt.perl-ext-common: default,selection-autotransform,selection-pastebin,xim-onthespot,remote-clipboard
+\&   URxvt.selection.pattern-0: ( at .*? line \e\ed+)
+\&   URxvt.selection.pattern-1: ^(/[^:]+):\e 
+\&   URxvt.selection-autotransform.0: s/^([^:[:space:]]+):(\e\ed+):?$/:e \e\eQ$1\e\eE\e\ex0d:$2\e\ex0d/
+\&   URxvt.selection-autotransform.1: s/^ at (.*?) line (\e\ed+)$/:e \e\eQ$1\e\eE\e\ex0d:$2\e\ex0d/
+.Ve
+.PP
+This is my perl configuration. The first two set the perl library
+directory and also tells urxvt to use a large number of extensions. I
+develop for myself mostly, so I actually use most of the extensions I
+write.
+.PP
+The selection stuff mainly makes the selection perl-error-message aware
+and tells it to convert pelr error mssages into vi-commands to load the
+relevant file and go tot he error line number.
+.PP
+.Vb 2
+\&   URxvt.scrollstyle:      plain
+\&   URxvt.secondaryScroll:  true
+.Ve
+.PP
+As the documentation says: plain is the preferred scrollbar for the
+author. The \f(CW\*(C`secondaryScroll\*(C'\fR confgiures urxvt to scroll in full-screen
+apps, like screen, so lines scorlled out of screen end up in urxvt's
+scrollback buffer.
+.PP
+.Vb 7
+\&   URxvt.background:       #000000
+\&   URxvt.foreground:       gray90
+\&   URxvt.color7:           gray90
+\&   URxvt.colorBD:          #ffffff
+\&   URxvt.cursorColor:      #e0e080
+\&   URxvt.throughColor:     #8080f0
+\&   URxvt.highlightColor:   #f0f0f0
+.Ve
+.PP
+Some colours. Not sure which ones are being used or even non\-defaults, but
+these are in my .Xdefaults. Most notably, they set foreground/background
+to light gray/black, and also make sure that the colour 7 matches the
+default foreground colour.
+.PP
+.Vb 1
+\&   URxvt.underlineColor:   yellow
+.Ve
+.PP
+Another colour, makes underline lines look different. Sometimes hurts, but
+is mostly a nice effect.
+.PP
+.Vb 4
+\&   URxvt.geometry:         154x36
+\&   URxvt.loginShell:       false
+\&   URxvt.meta:             ignore
+\&   URxvt.utmpInhibit:      true
+.Ve
+.PP
+Uh, well, should be mostly self\-explanatory. By specifying some defaults
+manually, I can quickly switch them for testing.
+.PP
+.Vb 1
+\&   URxvt.saveLines:        8192
+.Ve
+.PP
+A large scrollback buffer is essential. Really.
+.PP
+.Vb 1
+\&   URxvt.mapAlert:         true
+.Ve
+.PP
+The only case I use it is for my \s-1IRC\s0 window, which I like to keep
+iconified till people msg me (which beeps).
+.PP
+.Vb 1
+\&   URxvt.visualBell:       true
+.Ve
+.PP
+The audible bell is often annoying, especially when in a crowd.
+.PP
+.Vb 1
+\&   URxvt.insecure:         true
+.Ve
+.PP
+Please don't hack my mutt! Ooops...
+.PP
+.Vb 1
+\&   URxvt.pastableTabs:     false
+.Ve
+.PP
+I once thought this is a great idea.
+.PP
+.Vb 9
+\&   urxvt.font:             9x15bold,\e
+\&                           -misc-fixed-bold-r-normal--15-140-75-75-c-90-iso10646-1,\e
+\&                           -misc-fixed-medium-r-normal--15-140-75-75-c-90-iso10646-1, \e
+\&                           [codeset=JISX0208]xft:Kochi Gothic, \e
+\&                           xft:Bitstream Vera Sans Mono:autohint=true, \e
+\&                           xft:Code2000:antialias=false
+\&   urxvt.boldFont:         -xos4-terminus-bold-r-normal--14-140-72-72-c-80-iso8859-15
+\&   urxvt.italicFont:       xft:Bitstream Vera Sans Mono:italic:autohint=true
+\&   urxvt.boldItalicFont:   xft:Bitstream Vera Sans Mono:bold:italic:autohint=true
+.Ve
+.PP
+I wrote rxvt-unicode to be able to specify fonts exactly. So don't be
+overwhelmed. A special note: the \f(CW\*(C`9x15bold\*(C'\fR mentioend above is actually
+the version from XFree\-3.3, as XFree\-4 replaced it by a totally different
+font (different glyphs for \f(CW\*(C`;\*(C'\fR and many other harmless characters),
+while the second font is actually the \f(CW\*(C`9x15bold\*(C'\fR from XFree4/XOrg. The
+bold version has less chars than the medium version, so I use it for rare
+characters, too. Whene ditign sources with vim, I use italic for comments
+and other stuff, which looks quite good with Bitstream Vera anti\-aliased.
+.PP
+Terminus is a quite bad font (many very wrong glyphs), but for most of my
+purposes, it works, and gives a different look, as my normal (Non\-bold)
+font is already bold, and I want to see a difference between bold and
+normal fonts.
+.PP
+Please note that I used the \f(CW\*(C`urxvt\*(C'\fR instance name and not the \f(CW\*(C`URxvt\*(C'\fR
+class name. Thats because I use different configs for different purposes,
+for example, my \s-1IRC\s0 window is started with \f(CW\*(C`\-name IRC\*(C'\fR, and uses these
+defaults:
+.PP
+.Vb 9
+\&   IRC*title:              IRC
+\&   IRC*geometry:           87x12+535+542
+\&   IRC*saveLines:          0
+\&   IRC*mapAlert:           true
+\&   IRC*font:               suxuseuro
+\&   IRC*boldFont:           suxuseuro
+\&   IRC*colorBD:            white
+\&   IRC*keysym.M-C-1:       command:\e033]710;suxuseuro\e007\e033]711;suxuseuro\e007
+\&   IRC*keysym.M-C-2:       command:\e033]710;9x15bold\e007\e033]711;9x15bold\e007
+.Ve
+.PP
+\&\f(CW\*(C`Alt\-Shift\-1\*(C'\fR and \f(CW\*(C`Alt\-Shift\-2\*(C'\fR switch between two different font
+sizes. \f(CW\*(C`suxuseuro\*(C'\fR allows me to keep an eye (and actually read)
+stuff while keeping a very small window. If somebody pastes something
+complicated (e.g. japanese), I temporarily switch to a larger font.
+.PP
+The above is all in my \f(CW\*(C`.Xdefaults\*(C'\fR (I don't use \f(CW\*(C`.Xresources\*(C'\fR nor
+\&\f(CW\*(C`xrdb\*(C'\fR). I also have some resources in a separate \f(CW\*(C`.Xdefaults\-hostname\*(C'\fR
+file for different hosts, for example, on ym main desktop, I use:
+.PP
+.Vb 5
+\&   URxvt.keysym.C-M-q: command:\e033[3;5;5t
+\&   URxvt.keysym.C-M-y: command:\e033[3;5;606t
+\&   URxvt.keysym.C-M-e: command:\e033[3;1605;5t
+\&   URxvt.keysym.C-M-c: command:\e033[3;1605;606t
+\&   URxvt.keysym.C-M-p: perl:test
+.Ve
+.PP
+The first for keysym definitions allow me to quickly bring some windows
+in the layout I like most. Ion users might start laughing but will stop
+immediately when I tell them that I use my own Fvwm2 module for much the
+same effect as Ion provides, and I only very rarely use the above key
+combinations :\->
+.PP
+\fIWhy doesn't rxvt-unicode read my resources?\fR
+.IX Subsection "Why doesn't rxvt-unicode read my resources?"
+.PP
+Well, why, indeed? It does, in a way very similar to other X
+applications. Most importantly, this means that if you or your \s-1OS\s0 loads
+resources into the X display (the right way to do it), rxvt-unicode will
+ignore any resource files in your home directory. It will only read
+\&\fI$HOME/.Xdefaults\fR when no resources are attached to the display.
+.PP
+If you have or use an \fI$HOME/.Xresources\fR file, chances are that
+resources are loaded into your X\-server. In this case, you have to
+re-login after every change (or run \fIxrdb \-merge \f(CI$HOME\fI/.Xresources\fR).
+.PP
+Also consider the form resources have to use:
+.PP
+.Vb 1
+\&  URxvt.resource: value
+.Ve
+.PP
+If you want to use another form (there are lots of different ways of
+specifying resources), make sure you understand wether and why it
+works. If unsure, use the form above.
+.PP
+\fIWhen I log-in to another system it tells me about missing terminfo data?\fR
 .IX Subsection "When I log-in to another system it tells me about missing terminfo data?"
+.PP
 The terminal description used by rxvt-unicode is not as widely available
 as that for xterm, or even rxvt (for which the same problem often arises).
 .PP
@@ -480,18 +1120,22 @@ resource to set it:
 .Ve
 .PP
 If you don't plan to use \fBrxvt\fR (quite common...) you could also replace
-the rxvt terminfo file with the rxvt-unicode one.
-.ie n .Sh """tic"" outputs some error when compiling the terminfo entry."
-.el .Sh "\f(CWtic\fP outputs some error when compiling the terminfo entry."
+the rxvt terminfo file with the rxvt-unicode one and use \f(CW\*(C`TERM=rxvt\*(C'\fR.
+.PP
+\fI\f(CI\*(C`tic\*(C'\fI outputs some error when compiling the terminfo entry.\fR
 .IX Subsection "tic outputs some error when compiling the terminfo entry."
+.PP
 Most likely it's the empty definition for \f(CW\*(C`enacs=\*(C'\fR. Just replace it by
 \&\f(CW\*(C`enacs=\eE[0@\*(C'\fR and try again.
-.ie n .Sh """bash""'s readline does not work correctly under @@RXVT_NAME@@."
-.el .Sh "\f(CWbash\fP's readline does not work correctly under @@RXVT_NAME@@."
-.IX Subsection "bash's readline does not work correctly under @@RXVT_NAME@@."
+.PP
+\fI\f(CI\*(C`bash\*(C'\fI's readline does not work correctly under @@URXVT_NAME@@.\fR
+.IX Subsection "bash's readline does not work correctly under @@URXVT_NAME@@."
+.PP
 See next entry.
-.Sh "I need a termcap file entry."
+.PP
+\fII need a termcap file entry.\fR
 .IX Subsection "I need a termcap file entry."
+.PP
 One reason you might want this is that some distributions or operating
 systems still compile some programs using the long-obsoleted termcap
 library (Fedora Core's bash is one example) and rely on a termcap entry
@@ -529,9 +1173,10 @@ Or you could use this termcap entry, generated by the command above:
 \&           :us=\eE[4m:vb=\eE[?5h\eE[?5l:ve=\eE[?25h:vi=\eE[?25l:\e
 \&           :vs=\eE[?25h:
 .Ve
-.ie n .Sh "Why does ""ls"" no longer have coloured output?"
-.el .Sh "Why does \f(CWls\fP no longer have coloured output?"
+.PP
+\fIWhy does \f(CI\*(C`ls\*(C'\fI no longer have coloured output?\fR
 .IX Subsection "Why does ls no longer have coloured output?"
+.PP
 The \f(CW\*(C`ls\*(C'\fR in the \s-1GNU\s0 coreutils unfortunately doesn't use terminfo to
 decide wether a terminal has colour, but uses it's own configuration
 file. Needless to say, \f(CW\*(C`rxvt\-unicode\*(C'\fR is not in it's default file (among
@@ -548,14 +1193,20 @@ to \f(CW\*(C`/etc/DIR_COLORS\*(C'\fR or simply add:
 .Ve
 .PP
 to your \f(CW\*(C`.profile\*(C'\fR or \f(CW\*(C`.bashrc\*(C'\fR.
-.Sh "Why doesn't vim/emacs etc. use the 88 colour mode?"
+.PP
+\fIWhy doesn't vim/emacs etc. use the 88 colour mode?\fR
 .IX Subsection "Why doesn't vim/emacs etc. use the 88 colour mode?"
+.PP
 See next entry.
-.Sh "Why doesn't vim/emacs etc. make use of italic?"
+.PP
+\fIWhy doesn't vim/emacs etc. make use of italic?\fR
 .IX Subsection "Why doesn't vim/emacs etc. make use of italic?"
+.PP
 See next entry.
-.Sh "Why are the secondary screen-related options not working properly?"
+.PP
+\fIWhy are the secondary screen-related options not working properly?\fR
 .IX Subsection "Why are the secondary screen-related options not working properly?"
+.PP
 Make sure you are using \f(CW\*(C`TERM=rxvt\-unicode\*(C'\fR. Some pre-packaged
 distributions (most notably Debian GNU/Linux) break rxvt-unicode
 by setting \f(CW\*(C`TERM\*(C'\fR to \f(CW\*(C`rxvt\*(C'\fR, which doesn't have these extra
@@ -564,19 +1215,16 @@ GNU/Linux) furthermore fail to even install the \f(CW\*(C`rxvt\-unicode\*(C'\fR 
 file, so you will need to install it on your own (See the question \fBWhen
 I log-in to another system it tells me about missing terminfo data?\fR on
 how to do this).
-.Sh "My numerical keypad acts weird and generates differing output?"
-.IX Subsection "My numerical keypad acts weird and generates differing output?"
-Some Debian GNUL/Linux users seem to have this problem, although no
-specific details were reported so far. It is possible that this is caused
-by the wrong \f(CW\*(C`TERM\*(C'\fR setting, although the details of wether and how
-this can happen are unknown, as \f(CW\*(C`TERM=rxvt\*(C'\fR should offer a compatible
-keymap. See the answer to the previous question, and please report if that
-helped.
-.Sh "Rxvt-unicode does not seem to understand the selected encoding?"
+.Sh "Encoding / Locale / Input Method Issues"
+.IX Subsection "Encoding / Locale / Input Method Issues"
+\fIRxvt-unicode does not seem to understand the selected encoding?\fR
 .IX Subsection "Rxvt-unicode does not seem to understand the selected encoding?"
+.PP
 See next entry.
-.Sh "Unicode does not seem to work?"
+.PP
+\fIUnicode does not seem to work?\fR
 .IX Subsection "Unicode does not seem to work?"
+.PP
 If you encounter strange problems like typing an accented character but
 getting two unrelated other characters or similar, or if program output is
 subtly garbled, then you should check your locale settings.
@@ -608,183 +1256,15 @@ Then the locale you specified is not supported on your system.
 If nothing works and you are sure that everything is set correctly then
 you will need to remember a little known fact: Some programs just don't
 support locales :(
-.Sh "Why do some characters look so much different than others?"
-.IX Subsection "Why do some characters look so much different than others?"
-See next entry.
-.Sh "How does rxvt-unicode choose fonts?"
-.IX Subsection "How does rxvt-unicode choose fonts?"
-Most fonts do not contain the full range of Unicode, which is
-fine. Chances are that the font you (or the admin/package maintainer of
-your system/os) have specified does not cover all the characters you want
-to display.
 .PP
-\&\fBrxvt-unicode\fR makes a best-effort try at finding a replacement
-font. Often the result is fine, but sometimes the chosen font looks
-bad/ugly/wrong. Some fonts have totally strange characters that don't
-resemble the correct glyph at all, and rxvt-unicode lacks the artificial
-intelligence to detect that a specific glyph is wrong: it has to believe
-the font that the characters it claims to contain indeed look correct.
-.PP
-In that case, select a font of your taste and add it to the font list,
-e.g.:
-.PP
-.Vb 1
-\&   @@RXVT_NAME@@ -fn basefont,font2,font3...
-.Ve
-.PP
-When rxvt-unicode sees a character, it will first look at the base
-font. If the base font does not contain the character, it will go to the
-next font, and so on. Specifying your own fonts will also speed up this
-search and use less resources within rxvt-unicode and the X\-server.
-.PP
-The only limitation is that none of the fonts may be larger than the base
-font, as the base font defines the terminal character cell size, which
-must be the same due to the way terminals work.
-.Sh "Why do some chinese characters look so different than others?"
-.IX Subsection "Why do some chinese characters look so different than others?"
-This is because there is a difference between script and language \*(--
-rxvt-unicode does not know which language the text that is output is,
-as it only knows the unicode character codes. If rxvt-unicode first
-sees a japanese/chinese character, it might choose a japanese font for
-display. Subsequent japanese characters will use that font. Now, many
-chinese characters aren't represented in japanese fonts, so when the first
-non-japanese character comes up, rxvt-unicode will look for a chinese font
-\&\*(-- unfortunately at this point, it will still use the japanese font for
-chinese characters that are also in the japanese font.
-.PP
-The workaround is easy: just tag a chinese font at the end of your font
-list (see the previous question). The key is to view the font list as
-a preference list: If you expect more japanese, list a japanese font
-first. If you expect more chinese, put a chinese font first.
-.PP
-In the future it might be possible to switch language preferences at
-runtime (the internal data structure has no problem with using different
-fonts for the same character at the same time, but no interface for this
-has been designed yet).
-.PP
-Until then, you might get away with switching fonts at runtime (see \*(L"Can I switch the fonts at runtime?\*(R" later in this document).
-.Sh "Why does rxvt-unicode sometimes leave pixel droppings?"
-.IX Subsection "Why does rxvt-unicode sometimes leave pixel droppings?"
-Most fonts were not designed for terminal use, which means that character
-size varies a lot. A font that is otherwise fine for terminal use might
-contain some characters that are simply too wide. Rxvt-unicode will avoid
-these characters. For characters that are just \*(L"a bit\*(R" too wide a special
-\&\*(L"careful\*(R" rendering mode is used that redraws adjacent characters.
-.PP
-All of this requires that fonts do not lie about character sizes,
-however: Xft fonts often draw glyphs larger than their acclaimed bounding
-box, and rxvt-unicode has no way of detecting this (the correct way is to
-ask for the character bounding box, which unfortunately is wrong in these
-cases).
-.PP
-It's not clear (to me at least), wether this is a bug in Xft, freetype,
-or the respective font. If you encounter this problem you might try using
-the \f(CW\*(C`\-lsp\*(C'\fR option to give the font more height. If that doesn't work, you
-might be forced to use a different font.
-.PP
-All of this is not a problem when using X11 core fonts, as their bounding
-box data is correct.
-.Sh "On Solaris 9, many line-drawing characters are too wide."
-.IX Subsection "On Solaris 9, many line-drawing characters are too wide."
-Seems to be a known bug, read
-<http://nixdoc.net/files/forum/about34198.html>. Some people use the
-following ugly workaround to get non-double-wide-characters working:
-.PP
-.Vb 1
-\&   #define wcwidth(x) wcwidth(x) > 1 ? 1 : wcwidth(x)
-.Ve
-.Sh "My Compose (Multi_key) key is no longer working."
-.IX Subsection "My Compose (Multi_key) key is no longer working."
-The most common causes for this are that either your locale is not set
-correctly, or you specified a \fBpreeditStyle\fR that is not supported by
-your input method. For example, if you specified \fBOverTheSpot\fR and
-your input method (e.g. the default input method handling Compose keys)
-does not support this (for instance because it is not visual), then
-rxvt-unicode will continue without an input method.
-.PP
-In this case either do not specify a \fBpreeditStyle\fR or specify more than
-one pre-edit style, such as \fBOverTheSpot,Root,None\fR.
-.ie n .Sh "I cannot type ""Ctrl\-Shift\-2"" to get an \s-1ASCII\s0 \s-1NUL\s0 character due to \s-1ISO\s0 14755"
-.el .Sh "I cannot type \f(CWCtrl\-Shift\-2\fP to get an \s-1ASCII\s0 \s-1NUL\s0 character due to \s-1ISO\s0 14755"
-.IX Subsection "I cannot type Ctrl-Shift-2 to get an ASCII NUL character due to ISO 14755"
-Either try \f(CW\*(C`Ctrl\-2\*(C'\fR alone (it often is mapped to \s-1ASCII\s0 \s-1NUL\s0 even on
-international keyboards) or simply use \s-1ISO\s0 14755 support to your
-advantage, typing <Ctrl\-Shift\-0> to get a \s-1ASCII\s0 \s-1NUL\s0. This works for other
-codes, too, such as \f(CW\*(C`Ctrl\-Shift\-1\-d\*(C'\fR to type the default telnet escape
-character and so on.
-.Sh "How can I keep rxvt-unicode from using reverse video so much?"
-.IX Subsection "How can I keep rxvt-unicode from using reverse video so much?"
-First of all, make sure you are running with the right terminal settings
-(\f(CW\*(C`TERM=rxvt\-unicode\*(C'\fR), which will get rid of most of these effects. Then
-make sure you have specified colours for italic and bold, as otherwise
-rxvt-unicode might use reverse video to simulate the effect:
-.PP
-.Vb 2
-\&   URxvt.colorBD:  white
-\&   URxvt.colorIT:  green
-.Ve
-.Sh "Some programs assume totally weird colours (red instead of blue), how can I fix that?"
-.IX Subsection "Some programs assume totally weird colours (red instead of blue), how can I fix that?"
-For some unexplainable reason, some rare programs assume a very weird
-colour palette when confronted with a terminal with more than the standard
-8 colours (rxvt\-unicode supports 88). The right fix is, of course, to fix
-these programs not to assume non-ISO colours without very good reasons.
-.PP
-In the meantime, you can either edit your \f(CW\*(C`rxvt\-unicode\*(C'\fR terminfo
-definition to only claim 8 colour support or use \f(CW\*(C`TERM=rxvt\*(C'\fR, which will
-fix colours but keep you from using other rxvt-unicode features.
-.Sh "I am on FreeBSD and rxvt-unicode does not seem to work at all."
-.IX Subsection "I am on FreeBSD and rxvt-unicode does not seem to work at all."
-Rxvt-unicode requires the symbol \f(CW\*(C`_\|_STDC_ISO_10646_\|_\*(C'\fR to be defined
-in your compile environment, or an implementation that implements it,
-wether it defines the symbol or not. \f(CW\*(C`_\|_STDC_ISO_10646_\|_\*(C'\fR requires that
-\&\fBwchar_t\fR is represented as unicode.
-.PP
-As you might have guessed, FreeBSD does neither define this symobl nor
-does it support it. Instead, it uses it's own internal representation of
-\&\fBwchar_t\fR. This is, of course, completely fine with respect to standards.
-.PP
-However, that means rxvt-unicode only works in \f(CW\*(C`POSIX\*(C'\fR, \f(CW\*(C`ISO\-8859\-1\*(C'\fR and
-\&\f(CW\*(C`UTF\-8\*(C'\fR locales under FreeBSD (which all use Unicode as \fBwchar_t\fR.
-.PP
-\&\f(CW\*(C`_\|_STDC_ISO_10646_\|_\*(C'\fR is the only sane way to support multi-language
-apps in an \s-1OS\s0, as using a locale-dependent (and non\-standardized)
-representation of \fBwchar_t\fR makes it impossible to convert between
-\&\fBwchar_t\fR (as used by X11 and your applications) and any other encoding
-without implementing OS-specific-wrappers for each and every locale. There
-simply are no APIs to convert \fBwchar_t\fR into anything except the current
-locale encoding.
-.PP
-Some applications (such as the formidable \fBmlterm\fR) work around this
-by carrying their own replacement functions for character set handling
-with them, and either implementing OS-dependent hacks or doing multiple
-conversions (which is slow and unreliable in case the \s-1OS\s0 implements
-encodings slightly different than the terminal emulator).
-.PP
-The rxvt-unicode author insists that the right way to fix this is in the
-system libraries once and for all, instead of forcing every app to carry
-complete replacements for them :)
-.Sh "I use Solaris 9 and it doesn't compile/work/etc."
-.IX Subsection "I use Solaris 9 and it doesn't compile/work/etc."
-Try the diff in \fIdoc/solaris9.patch\fR as a base. It fixes the worst
-problems with \f(CW\*(C`wcwidth\*(C'\fR and a compile problem.
-.Sh "How can I use rxvt-unicode under cygwin?"
-.IX Subsection "How can I use rxvt-unicode under cygwin?"
-rxvt-unicode should compile and run out of the box on cygwin, using
-the X11 libraries that come with cygwin. libW11 emulation is no
-longer supported (and makes no sense, either, as it only supported a
-single font). I recommend starting the X\-server in \f(CW\*(C`\-multiwindow\*(C'\fR or
-\&\f(CW\*(C`\-rootless\*(C'\fR mode instead, which will result in similar look&feel as the
-old libW11 emulation.
-.PP
-At the time of this writing, cygwin didn't seem to support any multi-byte
-encodings (you might try \f(CW\*(C`LC_CTYPE=C\-UTF\-8\*(C'\fR), so you are likely limited
-to 8\-bit encodings.
-.Sh "How does rxvt-unicode determine the encoding to use?"
+\fIHow does rxvt-unicode determine the encoding to use?\fR
 .IX Subsection "How does rxvt-unicode determine the encoding to use?"
+.PP
 See next entry.
-.Sh "Is there an option to switch encodings?"
+.PP
+\fIIs there an option to switch encodings?\fR
 .IX Subsection "Is there an option to switch encodings?"
+.PP
 Unlike some other terminals, rxvt-unicode has no encoding switch, and no
 specific \*(L"utf\-8\*(R" mode, such as xterm. In fact, it doesn't even know about
 \&\s-1UTF\-8\s0 or any other encodings with respect to terminal I/O.
@@ -817,8 +1297,10 @@ rxvt\-unicode.
 .PP
 If you want to use a specific encoding you have to make sure you start
 rxvt-unicode with the correct \f(CW\*(C`LC_CTYPE\*(C'\fR category.
-.Sh "Can I switch locales at runtime?"
+.PP
+\fICan I switch locales at runtime?\fR
 .IX Subsection "Can I switch locales at runtime?"
+.PP
 Yes, using an escape sequence. Try something like this, which sets
 rxvt\-unicode's idea of \f(CW\*(C`LC_CTYPE\*(C'\fR.
 .PP
@@ -842,33 +1324,39 @@ first switches to a locale supported by xjdic and back later:
 You can also use xterm's \f(CW\*(C`luit\*(C'\fR program, which usually works fine, except
 for some locales where character width differs between program\- and
 rxvt\-unicode\-locales.
-.Sh "Can I switch the fonts at runtime?"
-.IX Subsection "Can I switch the fonts at runtime?"
-Yes, using an escape sequence. Try something like this, which has the same
-effect as using the \f(CW\*(C`\-fn\*(C'\fR switch, and takes effect immediately:
 .PP
+\fII have problems getting my input method working.\fR
+.IX Subsection "I have problems getting my input method working."
+.PP
+Try a search engine, as this is slightly different for every input method server.
+.PP
+Here is a checklist:
+.IP "\- Make sure your locale \fIand\fR the imLocale are supported on your \s-1OS\s0." 4
+.IX Item "- Make sure your locale and the imLocale are supported on your OS."
+Try \f(CW\*(C`locale \-a\*(C'\fR or check the documentation for your \s-1OS\s0.
+.IP "\- Make sure your locale or imLocale matches a locale supported by your \s-1XIM\s0." 4
+.IX Item "- Make sure your locale or imLocale matches a locale supported by your XIM."
+For example, \fBkinput2\fR does not support \s-1UTF\-8\s0 locales, you should use
+\&\f(CW\*(C`ja_JP.EUC\-JP\*(C'\fR or equivalent.
+.IP "\- Make sure your \s-1XIM\s0 server is actually running." 4
+.IX Item "- Make sure your XIM server is actually running."
+.PD 0
+.ie n .IP "\- Make sure the ""XMODIFIERS""\fR environment variable is set correctly when \fIstarting rxvt\-unicode." 4
+.el .IP "\- Make sure the \f(CWXMODIFIERS\fR environment variable is set correctly when \fIstarting\fR rxvt\-unicode." 4
+.IX Item "- Make sure the XMODIFIERS environment variable is set correctly when starting rxvt-unicode."
+.PD
+When you want to use e.g. \fBkinput2\fR, it must be set to
+\&\f(CW\*(C`@im=kinput2\*(C'\fR. For \fBscim\fR, use \f(CW\*(C`@im=SCIM\*(C'\fR. Youc an see what input
+method servers are running with this command:
+.Sp
 .Vb 1
-\&   printf '\ee]50;%s\e007' "9x15bold,xft:Kochi Gothic"
+\&   xprop -root XIM_SERVERS
 .Ve
+.IP "*" 4
 .PP
-This is useful if you e.g. work primarily with japanese (and prefer a
-japanese font), but you have to switch to chinese temporarily, where
-japanese fonts would only be in your way.
-.PP
-You can think of this as a kind of manual \s-1ISO\-2022\s0 switching.
-.Sh "Why do italic characters look as if clipped?"
-.IX Subsection "Why do italic characters look as if clipped?"
-Many fonts have difficulties with italic characters and hinting. For
-example, the otherwise very nicely hinted font \f(CW\*(C`xft:Bitstream Vera Sans
-Mono\*(C'\fR completely fails in it's italic face. A workaround might be to
-enable freetype autohinting, i.e. like this:
-.PP
-.Vb 2
-\&   URxvt.italicFont:        xft:Bitstream Vera Sans Mono:italic:autohint=true
-\&   URxvt.boldItalicFont:    xft:Bitstream Vera Sans Mono:bold:italic:autohint=true
-.Ve
-.Sh "My input method wants <some encoding> but I want \s-1UTF\-8\s0, what can I do?"
+\fIMy input method wants <some encoding> but I want \s-1UTF\-8\s0, what can I do?\fR
 .IX Subsection "My input method wants <some encoding> but I want UTF-8, what can I do?"
+.PP
 You can specify separate locales for the input method and the rest of the
 terminal, using the resource \f(CW\*(C`imlocale\*(C'\fR:
 .PP
@@ -877,11 +1365,13 @@ terminal, using the resource \f(CW\*(C`imlocale\*(C'\fR:
 .Ve
 .PP
 Now you can start your terminal with \f(CW\*(C`LC_CTYPE=ja_JP.UTF\-8\*(C'\fR and still
-use your input method. Please note, however, that you will not be able to
-input characters outside \f(CW\*(C`EUC\-JP\*(C'\fR in a normal way then, as your input
-method limits you.
-.Sh "Rxvt-unicode crashes when the X Input Method changes or exits."
+use your input method. Please note, however, that, depending on your Xlib
+version, you may not be able to input characters outside \f(CW\*(C`EUC\-JP\*(C'\fR in a
+normal way then, as your input method limits you.
+.PP
+\fIRxvt-unicode crashes when the X Input Method changes or exits.\fR
 .IX Subsection "Rxvt-unicode crashes when the X Input Method changes or exits."
+.PP
 Unfortunately, this is unavoidable, as the \s-1XIM\s0 protocol is racy by
 design. Applications can avoid some crashes at the expense of memory
 leaks, and Input Methods can avoid some crashes by careful ordering at
@@ -890,276 +1380,135 @@ while \fB\s-1SCIM\s0\fR (or similar input methods) fails. In the end, however,
 crashes cannot be completely avoided even if both sides cooperate.
 .PP
 So the only workaround is not to kill your Input Method Servers.
-.Sh "Rxvt-unicode uses gobs of memory, how can I reduce that?"
-.IX Subsection "Rxvt-unicode uses gobs of memory, how can I reduce that?"
-Rxvt-unicode tries to obey the rule of not charging you for something you
-don't use. One thing you should try is to configure out all settings that
-you don't need, for example, Xft support is a resource hog by design,
-when used. Compiling it out ensures that no Xft font will be loaded
-accidentally when rxvt-unicode tries to find a font for your characters.
+.Sh "Operating Systems / Package Maintaining"
+.IX Subsection "Operating Systems / Package Maintaining"
+\fII am using Debian GNU/Linux and have a problem...\fR
+.IX Subsection "I am using Debian GNU/Linux and have a problem..."
 .PP
-Also, many people (me included) like large windows and even larger
-scrollback buffers: Without \f(CW\*(C`\-\-enable\-unicode3\*(C'\fR, rxvt-unicode will use
-6 bytes per screen cell. For a 160x?? window this amounts to almost a
-kilobyte per line. A scrollback buffer of 10000 lines will then (if full)
-use 10 Megabytes of memory. With \f(CW\*(C`\-\-enable\-unicode3\*(C'\fR it gets worse, as
-rxvt-unicode then uses 8 bytes per screen cell.
-.Sh "Can I speed up Xft rendering somehow?"
-.IX Subsection "Can I speed up Xft rendering somehow?"
-Yes, the most obvious way to speed it up is to avoid Xft entirely, as
-it is simply slow. If you still want Xft fonts you might try to disable
-antialiasing (by appending \f(CW\*(C`:antialias=false\*(C'\fR), which saves lots of
-memory and also speeds up rendering considerably.
-.Sh "Rxvt-unicode doesn't seem to anti-alias its fonts, what is wrong?"
-.IX Subsection "Rxvt-unicode doesn't seem to anti-alias its fonts, what is wrong?"
-Rxvt-unicode will use whatever you specify as a font. If it needs to
-fall back to it's default font search list it will prefer X11 core
-fonts, because they are small and fast, and then use Xft fonts. It has
-antialiasing disabled for most of them, because the author thinks they
-look best that way.
+The Debian GNU/Linux package of rxvt-unicode in sarge contains large
+patches that considerably change the behaviour of rxvt-unicode (but
+unfortunately this notice has been removed). Before reporting a bug to
+the original rxvt-unicode author please download and install the genuine
+version (<http://software.schmorp.de#rxvt\-unicode>) and try to reproduce
+the problem. If you cannot, chances are that the problems are specific to
+Debian GNU/Linux, in which case it should be reported via the Debian Bug
+Tracking System (use \f(CW\*(C`reportbug\*(C'\fR to report the bug).
 .PP
-If you want antialiasing, you have to specify the fonts manually.
-.Sh "Mouse cut/paste suddenly no longer works."
-.IX Subsection "Mouse cut/paste suddenly no longer works."
-Make sure that mouse reporting is actually turned off since killing
-some editors prematurely may leave the mouse in mouse report mode. I've
-heard that tcsh may use mouse reporting unless it otherwise specified. A
-quick check is to see if cut/paste works when the Alt or Shift keys are
-depressed.
-.Sh "What's with this bold/blink stuff?"
-.IX Subsection "What's with this bold/blink stuff?"
-If no bold colour is set via \f(CW\*(C`colorBD:\*(C'\fR, bold will invert text using the
-standard foreground colour.
+For other problems that also affect the Debian package, you can and
+probably should use the Debian \s-1BTS\s0, too, because, after all, it's also a
+bug in the Debian version and it serves as a reminder for other users that
+might encounter the same issue.
 .PP
-For the standard background colour, blinking will actually make the
-text blink when compiled with \f(CW\*(C`\-\-enable\-blinking\*(C'\fR. with standard
-colours. Without \f(CW\*(C`\-\-enable\-blinking\*(C'\fR, the blink attribute will be
-ignored.
+\fII am maintaining rxvt-unicode for distribution/OS \s-1XXX\s0, any recommendation?\fR
+.IX Subsection "I am maintaining rxvt-unicode for distribution/OS XXX, any recommendation?"
 .PP
-On \s-1ANSI\s0 colours, bold/blink attributes are used to set high-intensity
-foreground/background colors.
+You should build one binary with the default options. \fIconfigure\fR
+now enables most useful options, and the trend goes to making them
+runtime\-switchable, too, so there is usually no drawback to enbaling them,
+except higher disk and possibly memory usage. The perl interpreter should
+be enabled, as important functionality (menus, selection, likely more in
+the future) depends on it.
 .PP
-color0\-7 are the low-intensity colors.
+You should not overwrite the \f(CW\*(C`perl\-ext\-common\*(C'\fR snd \f(CW\*(C`perl\-ext\*(C'\fR resources
+system-wide (except maybe with \f(CW\*(C`defaults\*(C'\fR). This will result in useful
+behaviour. If your distribution aims at low memory, add an empty
+\&\f(CW\*(C`perl\-ext\-common\*(C'\fR resource to the app-defaults file. This will keep the
+perl interpreter disabled until the user enables it.
 .PP
-color8\-15 are the corresponding high-intensity colors.
-.Sh "I don't like the screen colors.  How do I change them?"
-.IX Subsection "I don't like the screen colors.  How do I change them?"
-You can change the screen colors at run-time using \fI~/.Xdefaults\fR
-resources (or as long\-options).
+If you can/want build more binaries, I recommend building a minimal
+one with \f(CW\*(C`\-\-disable\-everything\*(C'\fR (very useful) and a maximal one with
+\&\f(CW\*(C`\-\-enable\-everything\*(C'\fR (less useful, it will be very big due to a lot of
+encodings built-in that increase download times and are rarely used).
 .PP
-Here are values that are supposed to resemble a \s-1VGA\s0 screen,
-including the murky brown that passes for low-intensity yellow:
+\fII need to make it setuid/setgid to support utmp/ptys on my \s-1OS\s0, is this safe?\fR
+.IX Subsection "I need to make it setuid/setgid to support utmp/ptys on my OS, is this safe?"
 .PP
-.Vb 8
-\&   URxvt.color0:   #000000
-\&   URxvt.color1:   #A80000
-\&   URxvt.color2:   #00A800
-\&   URxvt.color3:   #A8A800
-\&   URxvt.color4:   #0000A8
-\&   URxvt.color5:   #A800A8
-\&   URxvt.color6:   #00A8A8
-\&   URxvt.color7:   #A8A8A8
+It should be, starting with release 7.1. You are encouraged to properly
+install urxvt with privileges necessary for your \s-1OS\s0 now.
+.PP
+When rxvt-unicode detects that it runs setuid or setgid, it will fork
+into a helper process for privileged operations (pty handling on some
+systems, utmp/wtmp/lastlog handling on others) and drop privileges
+immediately. This is much safer than most other terminals that keep
+privileges while running (but is more relevant to urxvt, as it contains
+things as perl interpreters, which might be \*(L"helpful\*(R" to attackers).
+.PP
+This forking is done as the very first within \fImain()\fR, which is very early
+and reduces possible bugs to initialisation code run before \fImain()\fR, or
+things like the dynamic loader of your system, which should result in very
+little risk.
+.PP
+\fIOn Solaris 9, many line-drawing characters are too wide.\fR
+.IX Subsection "On Solaris 9, many line-drawing characters are too wide."
+.PP
+Seems to be a known bug, read
+<http://nixdoc.net/files/forum/about34198.html>. Some people use the
+following ugly workaround to get non-double-wide-characters working:
+.PP
+.Vb 1
+\&   #define wcwidth(x) wcwidth(x) > 1 ? 1 : wcwidth(x)
 .Ve
 .PP
-.Vb 8
-\&   URxvt.color8:   #000054
-\&   URxvt.color9:   #FF0054
-\&   URxvt.color10:  #00FF54
-\&   URxvt.color11:  #FFFF54
-\&   URxvt.color12:  #0000FF
-\&   URxvt.color13:  #FF00FF
-\&   URxvt.color14:  #00FFFF
-\&   URxvt.color15:  #FFFFFF
-.Ve
+\fII am on FreeBSD and rxvt-unicode does not seem to work at all.\fR
+.IX Subsection "I am on FreeBSD and rxvt-unicode does not seem to work at all."
 .PP
-And here is a more complete set of non-standard colors described (not by
-me) as \*(L"pretty girly\*(R".
+Rxvt-unicode requires the symbol \f(CW\*(C`_\|_STDC_ISO_10646_\|_\*(C'\fR to be defined
+in your compile environment, or an implementation that implements it,
+wether it defines the symbol or not. \f(CW\*(C`_\|_STDC_ISO_10646_\|_\*(C'\fR requires that
+\&\fBwchar_t\fR is represented as unicode.
 .PP
-.Vb 18
-\&   URxvt.cursorColor:  #dc74d1
-\&   URxvt.pointerColor: #dc74d1
-\&   URxvt.background:   #0e0e0e
-\&   URxvt.foreground:   #4ad5e1
-\&   URxvt.color0:       #000000
-\&   URxvt.color8:       #8b8f93
-\&   URxvt.color1:       #dc74d1
-\&   URxvt.color9:       #dc74d1
-\&   URxvt.color2:       #0eb8c7
-\&   URxvt.color10:      #0eb8c7
-\&   URxvt.color3:       #dfe37e
-\&   URxvt.color11:      #dfe37e
-\&   URxvt.color5:       #9e88f0
-\&   URxvt.color13:      #9e88f0
-\&   URxvt.color6:       #73f7ff
-\&   URxvt.color14:      #73f7ff
-\&   URxvt.color7:       #e1dddd
-\&   URxvt.color15:      #e1dddd
-.Ve
-.Sh "How can I start @@RXVT_NAME@@d in a race-free way?"
-.IX Subsection "How can I start @@RXVT_NAME@@d in a race-free way?"
-Try \f(CW\*(C`@@RXVT_NAME@@d \-f \-o\*(C'\fR, which tells @@RXVT_NAME@@d to open the
-display, create the listening socket and then fork.
-.Sh "What's with the strange Backspace/Delete key behaviour?"
-.IX Subsection "What's with the strange Backspace/Delete key behaviour?"
-Assuming that the physical Backspace key corresponds to the
-BackSpace keysym (not likely for Linux ... see the following
-question) there are two standard values that can be used for
-Backspace: \f(CW\*(C`^H\*(C'\fR and \f(CW\*(C`^?\*(C'\fR.
+As you might have guessed, FreeBSD does neither define this symobl nor
+does it support it. Instead, it uses it's own internal representation of
+\&\fBwchar_t\fR. This is, of course, completely fine with respect to standards.
 .PP
-Historically, either value is correct, but rxvt-unicode adopts the debian
-policy of using \f(CW\*(C`^?\*(C'\fR when unsure, because it's the one only only correct
-choice :).
+However, that means rxvt-unicode only works in \f(CW\*(C`POSIX\*(C'\fR, \f(CW\*(C`ISO\-8859\-1\*(C'\fR and
+\&\f(CW\*(C`UTF\-8\*(C'\fR locales under FreeBSD (which all use Unicode as \fBwchar_t\fR.
 .PP
-Rxvt-unicode tries to inherit the current stty settings and uses the value
-of `erase' to guess the value for backspace.  If rxvt-unicode wasn't
-started from a terminal (say, from a menu or by remote shell), then the
-system value of `erase', which corresponds to \s-1CERASE\s0 in <termios.h>, will
-be used (which may not be the same as your stty setting).
+\&\f(CW\*(C`_\|_STDC_ISO_10646_\|_\*(C'\fR is the only sane way to support multi-language
+apps in an \s-1OS\s0, as using a locale-dependent (and non\-standardized)
+representation of \fBwchar_t\fR makes it impossible to convert between
+\&\fBwchar_t\fR (as used by X11 and your applications) and any other encoding
+without implementing OS-specific-wrappers for each and every locale. There
+simply are no APIs to convert \fBwchar_t\fR into anything except the current
+locale encoding.
 .PP
-For starting a new rxvt\-unicode:
+Some applications (such as the formidable \fBmlterm\fR) work around this
+by carrying their own replacement functions for character set handling
+with them, and either implementing OS-dependent hacks or doing multiple
+conversions (which is slow and unreliable in case the \s-1OS\s0 implements
+encodings slightly different than the terminal emulator).
 .PP
-.Vb 3
-\&   # use Backspace = ^H
-\&   $ stty erase ^H
-\&   $ @@RXVT_NAME@@
-.Ve
+The rxvt-unicode author insists that the right way to fix this is in the
+system libraries once and for all, instead of forcing every app to carry
+complete replacements for them :)
 .PP
-.Vb 3
-\&   # use Backspace = ^?
-\&   $ stty erase ^?
-\&   $ @@RXVT_NAME@@
-.Ve
+\fII use Solaris 9 and it doesn't compile/work/etc.\fR
+.IX Subsection "I use Solaris 9 and it doesn't compile/work/etc."
 .PP
-Toggle with \f(CW\*(C`ESC [ 36 h\*(C'\fR / \f(CW\*(C`ESC [ 36 l\*(C'\fR.
+Try the diff in \fIdoc/solaris9.patch\fR as a base. It fixes the worst
+problems with \f(CW\*(C`wcwidth\*(C'\fR and a compile problem.
 .PP
-For an existing rxvt\-unicode:
+\fIHow can I use rxvt-unicode under cygwin?\fR
+.IX Subsection "How can I use rxvt-unicode under cygwin?"
 .PP
-.Vb 3
-\&   # use Backspace = ^H
-\&   $ stty erase ^H
-\&   $ echo -n "^[[36h"
-.Ve
+rxvt-unicode should compile and run out of the box on cygwin, using
+the X11 libraries that come with cygwin. libW11 emulation is no
+longer supported (and makes no sense, either, as it only supported a
+single font). I recommend starting the X\-server in \f(CW\*(C`\-multiwindow\*(C'\fR or
+\&\f(CW\*(C`\-rootless\*(C'\fR mode instead, which will result in similar look&feel as the
+old libW11 emulation.
 .PP
-.Vb 3
-\&   # use Backspace = ^?
-\&   $ stty erase ^?
-\&   $ echo -n "^[[36l"
-.Ve
-.PP
-This helps satisfy some of the Backspace discrepancies that occur, but
-if you use Backspace = \f(CW\*(C`^H\*(C'\fR, make sure that the termcap/terminfo value
-properly reflects that.
-.PP
-The Delete key is a another casualty of the ill-defined Backspace problem.
-To avoid confusion between the Backspace and Delete keys, the Delete
-key has been assigned an escape sequence to match the vt100 for Execute
-(\f(CW\*(C`ESC [ 3 ~\*(C'\fR) and is in the supplied termcap/terminfo.
-.PP
-Some other Backspace problems:
-.PP
-some editors use termcap/terminfo,
-some editors (vim I'm told) expect Backspace = ^H,
-\&\s-1GNU\s0 Emacs (and Emacs-like editors) use ^H for help.
-.PP
-Perhaps someday this will all be resolved in a consistent manner.
-.Sh "I don't like the key\-bindings.  How do I change them?"
-.IX Subsection "I don't like the key-bindings.  How do I change them?"
-There are some compile-time selections available via configure. Unless
-you have run \*(L"configure\*(R" with the \f(CW\*(C`\-\-disable\-resources\*(C'\fR option you can
-use the `keysym' resource to alter the keystrings associated with keysyms.
-.PP
-Here's an example for a URxvt session started using \f(CW\*(C`@@RXVT_NAME@@ \-name URxvt\*(C'\fR
-.PP
-.Vb 20
-\&   URxvt.keysym.Home:          \e033[1~
-\&   URxvt.keysym.End:           \e033[4~
-\&   URxvt.keysym.C-apostrophe:  \e033<C-'>
-\&   URxvt.keysym.C-slash:       \e033<C-/>
-\&   URxvt.keysym.C-semicolon:   \e033<C-;>
-\&   URxvt.keysym.C-grave:       \e033<C-`>
-\&   URxvt.keysym.C-comma:       \e033<C-,>
-\&   URxvt.keysym.C-period:      \e033<C-.>
-\&   URxvt.keysym.C-0x60:        \e033<C-`>
-\&   URxvt.keysym.C-Tab:         \e033<C-Tab>
-\&   URxvt.keysym.C-Return:      \e033<C-Return>
-\&   URxvt.keysym.S-Return:      \e033<S-Return>
-\&   URxvt.keysym.S-space:       \e033<S-Space>
-\&   URxvt.keysym.M-Up:          \e033<M-Up>
-\&   URxvt.keysym.M-Down:        \e033<M-Down>
-\&   URxvt.keysym.M-Left:        \e033<M-Left>
-\&   URxvt.keysym.M-Right:       \e033<M-Right>
-\&   URxvt.keysym.M-C-0:         list \e033<M-C- 0123456789 >
-\&   URxvt.keysym.M-C-a:         list \e033<M-C- abcdefghijklmnopqrstuvwxyz >
-\&   URxvt.keysym.F12:           command:\e033]701;zh_CN.GBK\e007
-.Ve
-.PP
-See some more examples in the documentation for the \fBkeysym\fR resource.
-.Sh "I'm using keyboard model \s-1XXX\s0 that has extra Prior/Next/Insert keys. How do I make use of them? For example, the Sun Keyboard type 4 has the following mappings that rxvt-unicode doesn't recognize."
-.IX Subsection "I'm using keyboard model XXX that has extra Prior/Next/Insert keys. How do I make use of them? For example, the Sun Keyboard type 4 has the following mappings that rxvt-unicode doesn't recognize."
-.Vb 6
-\&   KP_Insert == Insert
-\&   F22 == Print
-\&   F27 == Home
-\&   F29 == Prior
-\&   F33 == End
-\&   F35 == Next
-.Ve
-.PP
-Rather than have rxvt-unicode try to accommodate all the various possible
-keyboard mappings, it is better to use `xmodmap' to remap the keys as
-required for your particular machine.
-.Sh "How do I distinguish wether I'm running rxvt-unicode or a regular xterm? I need this to decide about setting colors etc."
-.IX Subsection "How do I distinguish wether I'm running rxvt-unicode or a regular xterm? I need this to decide about setting colors etc."
-rxvt and rxvt-unicode always export the variable \*(L"\s-1COLORTERM\s0\*(R", so you can
-check and see if that is set. Note that several programs, \s-1JED\s0, slrn,
-Midnight Commander automatically check this variable to decide whether or
-not to use color.
-.Sh "How do I set the correct, full \s-1IP\s0 address for the \s-1DISPLAY\s0 variable?"
-.IX Subsection "How do I set the correct, full IP address for the DISPLAY variable?"
-If you've compiled rxvt-unicode with \s-1DISPLAY_IS_IP\s0 and have enabled
-insecure mode then it is possible to use the following shell script
-snippets to correctly set the display. If your version of rxvt-unicode
-wasn't also compiled with \s-1ESCZ_ANSWER\s0 (as assumed in these snippets) then
-the \s-1COLORTERM\s0 variable can be used to distinguish rxvt-unicode from a
-regular xterm.
-.PP
-Courtesy of Chuck Blake <cblake@BBN.COM> with the following shell script
-snippets:
-.PP
-.Vb 12
-\&   # Bourne/Korn/POSIX family of shells:
-\&   [ ${TERM:-foo} = foo ] && TERM=xterm # assume an xterm if we don't know
-\&   if [ ${TERM:-foo} = xterm ]; then
-\&      stty -icanon -echo min 0 time 15 # see if enhanced rxvt or not
-\&      echo -n '^[Z'
-\&      read term_id
-\&      stty icanon echo
-\&      if [ ""${term_id} = '^[[?1;2C' -a ${DISPLAY:-foo} = foo ]; then
-\&         echo -n '^[[7n'        # query the rxvt we are in for the DISPLAY string
-\&         read DISPLAY           # set it in our local shell
-\&      fi
-\&   fi
-.Ve
-.Sh "How do I compile the manual pages for myself?"
-.IX Subsection "How do I compile the manual pages for myself?"
-You need to have a recent version of perl installed as \fI/usr/bin/perl\fR,
-one that comes with \fIpod2man\fR, \fIpod2text\fR and \fIpod2html\fR. Then go to
-the doc subdirectory and enter \f(CW\*(C`make alldoc\*(C'\fR.
-.Sh "My question isn't answered here, can I ask a human?"
-.IX Subsection "My question isn't answered here, can I ask a human?"
-Before sending me mail, you could go to \s-1IRC:\s0 \f(CW\*(C`irc.freenode.net\*(C'\fR,
-channel \f(CW\*(C`#rxvt\-unicode\*(C'\fR has some rxvt-unicode enthusiasts that might be
-interested in learning about new and exciting problems (but not FAQs :).
-.SH "RXVT TECHNICAL REFERENCE"
-.IX Header "RXVT TECHNICAL REFERENCE"
-.SH "DESCRIPTION"
-.IX Header "DESCRIPTION"
+At the time of this writing, cygwin didn't seem to support any multi-byte
+encodings (you might try \f(CW\*(C`LC_CTYPE=C\-UTF\-8\*(C'\fR), so you are likely limited
+to 8\-bit encodings.
+.SH "RXVT-UNICODE TECHNICAL REFERENCE"
+.IX Header "RXVT-UNICODE TECHNICAL REFERENCE"
 The rest of this document describes various technical aspects of
 \&\fBrxvt-unicode\fR. First the description of supported command sequences,
 followed by pixmap support and last by a description of all features
 selectable at \f(CW\*(C`configure\*(C'\fR time.
-.SH "Definitions"
-.IX Header "Definitions"
+.Sh "Definitions"
+.IX Subsection "Definitions"
 .ie n .IP "\fB\fB""c""\fB\fR" 4
 .el .IP "\fB\f(CBc\fB\fR" 4
 .IX Item "c"
@@ -1182,8 +1531,8 @@ parameters, separated by \f(CW\*(C`;\*(C'\fR character(s).
 .el .IP "\fB\f(CBPt\fB\fR" 4
 .IX Item "Pt"
 A text parameter composed of printable characters.
-.SH "Values"
-.IX Header "Values"
+.Sh "Values"
+.IX Subsection "Values"
 .ie n .IP "\fB\fB""ENQ""\fB\fR" 4
 .el .IP "\fB\f(CBENQ\fB\fR" 4
 .IX Item "ENQ"
@@ -1231,8 +1580,8 @@ Switch to Standard Character Set
 .el .IP "\fB\f(CBSPC\fB\fR" 4
 .IX Item "SPC"
 Space Character
-.SH "Escape Sequences"
-.IX Header "Escape Sequences"
+.Sh "Escape Sequences"
+.IX Subsection "Escape Sequences"
 .ie n .IP "\fB\fB""ESC # 8""\fB\fR" 4
 .el .IP "\fB\f(CBESC # 8\fB\fR" 4
 .IX Item "ESC # 8"
@@ -1335,8 +1684,8 @@ C = K 	German character set unimplemented
 .PP
 
 .IX Xref "CSI"
-.SH "CSI (Command Sequence Introducer) Sequences"
-.IX Header "CSI (Command Sequence Introducer) Sequences"
+.Sh "\s-1CSI\s0 (Command Sequence Introducer) Sequences"
+.IX Subsection "CSI (Command Sequence Introducer) Sequences"
 .ie n .IP "\fB\fB""ESC [ Ps @""\fB\fR" 4
 .el .IP "\fB\f(CBESC [ Ps @\fB\fR" 4
 .IX Item "ESC [ Ps @"
@@ -1609,8 +1958,8 @@ Request Terminal Parameters (\s-1DECREQTPARM\s0)
 .PP
 
 .IX Xref "PrivateModes"
-.SH "DEC Private Modes"
-.IX Header "DEC Private Modes"
+.Sh "\s-1DEC\s0 Private Modes"
+.IX Subsection "DEC Private Modes"
 .ie n .IP "\fB\fB""ESC [ ? Pm h""\fB\fR" 4
 .el .IP "\fB\f(CBESC [ ? Pm h\fB\fR" 4
 .IX Item "ESC [ ? Pm h"
@@ -1887,8 +2236,8 @@ l	Use Normal Screen Buffer
 .PP
 
 .IX Xref "XTerm"
-.SH "XTerm Operating System Commands"
-.IX Header "XTerm Operating System Commands"
+.Sh "XTerm Operating System Commands"
+.IX Subsection "XTerm Operating System Commands"
 .ie n .IP "\fB\fB""ESC ] Ps;Pt ST""\fB\fR" 4
 .el .IP "\fB\f(CBESC ] Ps;Pt ST\fB\fR" 4
 .IX Item "ESC ] Ps;Pt ST"
@@ -1930,9 +2279,6 @@ Ps = 721	Move viewing window down by Pt lines, or clear scrollback buffer if Pt 
 Ps = 777	Call the perl extension with the given string, which should be of the form extension:parameters (Compile perl).
 .TE
 
-.PP
-
-.IX Xref "XPM"
 .SH "XPM"
 .IX Header "XPM"
 For the \s-1XPM\s0 XTerm escape sequence \fB\f(CB\*(C`ESC ] 20 ; Pt ST\*(C'\fB\fR then value
@@ -2012,7 +2358,7 @@ l l .
 4	Shift
 8	Meta
 16	Control
-32	Double Click (Rxvt extension)
+32	Double Click (rxvt extension)
 .TE
 
 Col = \fB\f(CB\*(C`<x> \- SPACE\*(C'\fB\fR
@@ -2311,7 +2657,7 @@ Remove support for mouse selection style like that of xterm.
 .IP "\-\-enable\-dmalloc (default: off)" 4
 .IX Item "--enable-dmalloc (default: off)"
 Use Gray Watson's malloc \- which is good for debugging See
-http://www.letters.com/dmalloc/ for details If you use either this or the
+<http://www.letters.com/dmalloc/> for details If you use either this or the
 next option, you may need to edit src/Makefile after compiling to point
 \&\s-1DINCLUDE\s0 and \s-1DLIB\s0 to the right places.
 .Sp

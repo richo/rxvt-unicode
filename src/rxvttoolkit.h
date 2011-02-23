@@ -1,6 +1,25 @@
-/*
- * rxvttoolkit.h - provide toolkit-functionality for rxvt.
- */
+/*----------------------------------------------------------------------*
+ * File:	rxvttoolkit.h - provide toolkit-functionality for rxvt.
+ *----------------------------------------------------------------------*
+ *
+ * All portions of code are copyright by their respective author/s.
+ * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+ *----------------------------------------------------------------------*/
+
 #ifndef RXVT_TOOLKIT_H
 #define RXVT_TOOLKIT_H
 
@@ -107,6 +126,33 @@ struct refcache : vector<T *> {
 
 /////////////////////////////////////////////////////////////////////////////
 
+struct rxvt_screen;
+
+struct rxvt_drawable {
+  rxvt_screen *screen;
+  Drawable drawable;
+  operator Drawable() { return drawable; }
+
+#if XFT
+  XftDraw *xftdrawable;
+  operator XftDraw *();
+#endif
+
+  rxvt_drawable (rxvt_screen *screen, Drawable drawable)
+  : screen(screen),
+#if XFT
+    xftdrawable(0),
+#endif
+    drawable(drawable)
+  { }
+
+#if XFT
+  ~rxvt_drawable ();
+#endif
+};
+
+/////////////////////////////////////////////////////////////////////////////
+
 #ifdef USE_XIM
 struct rxvt_xim : refcounted {
   void destroy ();
@@ -123,10 +169,20 @@ struct rxvt_xim : refcounted {
 
 struct rxvt_screen {
   rxvt_display *display;
-  Display *xdisp;
+  Display *dpy;
   int depth;
   Visual *visual;
   Colormap cmap;
+
+#if XFT
+  // scratch pixmap
+  rxvt_drawable *scratch_area;
+  int scratch_w, scratch_h;
+
+  rxvt_drawable &scratch_drawable (int w, int h);
+
+  rxvt_screen ();
+#endif
 
   void set (rxvt_display *disp);
   void set (rxvt_display *disp, int bitdepth);
@@ -147,20 +203,18 @@ struct rxvt_display : refcounted {
 #endif
 
 //public
-  Display   *display;
+  Display   *dpy;
   int       screen;
   Window    root;
   rxvt_term *selection_owner;
   Atom      xa[NUM_XA];
-#ifndef NO_SLOW_LINK_SUPPORT
   bool      is_local;
-#endif
 #ifdef POINTER_BLANK
   Cursor    blank_cursor;
 #endif
 
   rxvt_display (const char *id);
-  XrmDatabase get_resources ();
+  XrmDatabase get_resources (bool refresh);
   bool ref_init ();
   void ref_next ();
   ~rxvt_display ();
@@ -224,15 +278,15 @@ extern refcache<rxvt_display> displays;
 
 typedef unsigned long Pixel;
 
-struct rxvt_rgba {
+struct rgba {
   unsigned short r, g, b, a;
 
   enum { MIN_CC = 0x0000, MAX_CC  = 0xffff };
 
-  rxvt_rgba ()
+  rgba ()
   { }
 
-  rxvt_rgba (unsigned short r, unsigned short g, unsigned short b, unsigned short a = MAX_CC)
+  rgba (unsigned short r, unsigned short g, unsigned short b, unsigned short a = MAX_CC)
   : r(r), g(g), b(b), a(a)
   { }
 };
@@ -240,25 +294,25 @@ struct rxvt_rgba {
 struct rxvt_color {
 #if XFT
   XftColor c;
-  operator Pixel () const { return c.pixel; }
 #else
-  Pixel p;
-  operator Pixel () const { return p; }
+  XColor c;
 #endif
+
+  operator Pixel () const { return c.pixel; }
 
   bool operator == (const rxvt_color &b) const { return Pixel (*this) == Pixel (b); }
   bool operator != (const rxvt_color &b) const { return Pixel (*this) != Pixel (b); }
 
-  bool alloc (rxvt_screen *screen, rxvt_rgba rgba);
+  bool alloc (rxvt_screen *screen, const rgba &color);
   void free (rxvt_screen *screen);
 
-  void get (rxvt_screen *screen, rxvt_rgba &rgba);
+  void get (rgba &color);
+  void get (XColor &color);
  
   bool set (rxvt_screen *screen, const char *name);
-  bool set (rxvt_screen *screen, rxvt_rgba rgba);
+  bool set (rxvt_screen *screen, const rgba &color);
 
-  rxvt_color fade (rxvt_screen *screen, int percent); // fades to black
-  rxvt_color fade (rxvt_screen *screen, int percent, rxvt_color &fadeto);
+  void fade (rxvt_screen *screen, int percent, rxvt_color &result, const rgba &to = rgba (0, 0, 0));
 };
 
 #endif
