@@ -44,6 +44,8 @@ my @mark_patterns = (
 
    qr{ (?<![^[:space:]]) (' [^[:space:]] [^']* ')                  }x,
    qr{                   (' [^']* [^[:space:]] ') (?![^[:space:]]) }x,
+   qr{ (?<![^[:space:]]) (` [^[:space:]] [^']* ')                  }x,
+   qr{                   (` [^']* [^[:space:]] ') (?![^[:space:]]) }x,
    qr{ (?<![^[:space:]]) (" [^[:space:]] [^"]* ")                  }x,
    qr{                   (" [^"]* [^[:space:]] ") (?![^[:space:]]) }x,
 

@@ -261,7 +261,7 @@ bgPixmap_t::set_geometry (const char *geom)
   unsigned int w = 0, h = 0;
   unsigned int n;
   unsigned long new_flags = (flags & (~geometryFlags));
-  char *p;
+  const char *p;
 #  define MAXLEN_GEOM		256 /* could be longer than regular geometry string */
 
   if (geom == NULL)
@@ -677,10 +677,10 @@ bgPixmap_t::set_file (const char *file)
       if (!target->asimman)
         target->asimman = create_generic_imageman (target->rs[Rs_path]);
 
-      if (char *f = strchr (file, ';'))
+      if (const char *p = strchr (file, ';'))
         {
-          size_t len = f - file;
-          f = (char *)malloc (len + 1);
+          size_t len = p - file;
+          char *f = (char *)malloc (len + 1);
           memcpy (f, file, len);
           f[len] = '\0';
           original_asim = get_asimage (target->asimman, f, 0xFFFFFFFF, 100);
@@ -1329,7 +1329,7 @@ bgPixmap_t::apply ()
          scr_touch or we get a great deal of flicker otherwise: */
       XClearWindow (target->dpy, target->parent[0]);
 
-      if (target->scrollBar.win)
+      if (target->scrollBar.state && target->scrollBar.win)
         {
           target->scrollBar.state = STATE_IDLE;
           target->scrollBar.show (0);

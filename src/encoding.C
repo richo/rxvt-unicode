@@ -59,7 +59,7 @@ const struct n2cs {
   { "ASCII",		CS_US_ASCII         },
   { "USASCII",		CS_US_ASCII         },
   { "ANSIX341968",	CS_US_ASCII         },
-  { "ISO646.1991-IRV",  CS_US_ASCII         }, // older versions used the currency sign
+  { "ISO6461991IRV",	CS_US_ASCII         }, // older versions used the currency sign
 
   { "KOI8R*",		CS_KOI8_R           },
   { "GOST1976874*",     CS_KOI8_R           },
@@ -290,7 +290,7 @@ rxvt_compose (unicode_t c1, unicode_t c2)
   int r = sizeof (rxvt_compose_table) / sizeof (rxvt_compose_entry) - 1;
   int m;
 
-  while (r > l)
+  while (r >= l)
     {
       m = (l + r) / 2;
       rxvt_compose_entry &c = rxvt_compose_table[m];

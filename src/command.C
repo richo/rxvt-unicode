@@ -1686,6 +1686,7 @@ rxvt_term::x_cb (XEvent &ev)
   refresh_check ();
 }
 
+#if ENABLE_FRILLS
 void
 rxvt_term::set_urgency (bool enable)
 {
@@ -1699,6 +1700,7 @@ rxvt_term::set_urgency (bool enable)
       urgency_hint = enable;
     }
 }
+#endif
 
 void
 rxvt_term::focus_in ()
@@ -2336,7 +2338,7 @@ rxvt_term::next_char () NOTHROW
 
       if (len == (size_t)-1)
         {
-          mbrtowc (0, 0, 0, mbstate); // reset now undefined conversion state
+          mbstate.reset (); // reset now undefined conversion state
           return (unsigned char)*cmdbuf_ptr++; // the _occasional_ latin1 character is allowed to slip through
         }
 
@@ -3285,7 +3287,7 @@ rxvt_term::process_color_seq (int report, int color, const char *str, char resp)
  * XTerm escape sequences: ESC ] Ps;Pt (ST|BEL)
  */
 void
-rxvt_term::process_xterm_seq (int op, const char *str, char resp)
+rxvt_term::process_xterm_seq (int op, char *str, char resp)
 {
   int color;
   char *buf, *name;
@@ -3336,7 +3338,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
           }
         else
           {
-            char *eq = strchr (str, '='); // constness lost, but verified to be ok
+            char *eq = strchr (str, '=');
 
             if (eq)
               {
