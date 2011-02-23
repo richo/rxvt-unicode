@@ -120,6 +120,7 @@ void             rxvt_freecommastring             (char **cs);
 char           * rxvt_File_find                   (const char *file, const char *ext, const char *path);
 void             rxvt_Draw_Shadow                 (Display *display, Window win, GC topShadow, GC botShadow, int x, int y, int w, int h);
 void             rxvt_Draw_Triangle               (Display *display, Window win, GC topShadow, GC botShadow, int x, int y, int w, int type);
+void             rxvt_usleep                      (int usecs);
 
 /*
  *****************************************************************************
@@ -492,9 +493,7 @@ enum {
 
 /* Words starting with `Color_' are colours.  Others are counts */
 /*
- * The following comment is mostly obsolete since pixcolor_set was expanded:
- * We're currently upto 29 colours.  Only 3 more available.  The
- * PixColor and rendition colour usage should probably be decoupled
+ * The PixColor and rendition colour usage should probably be decoupled
  * on the unnecessary items, e.g. Color_pointer, but won't bother
  * until we need to.  Also, be aware of usage in pixcolor_set
  */
@@ -553,6 +552,9 @@ enum colour_list {
 #endif
 #if TINTING
   Color_tint,
+#endif
+#if OFF_FOCUS_FADING
+  Color_fade,
 #endif
   NRS_COLORS,                 /* */
 #ifdef KEEP_SCROLLCOLOR
