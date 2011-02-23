@@ -46,9 +46,9 @@ extern "C" {
 /* typedef unsigned int uint32_t; */
 
 /* whatever normal size corresponds to a integer pointer */
-#define intp_t int32_t
+#define intp_t int64_t
 /* whatever normal size corresponds to a unsigned integer pointer */
-#define u_intp_t u_int32_t
+#define u_intp_t u_int64_t
 
 struct rxvt_fontset;
 struct rxvt_color;
@@ -222,6 +222,7 @@ typedef struct {
 # define Opt_borderLess		0
 #endif
 #define Opt_pastableTabs	(1UL<<25)
+#define Opt_cursorUnderline	(1UL<<26)
 /* place holder used for parsing command-line options */
 #define Opt_Reverse             (1UL<<30)
 #define Opt_Boolean             (1UL<<31)
