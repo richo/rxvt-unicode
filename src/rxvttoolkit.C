@@ -264,10 +264,8 @@ rxvt_screen::set (rxvt_display *disp)
 }
 
 void
-rxvt_screen::set (rxvt_display *disp, int bitdepth)
+rxvt_screen::select_visual (int bitdepth)
 {
-  set (disp);
-
 #if XFT
   XVisualInfo vinfo;
 
@@ -275,7 +273,7 @@ rxvt_screen::set (rxvt_display *disp, int bitdepth)
     {
       depth  = bitdepth;
       visual = vinfo.visual;
-      cmap   = XCreateColormap (dpy, disp->root, visual, AllocNone);
+      cmap   = XCreateColormap (dpy, display->root, visual, AllocNone);
     }
 #endif
 }
@@ -317,6 +315,7 @@ rxvt_display::get_resources (bool refresh)
   XrmDatabase rdb1, database = 0;
 
   // for ordering, see for example http://www.faqs.org/faqs/Xt-FAQ/ Subject: 20
+  // as opposed to "standard practise", we always read in ~/.Xdefaults
 
   // 6. System wide per application default file.
 
@@ -333,6 +332,14 @@ rxvt_display::get_resources (bool refresh)
   // none
 
   // 4. User's defaults file.
+  if (homedir)
+    {
+      snprintf (fname, sizeof (fname), "%s/.Xdefaults", homedir);
+
+      if ((rdb1 = XrmGetFileDatabase (fname)))
+        XrmMergeDatabases (rdb1, &database);
+    }
+
   /* Get any Xserver defaults */
   if (refresh)
     {
@@ -358,6 +365,7 @@ rxvt_display::get_resources (bool refresh)
        else
          {
            displayResource = 0;
+
            if (val)
              XFree(val);
          }
@@ -372,13 +380,6 @@ rxvt_display::get_resources (bool refresh)
   if (displayResource)
     {
       if ((rdb1 = XrmGetStringDatabase (displayResource)))
-        XrmMergeDatabases (rdb1, &database);
-    }
-  else if (homedir)
-    {
-      snprintf (fname, sizeof (fname), "%s/.Xdefaults", homedir);
-
-      if ((rdb1 = XrmGetFileDatabase (fname)))
         XrmMergeDatabases (rdb1, &database);
     }
 
@@ -651,6 +652,13 @@ template class refcache<rxvt_display>;
 refcache<rxvt_display> displays;
 
 /////////////////////////////////////////////////////////////////////////////
+//
+
+static unsigned int
+insert_component (unsigned int value, unsigned int mask, unsigned int shift)
+{
+  return (value * (mask + 1) >> 16) << shift;
+}
  
 bool
 rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
@@ -670,10 +678,10 @@ rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
       c.color.blue  = color.b;
       c.color.alpha = color.a;
 
-      c.pixel = ((color.r * format->direct.redMask   / rgba::MAX_CC) << format->direct.red  )
-              | ((color.g * format->direct.greenMask / rgba::MAX_CC) << format->direct.green)
-              | ((color.b * format->direct.blueMask  / rgba::MAX_CC) << format->direct.blue )
-              | ((color.a * format->direct.alphaMask / rgba::MAX_CC) << format->direct.alpha);
+      c.pixel = insert_component (color.r, format->direct.redMask  , format->direct.red  )
+              | insert_component (color.g, format->direct.greenMask, format->direct.green)
+              | insert_component (color.b, format->direct.blueMask , format->direct.blue )
+              | insert_component (color.a, format->direct.alphaMask, format->direct.alpha);
 
       return true;
     }

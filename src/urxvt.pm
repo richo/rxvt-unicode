@@ -153,6 +153,12 @@ was started, while C<Enter> or C<Return> stay at the current position and
 additionally stores the first match in the current line into the primary
 selection.
 
+The regex defaults to "(?i)", resulting in a case-insensitive search. To
+get a case-sensitive search you can delete this prefix using C<BackSpace>
+or simply use an uppercase character which removes the "(?i)" prefix.
+
+See L<perlre> for more info about perl regular expression syntax.
+
 =item readline (enabled by default)
 
 A support package that tries to make editing with readline easier. At
@@ -255,17 +261,37 @@ C<OnTheSpot>, i.e.:
 
    @@RXVT_NAME@@ -pt OnTheSpot -pe xim-onthespot
 
+=item kuake<hotkey>
+
+A very primitive quake-console-like extension. It was inspired by a
+description of how the programs C<kuake> and C<yakuake> work: Whenever the
+user presses a global accelerator key (by default C<F10>), the terminal
+will show or hide itself. Another press of the accelerator key will hide
+or show it again.
+
+Initially, the window will not be shown when using this extension.
+
+This is useful if you need a single terminal thats not using any desktop
+space most of the time but is quickly available at the press of a key.
+
+The accelerator key is grabbed regardless of any modifers, so this
+extension will actually grab a physical key just for this function.
+
+If you want a quake-like animation, tell your window manager to do so
+(fvwm can do it).
+
 =item automove-background
 
-This is basically a one-line extension that dynamically changes the background pixmap offset
-to the window position, in effect creating the same effect as pseudo transparency with
-a custom pixmap. No scaling is supported in this mode. Exmaple:
+This is basically a very small extension that dynamically changes the
+background pixmap offset to the window position, in effect creating the
+same effect as pseudo transparency with a custom pixmap. No scaling is
+supported in this mode. Exmaple:
 
    @@RXVT_NAME@@ -pixmap background.xpm -pe automove-background
 
 =item block-graphics-to-ascii
 
-A not very useful example of filtering all text output to the terminal,
+A not very useful example of filtering all text output to the terminal
 by replacing all line-drawing characters (U+2500 .. U+259F) by a
 similar-looking ascii character.
 
@@ -370,7 +396,7 @@ locale-specific way.
 
 =head2 Extension Objects
 
-Very perl extension is a perl class. A separate perl object is created
+Every perl extension is a perl class. A separate perl object is created
 for each terminal and each extension and passed as the first parameter to
 hooks. So extensions can use their C<$self> object without having to think
 about other extensions, with the exception of methods and members that
@@ -495,7 +521,17 @@ It is called before lines are scrolled out (so rows 0 .. min ($lines - 1,
 $nrow - 1) represent the lines to be scrolled out). C<$saved> is the total
 number of lines that will be in the scrollback buffer.
 
-=item on_osc_seq $term, $string
+=item on_osc_seq $term, $op, $args
+
+Called on every OSC sequence and can be used to suppress it or modify its
+behaviour.  The default should be to return an empty list. A true value
+suppresses execution of the request completely. Make sure you don't get
+confused by recursive invocations when you output an osc sequence within
+this callback.
+
+C<on_osc_seq_perl> should be used for new behaviour.
+
+=item on_osc_seq_perl $term, $string
 
 Called whenever the B<ESC ] 777 ; string ST> command sequence (OSC =
 operating system command) is processed. Cursor position and other state
@@ -566,6 +602,10 @@ returns TRUE, setting of the window hints is being skipped.
 Called on every X event received on the vt window (and possibly other
 windows). Should only be used as a last resort. Most event structure
 members are not passed.
+
+=item on_root_event $term, $event
+
+Like C<on_x_event>, but is called for events on the root window.
 
 =item on_focus_in $term
 
@@ -899,10 +939,8 @@ sub invoke {
       verbose 10, "$HOOKNAME[$htype] (" . (join ", ", $TERM, @_) . ")"
          if $verbosity >= 10;
 
-      keys %$cb;
-
-      while (my ($pkg, $cb) = each %$cb) {
-         my $retval_ = eval { $cb->($TERM->{_pkg}{$pkg}, @_) };
+      for my $pkg (keys %$cb) {
+         my $retval_ = eval { $cb->{$pkg}->($TERM->{_pkg}{$pkg}, @_) };
          $retval ||= $retval_;
 
          if ($@) {

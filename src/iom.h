@@ -125,7 +125,7 @@ struct watcher {
 #if IOM_IO
 enum { EVENT_UNDEF = -1, EVENT_NONE = 0, EVENT_READ = 1, EVENT_WRITE = 2 };
 
-struct io_watcher : watcher, callback2<void, io_watcher &, short> {
+struct io_watcher : watcher, callback<void (io_watcher &, short)> {
   int fd;
   short events;
 
@@ -136,16 +136,16 @@ struct io_watcher : watcher, callback2<void, io_watcher &, short> {
   void start (int fd_, short events_) { set (fd_, events_); io_manager::reg (*this); }
   void stop () { io_manager::unreg (*this); }
 
-  template<class O1, class O2>
-  io_watcher (O1 *object, void (O2::*method) (io_watcher &, short))
-  : callback2<void, io_watcher &, short> (object, method)
+  template<class O, class M>
+  io_watcher (O object, M method)
+  : callback<void (io_watcher &, short)> (object, method)
   { }
   ~io_watcher () { stop (); }
 };
 #endif
 
 #if IOM_TIME
-struct time_watcher : watcher, callback1<void, time_watcher &> {
+struct time_watcher : watcher, callback<void (time_watcher &)> {
   tstamp at;
 
   void trigger ();
@@ -156,9 +156,9 @@ struct time_watcher : watcher, callback1<void, time_watcher &> {
   void start (tstamp when) { set (when); io_manager::reg (*this); }
   void stop () { io_manager::unreg (*this); }
 
-  template<class O1, class O2>
-  time_watcher (O1 *object, void (O2::*method) (time_watcher &))
-  : callback1<void, time_watcher &> (object, method), at (0)
+  template<class O, class M>
+  time_watcher (O object, M method)
+  : callback<void (time_watcher &)> (object, method), at (0)
   { }
   ~time_watcher () { stop (); }
 };
@@ -166,13 +166,13 @@ struct time_watcher : watcher, callback1<void, time_watcher &> {
 
 #if IOM_CHECK
 // run before checking for new events
-struct check_watcher : watcher, callback1<void, check_watcher &> {
+struct check_watcher : watcher, callback<void (check_watcher &)> {
   void start () { io_manager::reg (*this); }
   void stop () { io_manager::unreg (*this); }
 
-  template<class O1, class O2>
-  check_watcher (O1 *object, void (O2::*method) (check_watcher &))
-  : callback1<void, check_watcher &> (object, method)
+  template<class O, class M>
+  check_watcher (O object, M method)
+  : callback<void (check_watcher &)> (object, method)
   { }
   ~check_watcher () { stop (); }
 };
@@ -180,43 +180,43 @@ struct check_watcher : watcher, callback1<void, check_watcher &> {
 
 #if IOM_IDLE
 // run after checking for any i/o, but before waiting
-struct idle_watcher : watcher, callback1<void, idle_watcher &> {
+struct idle_watcher : watcher, callback<void (idle_watcher &)> {
   void start () { io_manager::reg (*this); }
   void stop () { io_manager::unreg (*this); }
 
-  template<class O1, class O2>
-  idle_watcher (O1 *object, void (O2::*method) (idle_watcher &))
-    : callback1<void, idle_watcher &> (object, method)
+  template<class O, class M>
+  idle_watcher (O object, M method)
+    : callback<void (idle_watcher &)> (object, method)
     { }
   ~idle_watcher () { stop (); }
 };
 #endif
 
 #if IOM_SIG
-struct sig_watcher : watcher, callback1<void, sig_watcher &> {
+struct sig_watcher : watcher, callback<void (sig_watcher &)> {
   int signum;
 
   void start (int signum);
   void stop () { io_manager::unreg (*this); }
 
-  template<class O1, class O2>
-  sig_watcher (O1 *object, void (O2::*method) (sig_watcher &))
-  : callback1<void, sig_watcher &> (object, method), signum (0)
+  template<class O, class M>
+  sig_watcher (O object, M method)
+  : callback<void(sig_watcher &)> (object, method), signum (0)
   { }
   ~sig_watcher () { stop (); }
 };
 #endif
 
 #if IOM_CHILD
-struct child_watcher : watcher, callback2<void, child_watcher &, int> {
+struct child_watcher : watcher, callback<void (child_watcher &, int)> {
   int /*pid_t*/ pid;
 
   void start (int pid) { this->pid = pid; io_manager::reg (*this); }
   void stop () { io_manager::unreg (*this); }
 
-  template<class O1, class O2>
-  child_watcher (O1 *object, void (O2::*method) (child_watcher &, int status))
-  : callback2<void, child_watcher &, int> (object, method), pid (0)
+  template<class O, class M>
+  child_watcher (O object, M method)
+  : callback<void (child_watcher &, int)> (object, method), pid (0)
   { }
   ~child_watcher () { stop (); }
 };
