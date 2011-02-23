@@ -75,17 +75,7 @@ typedef char *XPointer;
 #include <termios.h>
 typedef struct termios ttymode_t;
 
-#ifdef HAVE_AFTERIMAGE
-#  include <afterimage.h>
-#undef min
-#undef max
-#elif defined(XPM_BACKGROUND)
-# ifdef XPM_INC_X11
-#  include <X11/xpm.h>
-# else
-#  include <xpm.h>
-# endif
-#endif
+#include "background.h"
 
 #ifndef STDIN_FILENO
 # define STDIN_FILENO   0
@@ -107,9 +97,6 @@ class out_of_input { };
  *****************************************************************************
  */
 // main.C
-RETSIGTYPE       rxvt_Child_signal                (int sig) NOTHROW;
-RETSIGTYPE       rxvt_Exit_signal                 (int sig) NOTHROW;
-void             rxvt_clean_exit                  () NOTHROW;
 void           * rxvt_malloc                      (size_t size);
 void           * rxvt_calloc                      (size_t number, size_t size);
 void           * rxvt_realloc                     (void *ptr, size_t size);
@@ -122,17 +109,14 @@ wchar_t *        rxvt_utf8towcs                   (const char *str, int len = -1
 
 #define rxvt_strdup(s) ((s) ? strdup(s) : 0)
 
-char *           rxvt_r_basename                  (const char *str) NOTHROW;
+char *           rxvt_basename                    (const char *str) NOTHROW;
 void             rxvt_vlog                        (const char *fmt, va_list arg_ptr) NOTHROW;
 void             rxvt_log                         (const char *fmt,...) NOTHROW;
 void             rxvt_warn                        (const char *fmt,...) NOTHROW;
 void             rxvt_fatal                       (const char *fmt, ...) THROW ((class rxvt_failure_exception)) NORETURN;
 void             rxvt_exit_failure                () THROW ((class rxvt_failure_exception)) NORETURN;
 
-int              rxvt_Str_match                   (const char *s1, const char *s2) NOTHROW;
-const char *     rxvt_Str_skip_space              (const char *str) NOTHROW;
-char           * rxvt_Str_trim                    (char *str) NOTHROW;
-int              rxvt_Str_escaped                 (char *str) NOTHROW;
+char           * rxvt_strtrim                     (char *str) NOTHROW;
 char          ** rxvt_splitcommastring            (const char *cs) NOTHROW;
 void             rxvt_freecommastring             (char **cs) NOTHROW;
 
@@ -142,7 +126,7 @@ void             rxvt_freecommastring             (char **cs) NOTHROW;
 extern char **environ;
 extern char **rxvt_environ; // the original environ pointer
 
-inline void set_environ (stringvec *envv)
+static inline void set_environ (stringvec *envv)
 {
 #if ENABLE_PERL
   assert (envv);
@@ -152,7 +136,7 @@ inline void set_environ (stringvec *envv)
     environ = (char **)envv->begin ();
 }
 
-inline void set_environ (char **envv)
+static inline void set_environ (char **envv)
 {
 #if ENABLE_PERL
   assert (envv);
@@ -176,14 +160,6 @@ struct grwin_t;
 # define KEEP_SCROLLCOLOR 1
 #else
 # undef KEEP_SCROLLCOLOR
-#endif
-
-#ifdef XPM_BACKGROUND
-typedef struct {
-  short w, h, x, y;
-  bool auto_resize ; 
-  Pixmap pixmap;
-} bgPixmap_t;
 #endif
 
 /*
@@ -240,7 +216,7 @@ typedef struct _mwmhints {
 
 /* COLORTERM, TERM environment variables */
 #define COLORTERMENV    "rxvt"
-#ifdef XPM_BACKGROUND
+#ifdef BG_IMAGE_FROM_FILE
 # define COLORTERMENVFULL COLORTERMENV "-xpm"
 #else
 # define COLORTERMENVFULL COLORTERMENV
@@ -567,7 +543,7 @@ enum colour_list {
   Color_scroll,
   Color_trough,
 #endif
-#if TINTING
+#if ENABLE_TRANSPARENCY
   Color_tint,
 #endif
 #if OFF_FOCUS_FADING
@@ -618,15 +594,12 @@ enum {
 #define PrivMode_smoothScroll   (1UL<<17)
 #define PrivMode_vt52           (1UL<<18)
 #define PrivMode_LFNL		(1UL<<19)
+#define PrivMode_MouseBtnEvent  (1UL<<20)
+#define PrivMode_MouseAnyEvent  (1UL<<21)
 /* too annoying to implement X11 highlight tracking */
 /* #define PrivMode_MouseX11Track       (1LU<<20) */
 
-#define PrivMode_mouse_report   (PrivMode_MouseX10|PrivMode_MouseX11)
-#define PrivMode(test,bit)              \
-    if (test)                           \
-        priv_modes |= (bit);            \
-    else                                \
-        priv_modes &= ~(bit)
+#define PrivMode_mouse_report   (PrivMode_MouseX10|PrivMode_MouseX11|PrivMode_MouseBtnEvent|PrivMode_MouseAnyEvent)
 
 #ifdef ALLOW_132_MODE
 # define PrivMode_Default (PrivMode_Autowrap|PrivMode_ShiftKeys|PrivMode_VisibleCursor|PrivMode_132OK)
@@ -757,12 +730,6 @@ enum {
 #define scrollbar_position(y)           ((y) - scrollBar.beg)
 #define scrollbar_size()                (scrollBar.end - scrollBar.beg \
                                          - scrollbar_minheight ())
-
-#ifdef XPM_BACKGROUND
-# define XPMClearArea(a, b, c, d, e, f, g)      XClearArea((a), (b), (c), (d), (e), (f), (g))
-#else
-# define XPMClearArea(a, b, c, d, e, f, g)
-#endif
 
 typedef callback<void (const char *)> log_callback;
 typedef callback<int (int)> getfd_callback;
@@ -899,11 +866,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   struct mbstate  mbstate;              // current input multibyte state
 
   unsigned char   want_refresh:1,
-#ifdef ENABLE_TRANSPARENCY
-                  want_full_refresh:1,	/* awaiting full screen refresh      */
-                  am_transparent:1,	/* is a transparent term             */
-                  am_pixmap_trans:1, 	/* transparency w/known root pixmap  */
-#endif
                   current_screen:1,	/* primary or secondary              */
                   num_scr_allow:1,
                   bypass_keystate:1,
@@ -960,6 +922,8 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
                   window_vt_x,
                   window_vt_y,
                   window_sb_x,
+                  mouse_row,
+                  mouse_col,
 # ifdef POINTER_BLANK
                   pointerBlankDelay,
 # endif
@@ -1008,26 +972,16 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 /* ---------- */
   Cursor          leftptr_cursor;
 /* ---------- */
-#ifndef NO_BACKSPACE_KEY
-  const char     *key_backspace;
-#endif
-#ifndef NO_DELETE_KEY
-  const char     *key_delete;
-#endif
   struct mouse_event MEvent;
   XComposeStatus  compose;
   ttymode_t       tio;
   row_col_t       oldcursor;
-#ifdef XPM_BACKGROUND
+#ifdef HAVE_BG_PIXMAP
   bgPixmap_t      bgPixmap;
-#ifdef HAVE_AFTERIMAGE  
-  struct ASVisual  *asv;
+#endif
+#ifdef HAVE_AFTERIMAGE
+  ASVisual       *asv;
   ASImageManager *asimman;
-  ASImage        *original_asim;
-  struct { unsigned int width, height; } xpmAttr; /* all we need is width/height */
-#else
-  XpmAttributes   xpmAttr;    /* originally loaded pixmap and its scaling */
-#endif  
 #endif
 
 #if ENABLE_OVERLAY
@@ -1085,28 +1039,24 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 # endif
 #endif
 
-  // modifies first argument(!)
-  void paste (char *data, unsigned int len) NOTHROW;
-
-  long vt_emask, vt_emask_perl, vt_emask_xim;
+  long vt_emask, vt_emask_perl, vt_emask_xim, vt_emask_mouse;
 
   void vt_select_input () const NOTHROW
   {
-    XSelectInput (dpy, vt, vt_emask | vt_emask_perl | vt_emask_xim);
+    XSelectInput (dpy, vt, vt_emask | vt_emask_perl | vt_emask_xim | vt_emask_mouse);
   }
 
 #if ENABLE_TRANSPARENCY || ENABLE_PERL
   void rootwin_cb (XEvent &xev);
   xevent_watcher rootwin_ev;
 #endif
-#if ENABLE_TRANSPARENCY
-  int check_our_parents ();
-  void check_our_parents_cb (time_watcher &w);
-  time_watcher check_our_parents_ev;
+#ifdef HAVE_BG_PIXMAP
+  int update_background ();
+  void update_background_cb (time_watcher &w);
+  time_watcher update_background_ev;
 #endif
 
   void x_cb (XEvent &xev);
-  void flush ();
   xevent_watcher termwin_ev;
   xevent_watcher vt_ev;
 #ifdef HAVE_SCROLLBARS
@@ -1116,7 +1066,9 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void child_cb (child_watcher &w, int status); child_watcher child_ev;
   void check_cb (check_watcher &w); check_watcher check_ev;
   void destroy_cb (time_watcher &w); time_watcher destroy_ev;
+  void flush ();
   void flush_cb (time_watcher &w); time_watcher flush_ev;
+  bool pty_fill ();
   void pty_cb (io_watcher &w, short revents); io_watcher pty_ev;
   void incr_cb (time_watcher &w) NOTHROW; time_watcher incr_ev;
 
@@ -1150,24 +1102,11 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void tt_write (const char *data, unsigned int len);
   void pty_write ();
 
-  void tt_winch ();
-
-  rxvt_term ();
-  ~rxvt_term ();
-  void destroy ();
-  void emergency_cleanup ();
-
-  bool init (int argc, const char *const *argv, stringvec *envv);
-
   bool init (stringvec *argv, stringvec *envv)
   {
     this->argv = argv;
     return init (argv->size (), argv->begin (), envv);
   }
-  
-  bool init_vars ();
-
-  bool pty_fill ();
 
   void make_current () const // make this the "currently active" urxvt instance
   {
@@ -1175,22 +1114,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
     set_environ (envv);
     rxvt_set_locale (locale);
   }
-
-  void init_secondary ();
-  const char **init_resources (int argc, const char *const *argv);
-  const char *x_resource (const char *name);
-  void init_env ();
-  void set_locale (const char *locale);
-  void init_xlocale ();
-  void init_command (const char *const *argv);
-  void run_command (const char *const *argv);
-  int run_child (const char *const *argv);
-
-  void color_aliases (int idx);
-  void recolour_cursor ();
-  void create_windows (int argc, const char *const *argv);
-  void resize_all_windows (unsigned int newwidth, unsigned int newheight, int ignoreparent);
-  void window_calc (unsigned int newwidth, unsigned int newheight);
 
 #if USE_XIM
   rxvt_xim *input_method;
@@ -1210,8 +1133,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   bool IM_get_IC (const char *modifiers);
   void IMSetPosition ();
 #endif
-
-  void resize_scrollbar ();
 
   // command.C
   void key_press (XKeyEvent &ev);
@@ -1250,9 +1171,29 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void process_sgr_mode (unsigned int nargs, const int *arg);
   void process_graphics ();
   // init.C
+  bool init_vars ();
+  void init_secondary ();
+  const char **init_resources (int argc, const char *const *argv);
+  void init_env ();
+  void set_locale (const char *locale);
+  void init_xlocale ();
+  void init_command (const char *const *argv);
+  void run_command (const char *const *argv);
+  int run_child (const char *const *argv);
+  void color_aliases (int idx);
+  void create_windows (int argc, const char *const *argv);
   void Get_Colours ();
   void get_ourmods ();
   // main.C
+  void tt_winch ();
+  rxvt_term ();
+  ~rxvt_term ();
+  void destroy ();
+  void emergency_cleanup ();
+  bool init (int argc, const char *const *argv, stringvec *envv);
+  void recolour_cursor ();
+  void resize_all_windows (unsigned int newwidth, unsigned int newheight, int ignoreparent);
+  void window_calc (unsigned int newwidth, unsigned int newheight);
   bool set_fonts ();
   void set_string_property (Atom prop, const char *str, int len = -1);
   void set_utf8_property (Atom prop, const char *str, int len = -1);
@@ -1263,6 +1204,8 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   bool set_color (rxvt_color &color, const char *name);
   void alias_color (int dst, int src);
   void set_widthheight (unsigned int newwidth, unsigned int newheight);
+  void get_window_origin (int &x, int &y);
+  Pixmap get_pixmap_property (int prop_id);
 
   // screen.C
 
@@ -1335,6 +1278,16 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
       options[opt >> 3] &= ~(1 << (opt & 7));
   }
 
+  void PrivMode (int set, unsigned bit) NOTHROW
+  {
+    if (set)
+      priv_modes |= bit;
+    else
+      priv_modes &= ~bit;
+  }
+
+  // modifies first argument(!)
+  void paste (char *data, unsigned int len) NOTHROW;
   void scr_blank_line (line_t &l, unsigned int col, unsigned int width, rend_t efs) const NOTHROW;
   void scr_blank_screen_mem (line_t &l, rend_t efs) const NOTHROW;
   int scr_scroll_text (int row1, int row2, int count) NOTHROW;
@@ -1351,7 +1304,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 #endif
   void scr_touch (bool refresh) NOTHROW;
   void scr_expose (int x, int y, int width, int height, bool refresh) NOTHROW;
-  rxvt_fontset *scr_find_fontset (rend_t r = DEFAULT_RSTYLE);
   void scr_recolour () NOTHROW;
   void scr_remap_chars () NOTHROW;
   void scr_remap_chars (line_t &l) NOTHROW;
@@ -1412,8 +1364,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void selection_extend (int x, int y, int flag) NOTHROW;
   void selection_rotate (int x, int y) NOTHROW;
 
-  void pixel_position (int *x, int *y) NOTHROW;
-
 #if defined(NEXT_SCROLLBAR)
   // scrollbar-next.C
   Pixmap renderPixmap (const char *const *data, int width, int height);
@@ -1438,6 +1388,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 #endif
 
   // scrollbar.C
+  void resize_scrollbar ();
   int scrollbar_mapping (int map);
   int scrollbar_show (int update);
   void setup_scrollbar (const char *scrollalign, const char *scrollstyle, const char *thickness);
@@ -1445,24 +1396,9 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   // xdefaults.C
   void get_options (int argc, const char *const *argv);
   int parse_keysym (const char *str, const char *arg);
-  void get_xdefaults (FILE *stream, const char *name);
+  const char *x_resource (const char *name);
   void extract_resources ();
-  // xpm.C
-  int scale_pixmap (const char *geom);
-  void resize_pixmap ();
-  Pixmap set_bgPixmap (const char *file);
 };
-
-/*
- *****************************************************************************
- * PROTOTYPES
- *****************************************************************************
- */
-#ifdef PROTOTYPES
-# define __PROTO(p)     p
-#else
-# define __PROTO(p)     ()
-#endif
 
 #endif                          /* _RXVT_H_ */
 

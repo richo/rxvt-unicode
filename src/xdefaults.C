@@ -111,17 +111,13 @@ optList[] = {
               BOOL (Rs_scrollWithBuffer, "scrollWithBuffer", "sw", Opt_scrollWithBuffer, 0, "scroll-with-buffer"),
 #if ENABLE_TRANSPARENCY
               BOOL (Rs_transparent, "inheritPixmap", "ip", Opt_transparent, 0, "inherit parent pixmap"),
-              SWCH ("tr", Opt_transparent, 0, NULL),
-# if TINTING
+              BOOL (Rs_transparent, "transparent", "tr", Opt_transparent, 0, "inherit parent pixmap"),
               STRG (Rs_color + Color_tint, "tintColor", "tint", "color", "tint color"),
-# endif
+              STRG (Rs_shade, "shading", "sh", "%", "shade background by x %."),
 #endif
 #if OFF_FOCUS_FADING
               STRG (Rs_fade, "fading", "fade", "%", "fade colors x% percent when rxvt-unicode is losing focus"),
               STRG (Rs_color + Color_fade, "fadeColor", "fadecolor", "color", "target color for off-focus fading"),
-#endif
-#if TINTING
-              STRG (Rs_shade, "shading", "sh", "%", "shade background by x % when tinting."),
 #endif
               BOOL (Rs_utmpInhibit, "utmpInhibit", "ut", Opt_utmpInhibit, 0, "utmp inhibit"),
 #ifndef NO_BELL
@@ -192,7 +188,7 @@ optList[] = {
               STRG (Rs_color + Color_pointer_fg, "pointerColor", "pr", "color", "pointer color"),
               STRG (Rs_color + Color_pointer_bg, "pointerColor2", "pr2", "color", "pointer bg color"),
               STRG (Rs_color + Color_border, "borderColor", "bd", "color", "border color"),
-#ifdef XPM_BACKGROUND
+#ifdef BG_IMAGE_FROM_FILE
               RSTRG (Rs_path, "path", "search path"),
               STRG (Rs_backgroundPixmap, "backgroundPixmap", "pixmap", "file[;geom]", "background pixmap"),
 #endif
@@ -324,17 +320,12 @@ static const char optionsstring[] = "options: "
 #if OFF_FOCUS_FADING
                                     "fade,"
 #endif
-#if defined(XPM_BACKGROUND)
-                                    "XPM,"
-#endif
 #if defined(ENABLE_TRANSPARENCY)
                                     "transparent,"
+                                    "tint,"
 #endif
 #if HAVE_AFTERIMAGE
                                     "afterimage,"
-#endif
-#if TINTING
-                                    "tint,"
 #endif
 #if defined(USE_XIM)
                                     "XIM,"
@@ -558,7 +549,7 @@ rxvt_term::get_options (int argc, const char *const *argv)
 
               if (optList[entry].doff != -1)
                 {
-                  if (flag == resval_on && !argv [i+1])
+                  if (flag == resval_on && i+1 == argc)
                     rxvt_fatal ("option '%s' needs an argument, aborting.\n", argv [i]);
 
                   rs[optList[entry].doff] = flag == resval_on ? argv[++i] : resval_undef;
@@ -574,13 +565,10 @@ rxvt_term::get_options (int argc, const char *const *argv)
         }
       else
 #ifdef KEYSYM_RESOURCE
-        /* if (!strncmp (opt, "keysym.", sizeof ("keysym.") - 1)) */
-        if (rxvt_Str_match (opt, "keysym."))
+        if (!strncmp (opt, "keysym.", sizeof ("keysym.") - 1))
           {
-            const char *str = argv[++i];
-
-            if (str != NULL)
-              parse_keysym (opt + sizeof ("keysym.") - 1, str);
+            if (i+1 < argc)
+              parse_keysym (opt + sizeof ("keysym.") - 1, argv[++i]);
           }
         else
 #endif
@@ -681,7 +669,8 @@ rxvt_term::parse_keysym (const char *str, const char *arg)
 
   if (arg == NULL)
     {
-      if ((n = rxvt_Str_match (str, "keysym.")) == 0)
+      n = sizeof ("keysym.") - 1;
+      if (strncmp (str, "keysym.", n))
         return 0;
 
       str += n;		/* skip `keysym.' */
@@ -764,8 +753,7 @@ rxvt_term::parse_keysym (const char *str, const char *arg)
       newarg = newargstr;
     }
 
-  rxvt_Str_trim (newarg);
-  if (*newarg == '\0' || (n = rxvt_Str_escaped (newarg)) == 0)
+  if (*newarg == '\0')
     return -1;
 
   keyboard->register_user_translation (sym, state, newarg);
