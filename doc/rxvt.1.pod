@@ -94,9 +94,9 @@ Print out a message describing available options.
 
 =item B<-display> I<displayname>
 
-Attempt to open a window on the named X display (B<-d> still
-respected). In the absence of this option, the display specified by the
-B<DISPLAY> environment variable is used.
+Attempt to open a window on the named X display (the older form B<-d>
+is still respected. but deprecated). In the absence of this option, the
+display specified by the B<DISPLAY> environment variable is used.
 
 =item B<-depth> I<bitdepth>
 
@@ -456,6 +456,12 @@ Turn on/off hold window after exit support. If enabled, @@RXVT_NAME@@
 will not immediately destroy its window when the program executed within
 it exits. Instead, it will wait till it is being killed or closed by the
 user; resource B<hold>.
+
+=item B<-cd> I<path>
+
+Sets the working directory for the shell (or the command specified via
+B<-e>). The I<path> must be an absolute path and it must exist for
+@@RXVT_NAME@@ to start; resource B<chdir>.
 
 =item B<-xrm> I<string>
 
@@ -1091,8 +1097,8 @@ Turn on/off secondary screen (default enabled).
 
 Turn on/off secondary screen scroll (default enabled). If this
 option is enabled, scrolls on the secondary screen will change the
-scrollback buffer and switching to/from the secondary screen will
-instead scroll the screen up.
+scrollback buffer and, when secondaryScreen is off, switching
+to/from the secondary screen will instead scroll the screen up.
 
 =item B<hold>: I<boolean>
 
@@ -1100,6 +1106,13 @@ Turn on/off hold window after exit support. If enabled, @@RXVT_NAME@@
 will not immediately destroy its window when the program executed within
 it exits. Instead, it will wait till it is being killed or closed by the
 user.
+
+=item B<chdir>: I<path>
+
+Sets the working directory for the shell (or the command specified via
+B<-e>). The I<path> must be an absolute path and it must exist for
+@@RXVT_NAME@@ to start. If it isn't specified then the current working
+directory will be used; option B<-cd>.
 
 =item B<keysym.>I<sym>: I<string>
 
@@ -1555,7 +1568,8 @@ C<--with-terminfo=PATH>.
 =item B<DISPLAY>
 
 Used by @@RXVT_NAME@@ to connect to the display and set to the correct
-display in its child processes.
+display in its child processes if C<-display> isn't used to override. It
+defaults to C<:0> if it doesn't exist.
 
 =item B<SHELL>
 

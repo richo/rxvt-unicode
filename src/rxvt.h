@@ -99,15 +99,6 @@ typedef  int32_t tlen_t_; // specifically for use in the line_t structure
  * SYSTEM HACKS
  *****************************************************************************
  */
-/* Consistent defines - please report on the necessity
- * @ Unixware: defines (__svr4__)
- */
-#if defined (SVR4) && !defined (__svr4__)
-# define __svr4__ 1
-#endif
-#if defined (sun) && !defined (__sun__)
-# define __sun__ 1
-#endif
 
 #ifndef HAVE_XPOINTER
 typedef char *XPointer;
@@ -812,7 +803,7 @@ typedef struct {
  *  |  terminal  +---------+
  *  |  terminal  |
  *  |  terminal  |
- *  +------------+···········= term_stat + nrow - 1
+ *  +------------+···········= term_start + nrow - 1
  *  |
  *  |
  *  END······················= total_rows
@@ -858,7 +849,7 @@ struct TermWin_t {
  *   beg:       row/column of beginning of selection  : never past mark
  *   mark:      row/column of initial click           : never past end
  *   end:       row/column of one character past end of selection
- * * Note: -nsaved <= beg.row <= mark.row <= end.row < nrow
+ * * Note: top_row <= beg.row <= mark.row <= end.row < nrow
  * * Note: col == -1 ==> we're left of screen
  *
  */
@@ -1001,7 +992,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
                   refresh_count,
                   window_vt_x,
                   window_vt_y,
-                  window_sb_x,
                   mouse_row,
                   mouse_col,
 # ifdef POINTER_BLANK
@@ -1018,31 +1008,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
                   SavedModes;
 /* ---------- */
   Atom            *xa;
-/* ---------- */
-#ifdef RXVT_SCROLLBAR
-  GC              scrollbarGC,
-                  topShadowGC,
-                  botShadowGC;
-#endif
-#ifdef XTERM_SCROLLBAR
-  GC              xscrollbarGC,
-                  ShadowGC;
-#endif
-#ifdef PLAIN_SCROLLBAR
-  GC              pscrollbarGC;
-#endif
-#ifdef NEXT_SCROLLBAR
-  GC              blackGC,
-                  whiteGC,
-                  grayGC,
-                  darkGC,
-                  stippleGC;
-  Pixmap          dimple,
-                  upArrow,
-                  downArrow,
-                  upArrowHi,
-                  downArrowHi;
-#endif
 /* ---------- */
   Time            selection_time,
                   selection_request_time;
@@ -1113,7 +1078,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   // ISO 14755 entry support
   unicode_t iso14755buf;
   void commit_iso14755 ();
-  int hex_keyval (XKeyEvent &ev);
 # if ISO_14755
   void iso14755_51 (unicode_t ch, rend_t r = DEFAULT_RSTYLE, int x = 0, int y = -1);
   void iso14755_54 (int x, int y);
@@ -1265,7 +1229,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   int run_child (const char *const *argv);
   void color_aliases (int idx);
   void create_windows (int argc, const char *const *argv);
-  void Get_Colours ();
+  void get_colours ();
   void get_ourmods ();
   // main.C
   void tt_winch ();
@@ -1368,7 +1332,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
       options[opt >> 3] &= ~(1 << (opt & 7));
   }
 
-  void PrivMode (int set, unsigned bit) NOTHROW
+  void set_privmode (unsigned bit, int set) NOTHROW
   {
     if (set)
       priv_modes |= bit;
@@ -1453,35 +1417,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void selection_click (int clicks, int x, int y) NOTHROW;
   void selection_extend (int x, int y, int flag) NOTHROW;
   void selection_rotate (int x, int y) NOTHROW;
-
-#if defined(NEXT_SCROLLBAR)
-  // scrollbar-next.C
-  Pixmap renderPixmap (const char *const *data, int width, int height);
-  void init_scrollbar_stuff ();
-  void drawBevel (Drawable d, int x1, int y1, int w, int h);
-  int scrollbar_show_next (int update, int last_top, int last_bot, int scrollbar_len);
-#endif
-
-#if defined(RXVT_SCROLLBAR)
-  // scrollbar-rxvt.C
-  int scrollbar_show_rxvt (int update, int last_top, int last_bot, int scrollbar_len);
-#endif
-
-#if defined(XTERM_SCROLLBAR)
-  // scrollbar-xterm.C
-  int scrollbar_show_xterm (int update, int last_top, int last_bot, int scrollbar_len);
-#endif
-
-#if defined(PLAIN_SCROLLBAR)
-  // scrollbar-plain.C
-  int scrollbar_show_plain (int update, int last_top, int last_bot, int scrollbar_len);
-#endif
-
-  // scrollbar.C
-  void resize_scrollbar ();
-  int scrollbar_mapping (int map);
-  int scrollbar_show (int update);
-  void setup_scrollbar (const char *scrollalign, const char *scrollstyle, const char *thickness);
 
   // xdefaults.C
   void get_options (int argc, const char *const *argv);

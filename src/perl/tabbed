@@ -53,11 +53,14 @@ sub new_tab {
       my ($term) = @_;
       $term->{parent} = $self;
 
-      $term->resource ($_->[0] => $_->[1])
-         for @{ $self->{resource} || [] };
+      for (0 .. urxvt::NUM_RESOURCES - 1) {
+         my $value = $self->{resource}[$_];
+
+         $term->resource ("+$_" => $value)
+            if defined $value;
+      }
 
       $term->resource (perl_ext_2 => $term->resource ("perl_ext_2") . ",-tabbed");
-      
    };
 
    push @urxvt::TERM_EXT, urxvt::ext::tabbed::tab::;
@@ -99,17 +102,13 @@ sub copy_properties {
 
    my $wm_normal_hints = $self->XInternAtom ("WM_NORMAL_HINTS");
 
-   my %our_props = map +($_ => undef), $self->XListProperties ($self->parent);
+   my $current = delete $self->{current_properties};
 
-   delete $our_props{$self->XInternAtom ($_)}
-      for qw(WM_STATE WM_ICON_SIZE
-             _NET_WM_VISIBLE_NAME _NET_WM_VISIBLE_ICON_NAME _NET_WM_ICON_GEOMETRY _NET_FRAME_EXTENTS);
-
+   # pass 1: copy over properties different or nonexisting
    for my $atom ($tab->XListProperties ($tab->parent)) {
       my ($type, $format, $items) = $self->XGetWindowProperty ($tab->parent, $atom);
       
-      delete $our_props{$atom};
-
+      # fix up size hints
       if ($atom == $wm_normal_hints) {
          my (@hints) = unpack "l!*", $items;
       
@@ -118,14 +117,17 @@ sub copy_properties {
          $items = pack "l!*", @hints;
       }
 
-      my ($dtype, $dformat, $ditems) = $self->XGetWindowProperty ($self->parent, $atom);
+      my $cur = delete $current->{$atom};
 
-      if ($dtype != $type or $dformat != $format or $ditems ne $items) {
-         $self->XChangeWindowProperty ($self->parent, $atom, $type, $format, $items);
-      }
+      # update if changed, we assume empty items and zero type and format will not happen
+      $self->XChangeProperty ($self->parent, $atom, $type, $format, $items)
+         if $cur->[0] != $type or $cur->[1] != $format or $cur->[2] ne $items;
+
+      $self->{current_properties}{$atom} = [$type, $format, $items];
    }
 
-   $self->XDeleteProperty ($self->parent, $_) for keys %our_props;
+   # pass 2, delete all extraneous properties
+   $self->XDeleteProperty ($self->parent, $_) for keys %$current;
 }
 
 sub make_current {
@@ -209,12 +211,7 @@ sub on_motion_notify {
 sub on_init {
    my ($self) = @_;
 
-   for (qw(name perl_ext_1 perl_ext_2)) {
-      my $val = $self->resource ($_);
-
-      push @{ $self->{resource} }, [$_ => $val]
-        if defined $val;
-   }
+   $self->{resource} = [map $self->resource ("+$_"), 0 .. urxvt::NUM_RESOURCES - 1];
 
    $self->resource (int_bwidth => 0);
    $self->resource (name => "URxvt.tabbed");
@@ -321,6 +318,19 @@ sub tab_key_press {
          return 1;
       } elsif ($keysym == 0xff54) {
          $self->new_tab;
+
+         return 1;
+      }
+   }
+   elsif ($event->{state} & urxvt::ControlMask) {
+      if ($keysym == 0xff51 || $keysym == 0xff53) {
+         my ($idx1) = grep $self->{tabs}[$_] == $tab, 0 .. $#{ $self->{tabs} };
+         my  $idx2  = ($idx1 + ($keysym == 0xff51 ? -1 : +1)) % @{ $self->{tabs} };
+
+         ($self->{tabs}[$idx1], $self->{tabs}[$idx2]) =
+            ($self->{tabs}[$idx2], $self->{tabs}[$idx1]);
+
+         $self->make_current ($self->{tabs}[$idx2]);
 
          return 1;
       }
