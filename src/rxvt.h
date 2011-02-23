@@ -557,6 +557,8 @@ enum {
 #define PrivMode_MouseBtnEvent  (1UL<<20)
 #define PrivMode_MouseAnyEvent  (1UL<<21)
 #define PrivMode_BracketPaste   (1UL<<22)
+#define PrivMode_ExtModeMouse   (1UL<<23) // xterm pseudo-utf-8 hack
+#define PrivMode_ExtMouseRight  (1UL<<24) // xterm pseudo-utf-8, but works in non-utf-8-locales
 
 #define PrivMode_mouse_report   (PrivMode_MouseX10|PrivMode_MouseX11|PrivMode_MouseBtnEvent|PrivMode_MouseAnyEvent)
 
@@ -951,12 +953,13 @@ struct selection_t
 
 /* rxvt_vars.options */
 enum {
-# define def(name,idx) Opt_ ## name = idx,
-# define nodef(name)   Opt_ ## name = 0,
+# define def(name)   Opt_ ## name,
+# define nodef(name) Opt_prev_ ## name, Opt_ ## name = 0, Opt_next_ ## name = Opt_prev_ ## name - 1,
+  Opt_0,
 # include "optinc.h"
 # undef nodef
 # undef def
-Opt_count
+  Opt_count
 };
 
 /* ------------------------------------------------------------------------- */
@@ -1379,24 +1382,10 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 
   bool option (uint8_t opt) const NOTHROW
   {
-    if (!opt)
-      return 0;
-
-    --opt;
     return options[opt >> 3] & (1 << (opt & 7));
   }
 
-  void set_option (uint8_t opt, bool set = true) NOTHROW
-  {
-    if (!opt)
-      return;
-
-    --opt;
-    if (set)
-      options[opt >> 3] |= (1 << (opt & 7));
-    else
-      options[opt >> 3] &= ~(1 << (opt & 7));
-  }
+  void set_option (uint8_t opt, bool set = true) NOTHROW;
 
   void set_privmode (unsigned bit, int set) NOTHROW
   {

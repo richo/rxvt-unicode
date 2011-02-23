@@ -30,6 +30,10 @@
 # include <X11/extensions/Xrender.h>
 #endif
 
+#ifndef FilterConvolution
+#define FilterConvolution "convolution"
+#endif
+
 #define DO_TIMING_TEST 0
 
 #if DO_TIMING_TEST
@@ -64,24 +68,6 @@
  *            W and H are percentages of the terminal window size.
  *            X and Y are also percentages; e.g., +50+50 centers
  *            the image in the window.
- * WxH+X      Assumes Y == X
- * WxH        Assumes Y == X == 50 (centers the image)
- * W+X+Y      Assumes H == W
- * W+X        Assumes H == W and Y == X
- * W          Assumes H == W and Y == X == 50
- *
- * Adjusting position only :
- * =+X+Y      Set position to X% by Y% (absolute).
- * =+X        Set position to X% by X%.
- * +X+Y       Adjust position horizontally X% and vertically Y%
- *            from current position (relative).
- * +X         Adjust position horizontally X% and vertically X%
- *            from current position.
- *
- * Adjusting scale only :
- * Wx0        Multiply horizontal scaling factor by W%
- * 0xH        Multiply vertical scaling factor by H%
- * 0x0        No scaling (show image at normal size).
  *
  * Pixmap Operations : (should be prepended by a colon)
  * tile       Tile image. Scaling/position modifiers above will affect
@@ -119,6 +105,7 @@ bgPixmap_t::bgPixmap_t ()
   pixmap = None;
   valid_since = invalid_since = 0;
   target = 0;
+  target_x = target_y = 0;
 }
 
 void
@@ -136,6 +123,20 @@ bgPixmap_t::destroy ()
 
   if (pixmap && target)
     XFreePixmap (target->dpy, pixmap);
+}
+
+bool
+bgPixmap_t::set_position (int x, int y)
+{
+
+  if (target_x != x
+      || target_y != y)
+    {
+      target_x = x;
+      target_y = y;
+      return true;
+    }
+  return false;
 }
 
 bool
@@ -254,7 +255,7 @@ make_clip_rectangle (int pos, int size, int target_size, int &dst_pos, int &dst_
 }
 
 bool
-bgPixmap_t::set_geometry (const char *geom)
+bgPixmap_t::set_geometry (const char *geom, bool update)
 {
   bool changed = false;
   int geom_flags = 0;
@@ -262,7 +263,7 @@ bgPixmap_t::set_geometry (const char *geom)
   unsigned int w = 0, h = 0;
   unsigned int n;
   unsigned long new_flags = (flags & (~geometryFlags));
-  const char *p;
+  const char *ops;
 #  define MAXLEN_GEOM		256 /* could be longer than regular geometry string */
 
   if (geom == NULL)
@@ -270,164 +271,101 @@ bgPixmap_t::set_geometry (const char *geom)
 
   char str[MAXLEN_GEOM];
 
-  while (isspace(*geom)) ++geom;
-  if ((p = strchr (geom, ';')) == NULL)
-    p = strchr (geom, '\0');
+  ops = strchr (geom, ':');
+  if (ops == NULL)
+    n = strlen (geom);
+  else
+    n = ops - geom;
 
-  n = (p - geom);
-  if (n < MAXLEN_GEOM)
+  if (n >= MAXLEN_GEOM)
+    return false;
+
+  memcpy (str, geom, n);
+  str[n] = '\0';
+  rxvt_strtrim (str);
+
+  if (str[0])
     {
-      char *ops;
-      new_flags |= geometrySet;
+      /* we have geometry string - let's handle it prior to applying ops */
+      geom_flags = XParseGeometry (str, &x, &y, &w, &h);
+    } /* done parsing geometry string */
 
-      memcpy (str, geom, n);
-      str[n] = '\0';
-      if (str[0] == ':')
-        ops = &str[0];
-      else if (str[0] != 'x' && str[0] != 'X' && isalpha(str[0]))
-        ops = &str[0];
-      else
+  if (!update)
+    {
+      if (!(geom_flags & XValue))
+        x = y = defaultAlign;
+      else if (!(geom_flags & YValue))
+        y = x;
+
+      if (!(geom_flags & (WidthValue|HeightValue)))
+        w = h = defaultScale;
+      else if (!(geom_flags & HeightValue))
+        h = w;
+      else if (!(geom_flags & WidthValue))
+        w = h;
+
+      geom_flags |= WidthValue|HeightValue|XValue|YValue;
+    }
+
+  if (ops)
+    {
+      while (*ops)
         {
-          char *tmp;
-          ops = strchr (str, ':');
-          if (ops != NULL)
-            {
-              for (tmp = ops-1; tmp >= str && isspace(*tmp); --tmp);
-              *(++tmp) = '\0';
-              if (ops == tmp) ++ops;
-            }
-        }
-
-      if (ops > str || ops == NULL)
-        {
-          /* we have geometry string - let's handle it prior to applying ops */
-          geom_flags = XParseGeometry (str, &x, &y, &w, &h);
-
-          if ((geom_flags & XValue) && !(geom_flags & YValue))
-            {
-              y = x;
-              geom_flags |= YValue;
-            }
-
-          if (flags & geometrySet)
-            {
-              /* new geometry is an adjustment to the old one ! */
-              if ((geom_flags & WidthValue) && (geom_flags & HeightValue))
-                {
-                  if (w == 0 && h != 0)
-                    {
-                      w = h_scale;
-                      h = (v_scale * h) / 100;
-                    }
-                  else if (h == 0 && w != 0)
-                    {
-                      w = (h_scale * w) / 100;
-                      h = v_scale;
-                    }
-                }
-              if (geom_flags & XValue)
-                {
-                  if (str[0] != '=')
-                    {
-                      y += v_align;
-                      x += h_align;
-                    }
-                }
-            }
-          else /* setting up geometry from scratch */
-            {
-              if (!(geom_flags & XValue))
-                {
-                  /* use default geometry - centered */
-                  x = y = defaultAlign;
-                }
-              else if (!(geom_flags & YValue))
-                y = x;
-
-              if ((geom_flags & (WidthValue|HeightValue)) == 0)
-                {
-                  /* use default geometry - scaled */
-                  w = h = defaultScale;
-                }
-              else if (geom_flags & WidthValue)
-                {
-                  if (!(geom_flags & HeightValue))
-                    h = w;
-                }
-              else
-                w = h;
-            }
-        } /* done parsing geometry string */
-      else if (!(flags & geometrySet))
-        {
-          /* default geometry - scaled and centered */
-          x = y = defaultAlign;
-          w = h = defaultScale;
-        }
-
-      if (!(flags & geometrySet))
-        geom_flags |= WidthValue|HeightValue|XValue|YValue;
-
-      if (ops)
-        {
-          while (*ops)
-            {
-              while (*ops == ':' || isspace(*ops)) ++ops;
+          while (*ops == ':' || isspace(*ops)) ++ops;
 
 #  define CHECK_GEOM_OPS(op_str)  (strncasecmp (ops, (op_str), sizeof (op_str) - 1) == 0)
-              if (CHECK_GEOM_OPS ("tile"))
-                {
-                  w = h = noScale;
-                  geom_flags |= WidthValue|HeightValue;
-                }
-              else if (CHECK_GEOM_OPS ("propscale"))
-                {
-                  new_flags |= propScale;
-                }
-              else if (CHECK_GEOM_OPS ("hscale"))
-                {
-                  if (w == 0) w = windowScale;
+          if (CHECK_GEOM_OPS ("tile"))
+            {
+              w = h = noScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (CHECK_GEOM_OPS ("propscale"))
+            {
+              new_flags |= propScale;
+            }
+          else if (CHECK_GEOM_OPS ("hscale"))
+            {
+              if (w == 0) w = windowScale;
 
-                  h = noScale;
-                  geom_flags |= WidthValue|HeightValue;
-                }
-              else if (CHECK_GEOM_OPS ("vscale"))
-                {
-                  if (h == 0) h = windowScale;
+              h = noScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (CHECK_GEOM_OPS ("vscale"))
+            {
+              if (h == 0) h = windowScale;
 
-                  w = noScale;
-                  geom_flags |= WidthValue|HeightValue;
-                }
-              else if (CHECK_GEOM_OPS ("scale"))
-                {
-                  if (h == 0) h = windowScale;
-                  if (w == 0) w = windowScale;
+              w = noScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (CHECK_GEOM_OPS ("scale"))
+            {
+              if (h == 0) h = windowScale;
+              if (w == 0) w = windowScale;
 
-                  geom_flags |= WidthValue|HeightValue;
-                }
-              else if (CHECK_GEOM_OPS ("auto"))
-                {
-                  w = h = windowScale;
-                  x = y = centerAlign;
-                  geom_flags |= WidthValue|HeightValue|XValue|YValue;
-                }
-              else if (CHECK_GEOM_OPS ("root"))
-                {
-                  new_flags |= rootAlign;
-                  w = h = noScale;
-                  geom_flags |= WidthValue|HeightValue;
-                }
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (CHECK_GEOM_OPS ("auto"))
+            {
+              w = h = windowScale;
+              x = y = centerAlign;
+              geom_flags |= WidthValue|HeightValue|XValue|YValue;
+            }
+          else if (CHECK_GEOM_OPS ("root"))
+            {
+              new_flags |= rootAlign;
+              w = h = noScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
 #  undef CHECK_GEOM_OPS
 
-              while (*ops != ':' && *ops != '\0') ++ops;
-            } /* done parsing ops */
-        }
-
-      if (check_set_scale_value (geom_flags, WidthValue, h_scale, w))  changed = true;
-      if (check_set_scale_value (geom_flags, HeightValue, v_scale, h)) changed = true;
-      if (check_set_align_value (geom_flags, XValue, h_align, x))      changed = true;
-      if (check_set_align_value (geom_flags, YValue, v_align, y))      changed = true;
+          while (*ops != ':' && *ops != '\0') ++ops;
+        } /* done parsing ops */
     }
+
+  if (check_set_scale_value (geom_flags, WidthValue, h_scale, w))  changed = true;
+  if (check_set_scale_value (geom_flags, HeightValue, v_scale, h)) changed = true;
+  if (check_set_align_value (geom_flags, XValue, h_align, x))      changed = true;
+  if (check_set_align_value (geom_flags, YValue, v_align, y))      changed = true;
 
   if (new_flags != flags)
     {
@@ -462,9 +400,8 @@ bgPixmap_t::get_image_geometry (int image_width, int image_height, int &w, int &
 
   if (flags & rootAlign)
     {
-      target->get_window_origin (x, y);
-      x = -x;
-      y = -y;
+      x = -target_x;
+      y = -target_y;
     }
   else
     {
@@ -722,6 +659,91 @@ bgPixmap_t::render_image (unsigned long background_flags)
 
 #  ifdef HAVE_PIXBUF
 bool
+bgPixmap_t::pixbuf_to_pixmap (GdkPixbuf *pixbuf, Pixmap pixmap, GC gc,
+                              int src_x, int src_y, int dst_x, int dst_y,
+                              unsigned int width, unsigned int height)
+{
+  XImage *ximage;
+  char *data, *line;
+  int bytes_per_pixel;
+  int width_r, width_g, width_b;
+  int sh_r, sh_g, sh_b;
+  int rowstride;
+  int channels;
+  unsigned char *row;
+  Visual *visual = target->visual;
+  int depth = target->depth;
+
+  if (visual->c_class != TrueColor)
+    return false;
+
+  if (depth == 24 || depth == 32)
+    bytes_per_pixel = 4;
+  else if (depth == 15 || depth == 16)
+    bytes_per_pixel = 2;
+  else
+    return false;
+
+  width_r = rxvt_popcount (visual->red_mask);
+  width_g = rxvt_popcount (visual->green_mask);
+  width_b = rxvt_popcount (visual->blue_mask);
+
+  if (width_r > 8 || width_g > 8 || width_b > 8)
+    return false;
+
+  sh_r = rxvt_ctz (visual->red_mask);
+  sh_g = rxvt_ctz (visual->green_mask);
+  sh_b = rxvt_ctz (visual->blue_mask);
+
+  if (width > INT_MAX / height / bytes_per_pixel)
+    return false;
+
+  data = (char *)malloc (width * height * bytes_per_pixel);
+  if (!data)
+    return false;
+
+  ximage = XCreateImage (target->dpy, visual, depth, ZPixmap, 0, data,
+                         width, height, bytes_per_pixel * 8, 0);
+  if (!ximage)
+    {
+      free (data);
+      return false;
+    }
+
+  ximage->byte_order = byteorder.big_endian () ? MSBFirst : LSBFirst;
+
+  rowstride = gdk_pixbuf_get_rowstride (pixbuf);
+  channels = gdk_pixbuf_get_n_channels (pixbuf);
+  row = gdk_pixbuf_get_pixels (pixbuf) + src_y * rowstride + src_x * channels;
+  line = data;
+
+  for (int y = 0; y < height; y++)
+    {
+      for (int x = 0; x < width; x++)
+        {
+          unsigned char *pixel = row + x * channels;
+          uint32_t value;
+
+          value  = ((pixel[0] >> (8 - width_r)) << sh_r)
+                 | ((pixel[1] >> (8 - width_g)) << sh_g)
+                 | ((pixel[2] >> (8 - width_b)) << sh_b);
+
+          if (bytes_per_pixel == 4)
+            ((uint32_t *)line)[x] = value;
+          else
+            ((uint16_t *)line)[x] = value;
+        }
+
+      row += rowstride;
+      line += ximage->bytes_per_line;
+    }
+
+  XPutImage (target->dpy, pixmap, gc, ximage, 0, 0, dst_x, dst_y, width, height);
+  XDestroyImage (ximage);
+  return true;
+}
+
+bool
 bgPixmap_t::render_image (unsigned long background_flags)
 {
   if (target == NULL)
@@ -812,12 +834,10 @@ bgPixmap_t::render_image (unsigned long background_flags)
       if (h_scale == 0 || v_scale == 0)
         {
           Pixmap tile = XCreatePixmap (target->dpy, target->vt, image_width, image_height, target->depth);
-          gdk_pixbuf_xlib_render_to_drawable (result, tile, gc,
-                                              0, 0,
-                                              0, 0,
-                                              image_width, image_height,
-                                              XLIB_RGB_DITHER_NONE,
-                                              0, 0);
+          pixbuf_to_pixmap (result, tile, gc,
+                            0, 0,
+                            0, 0,
+                            image_width, image_height);
 
           gcv.tile = tile;
           gcv.fill_style = FillTiled;
@@ -842,12 +862,10 @@ bgPixmap_t::render_image (unsigned long background_flags)
             XFillRectangle (target->dpy, pixmap, gc, 0, 0, new_pmap_width, new_pmap_height);
 
           if (dst_x < new_pmap_width && dst_y < new_pmap_height)
-            gdk_pixbuf_xlib_render_to_drawable (result, pixmap, gc,
-                                                src_x, src_y,
-                                                dst_x, dst_y,
-                                                dst_width, dst_height,
-                                                XLIB_RGB_DITHER_NONE,
-                                                0, 0);
+            pixbuf_to_pixmap (result, pixmap, gc,
+                              src_x, src_y,
+                              dst_x, dst_y,
+                              dst_width, dst_height);
         }
 
 #if XRENDER
@@ -1005,24 +1023,17 @@ compute_tint_shade_flags (rxvt_color *tint, int shade)
   if (tint)
     {
       tint->get (c);
-#  define IS_COMPONENT_WHOLESOME(cmp)  ((cmp) <= 0x000700 || (cmp) >= 0x00f700)
-      if (!has_shade && IS_COMPONENT_WHOLESOME (c.r)
+#  define IS_COMPONENT_WHOLESOME(cmp)  ((cmp) <= 0x00ff || (cmp) >= 0xff00)
+      if (!has_shade
+          && IS_COMPONENT_WHOLESOME (c.r)
           && IS_COMPONENT_WHOLESOME (c.g)
           && IS_COMPONENT_WHOLESOME (c.b))
         flags |= bgPixmap_t::tintWholesome;
 #  undef  IS_COMPONENT_WHOLESOME
     }
 
-  if (has_shade)
+  if (has_shade || tint)
     flags |= bgPixmap_t::tintNeeded;
-  else if (tint)
-    {
-      if ((c.r > 0x000700 || c.g > 0x000700 || c.b > 0x000700)
-          && (c.r < 0x00f700 || c.g < 0x00f700 || c.b < 0x00f700))
-        {
-          flags |= bgPixmap_t::tintNeeded;
-        }
-    }
 
   return flags;
 }
@@ -1203,9 +1214,9 @@ bgPixmap_t::tint_pixmap (Pixmap pixmap, Visual *visual, int width, int height)
         }
       else
         {
-          c.r = ((0xffff - c.r) * (200 - shade)) / 100;
-          c.g = ((0xffff - c.g) * (200 - shade)) / 100;
-          c.b = ((0xffff - c.b) * (200 - shade)) / 100;
+          c.r = (c.r * (200 - shade)) / 100;
+          c.g = (c.g * (200 - shade)) / 100;
+          c.b = (c.b * (200 - shade)) / 100;
         }
 
       XRenderPictFormat *solid_format = XRenderFindStandardFormat (dpy, PictStandardARGB32);
@@ -1229,7 +1240,7 @@ bgPixmap_t::tint_pixmap (Pixmap pixmap, Visual *visual, int width, int height)
         {
           XRenderColor mask_c;
 
-          mask_c.red = mask_c.green = mask_c.blue = shade > 100 ? 0xffff : 0;
+          mask_c.red = mask_c.green = mask_c.blue = 0;
           mask_c.alpha = 0xffff;
           XRenderFillRectangle (dpy, PictOpSrc, overlay_pic, &mask_c, 0, 0, 1, 1);
 
@@ -1239,6 +1250,16 @@ bgPixmap_t::tint_pixmap (Pixmap pixmap, Visual *visual, int width, int height)
           mask_c.blue = 0xffff - c.b;
           XRenderFillRectangle (dpy, PictOpSrc, mask_pic, &mask_c, 0, 0, 1, 1);
           XRenderComposite (dpy, PictOpOver, overlay_pic, mask_pic, back_pic, 0, 0, 0, 0, 0, 0, width, height);
+
+          if (shade > 100)
+            {
+              mask_c.red = mask_c.green = mask_c.blue = 0xffff * (shade - 100) / 100;
+              mask_c.alpha = 0;
+              XRenderFillRectangle (dpy, PictOpSrc, overlay_pic, &mask_c, 0, 0, 1, 1);
+
+              XRenderComposite (dpy, PictOpOver, overlay_pic, None, back_pic, 0, 0, 0, 0, 0, 0, width, height);
+            }
+
           ret = true;
         }
 
@@ -1279,7 +1300,8 @@ bgPixmap_t::make_transparency_pixmap ()
   XGCValues gcv;
   GC gc;
 
-  target->get_window_origin (sx, sy);
+  sx = target_x;
+  sy = target_y;
 
   /* check if we are outside of the visible part of the virtual screen : */
   if (sx + window_width <= 0 || sy + window_height <= 0
@@ -1342,12 +1364,11 @@ bgPixmap_t::make_transparency_pixmap ()
     return 0;
 
   /* straightforward pixmap copy */
-  gcv.tile = recoded_root_pmap;
-  gcv.fill_style = FillTiled;
-
   while (sx < 0) sx += (int)root_width;
   while (sy < 0) sy += (int)root_height;
 
+  gcv.tile = recoded_root_pmap;
+  gcv.fill_style = FillTiled;
   gcv.ts_x_origin = -sx;
   gcv.ts_y_origin = -sy;
   gc = XCreateGC (dpy, target->vt, GCFillStyle | GCTile | GCTileStipXOrigin | GCTileStipYOrigin, &gcv);
@@ -1403,7 +1424,7 @@ bgPixmap_t::set_root_pixmap ()
 # endif /* ENABLE_TRANSPARENCY */
 
 #if defined(ENABLE_TRANSPARENCY) && !defined(HAVE_AFTERIMAGE)
-static void ShadeXImage(Visual *visual, XImage *srcImage, int shade, const rgba &c);
+static void shade_ximage (Visual *visual, XImage *ximage, int shade, const rgba &c);
 # endif
 
 bool
@@ -1423,7 +1444,7 @@ bgPixmap_t::render ()
       if (background_flags == 0)
         return false;
       else if ((background_flags & transpTransformations) == (flags & transpTransformations))
-        flags = flags & ~isInvalid;
+        flags &= ~isInvalid;
     }
 # endif
 
@@ -1432,7 +1453,7 @@ bgPixmap_t::render ()
       || (background_flags & transpTransformations) != (flags & transpTransformations))
     {
       if (render_image (background_flags))
-        flags = flags & ~isInvalid;
+        flags &= ~isInvalid;
     }
 # endif
 
@@ -1452,7 +1473,7 @@ bgPixmap_t::render ()
           rgba c (rgba::MAX_CC,rgba::MAX_CC,rgba::MAX_CC);
           if (flags & tintSet)
             tint.get (c);
-          ShadeXImage (DefaultVisual (target->dpy, target->display->screen), result, shade, c);
+          shade_ximage (DefaultVisual (target->dpy, target->display->screen), result, shade, c);
         }
 
       GC gc = XCreateGC (target->dpy, target->vt, 0UL, NULL);
@@ -1462,7 +1483,7 @@ bgPixmap_t::render ()
           XPutImage (target->dpy, pixmap, gc, result, 0, 0, 0, 0, result->width, result->height);
 
           XFreeGC (target->dpy, gc);
-          flags = flags & ~isInvalid;
+          flags &= ~isInvalid;
         }
 
       XDestroyImage (result);
@@ -1567,7 +1588,7 @@ bgPixmap_t::apply ()
 /* taken from aterm-0.4.2 */
 
 static void
-ShadeXImage(Visual *visual, XImage *srcImage, int shade, const rgba &c)
+shade_ximage (Visual *visual, XImage *ximage, int shade, const rgba &c)
 {
   int sh_r, sh_g, sh_b;
   uint32_t mask_r, mask_g, mask_b;
@@ -1577,7 +1598,7 @@ ShadeXImage(Visual *visual, XImage *srcImage, int shade, const rgba &c)
   int i;
   int host_byte_order = byteorder.big_endian () ? MSBFirst : LSBFirst;
 
-  if (visual->c_class != TrueColor || srcImage->format != ZPixmap) return;
+  if (visual->c_class != TrueColor || ximage->format != ZPixmap) return;
 
   /* for convenience */
   mask_r = visual->red_mask;
@@ -1585,7 +1606,7 @@ ShadeXImage(Visual *visual, XImage *srcImage, int shade, const rgba &c)
   mask_b = visual->blue_mask;
 
   /* boring lookup table pre-initialization */
-  switch (srcImage->depth)
+  switch (ximage->depth)
     {
       case 15:
         if ((mask_r != 0x7c00) ||
@@ -1648,13 +1669,13 @@ ShadeXImage(Visual *visual, XImage *srcImage, int shade, const rgba &c)
     {
       shade = 200 - shade;
 
-      high.r = (65535 - c.r) * shade / 100;
-      high.g = (65535 - c.g) * shade / 100;
-      high.b = (65535 - c.b) * shade / 100;
+      high.r = c.r * shade / 100;
+      high.g = c.g * shade / 100;
+      high.b = c.b * shade / 100;
 
-      low.r = 65535 - high.r;
-      low.g = 65535 - high.g;
-      low.b = 65535 - high.b;
+      low.r = 65535 * (100 - shade) / 100;
+      low.g = 65535 * (100 - shade) / 100;
+      low.b = 65535 * (100 - shade) / 100;
     }
   else
     {
@@ -1689,18 +1710,18 @@ ShadeXImage(Visual *visual, XImage *srcImage, int shade, const rgba &c)
     }
 
   /* apply table to input image (replacing colors by newly calculated ones) */
-  if (srcImage->bits_per_pixel == 32
-      && (srcImage->depth == 24 || srcImage->depth == 32)
-      && srcImage->byte_order == host_byte_order)
+  if (ximage->bits_per_pixel == 32
+      && (ximage->depth == 24 || ximage->depth == 32)
+      && ximage->byte_order == host_byte_order)
     {
       uint32_t *p1, *pf, *p, *pl;
-      p1 = (uint32_t *) srcImage->data;
-      pf = (uint32_t *) (srcImage->data + srcImage->height * srcImage->bytes_per_line);
+      p1 = (uint32_t *) ximage->data;
+      pf = (uint32_t *) (ximage->data + ximage->height * ximage->bytes_per_line);
 
       while (p1 < pf)
         {
           p = p1;
-          pl = p1 + srcImage->width;
+          pl = p1 + ximage->width;
           for (; p < pl; p++)
             {
               *p = lookup_r[(*p & 0xff0000) >> 16] |
@@ -1708,19 +1729,19 @@ ShadeXImage(Visual *visual, XImage *srcImage, int shade, const rgba &c)
                    lookup_b[(*p & 0x0000ff)] |
                    (*p & 0xff000000);
             }
-          p1 = (uint32_t *) ((char *) p1 + srcImage->bytes_per_line);
+          p1 = (uint32_t *) ((char *) p1 + ximage->bytes_per_line);
         }
     }
   else
     {
-      for (int y = 0; y < srcImage->height; y++)
-        for (int x = 0; x < srcImage->width; x++)
+      for (int y = 0; y < ximage->height; y++)
+        for (int x = 0; x < ximage->width; x++)
           {
-            unsigned long pixel = XGetPixel (srcImage, x, y);
+            unsigned long pixel = XGetPixel (ximage, x, y);
             pixel = lookup_r[(pixel & mask_r) >> sh_r] |
                     lookup_g[(pixel & mask_g) >> sh_g] |
                     lookup_b[(pixel & mask_b) >> sh_b];
-            XPutPixel (srcImage, x, y, pixel);
+            XPutPixel (ximage, x, y, pixel);
           }
     }
 

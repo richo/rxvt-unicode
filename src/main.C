@@ -13,7 +13,7 @@
  * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  *                              - extensive modifications
- * Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2010 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -361,6 +361,18 @@ rxvt_term::destroy_cb (ev::idle &w, int revents)
   make_current ();
 
   delete this;
+}
+
+void
+rxvt_term::set_option (uint8_t opt, bool set)
+{
+  if (!opt)
+    return;
+
+  uint8_t mask = 1 << (opt & 7);
+  uint8_t &val = options [opt >> 3];
+
+  val = val & ~mask | (set ? mask : 0);
 }
 
 /*----------------------------------------------------------------------*/
@@ -1634,21 +1646,27 @@ rxvt_term::get_window_origin (int &x, int &y)
 Pixmap
 rxvt_term::get_pixmap_property (int prop_id)
 {
+  Pixmap pixmap = None;
+
   if (prop_id > 0 && prop_id < NUM_XA)
     if (xa[prop_id])
       {
         int aformat;
         unsigned long nitems, bytes_after;
         Atom atype;
-        unsigned char *prop = NULL;
+        unsigned char *prop;
         int result = XGetWindowProperty (dpy, display->root, xa[prop_id],
                                          0L, 1L, False, XA_PIXMAP, &atype, &aformat,
                                          &nitems, &bytes_after, &prop);
-        if (result == Success && prop && atype == XA_PIXMAP)
-          return *(Pixmap *)prop;
+        if (result == Success)
+          {
+            if (atype == XA_PIXMAP)
+              pixmap = *(Pixmap *)prop;
+            XFree (prop);
+          }
       }
 
-  return None;
+  return pixmap;
 }
 
 #ifdef HAVE_BG_PIXMAP

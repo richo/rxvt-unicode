@@ -12,7 +12,7 @@
 #endif
 
 #ifdef HAVE_PIXBUF
-#include <gdk-pixbuf-xlib/gdk-pixbuf-xlib.h>
+#include <gdk-pixbuf/gdk-pixbuf.h>
 #endif
 
 #if defined(BG_IMAGE_FROM_FILE) || defined(ENABLE_TRANSPARENCY)
@@ -23,10 +23,9 @@ struct bgPixmap_t
   void destroy ();
 
   enum {
-    geometrySet     = 1 <<  0,
     propScale       = 1 <<  1,
     rootAlign       = 1 <<  2,
-    geometryFlags   = geometrySet | propScale | rootAlign,
+    geometryFlags   = propScale | rootAlign,
 
     tintSet         = 1 <<  8,
     tintNeeded      = 1 <<  9,
@@ -60,6 +59,9 @@ struct bgPixmap_t
 
 #  ifdef HAVE_PIXBUF
   GdkPixbuf *pixbuf;
+  bool pixbuf_to_pixmap (GdkPixbuf *pixbuf, Pixmap pixmap, GC gc,
+                         int src_x, int src_y, int dst_x, int dst_y,
+                         unsigned int width, unsigned int height);
 #  endif
 
   void get_image_geometry (int image_width, int image_height, int &w, int &h, int &x, int &y);
@@ -77,16 +79,11 @@ struct bgPixmap_t
   unsigned int h_scale, v_scale;/* percents of the window size */
   int h_align, v_align;         /* percents of the window size:
                                   0 - left align, 50 - center, 100 - right */
-  void unset_geometry ()
-  {
-    flags = flags & ~geometryFlags;
-  }
-  bool set_geometry (const char *geom);
+  bool set_geometry (const char *geom, bool update = false);
   void set_defaultGeometry ()
   {
     h_scale = v_scale = defaultScale;
     h_align = v_align = defaultAlign;
-    flags |= geometrySet;
   }
 
   bool set_file (const char *file);
@@ -118,6 +115,9 @@ struct bgPixmap_t
   unsigned int pmap_width, pmap_height;
   unsigned int pmap_depth;
 
+  int target_x;
+  int target_y;
+  bool set_position (int x, int y);
   bool window_size_sensitive ();
   bool window_position_sensitive ();
 
