@@ -174,7 +174,7 @@ resource B<borderColor>.
 =item B<-fn> I<fontlist>
 
 Select the fonts to be used. This is a comma separated list of font names
-that are used in turn when trying to display Unicode characters.  The
+that are checked in order when trying to find glyphs for characters. The
 first font defines the cell size for characters; other fonts might be
 smaller, but not (in general) larger. A (hopefully) reasonable default
 font list is always appended to it. See resource B<font> for more details.
@@ -437,7 +437,7 @@ used (a longer example is in F<doc/embed>):
       system "@@RXVT_NAME@@ -embed $xid &";
    });
 
-=item B<-pty-fd> I<fileno>
+=item B<-pty-fd> I<file descriptor>
 
 Tells @@RXVT_NAME@@ NOT to execute any commands or create a new pty/tty
 pair but instead use the given filehandle as the tty master. This is
@@ -447,6 +447,9 @@ without having to run a program within it.
 If this switch is given, @@RXVT_NAME@@ will not create any utmp/wtmp
 entries and will not tinker with pty/tty permissions - you have to do that
 yourself if you want that.
+
+As an extremely special case, specifying C<-1> will completely suppress
+pty/tty operations.
 
 Here is a example in perl that illustrates how this option can be used (a
 longer example is in F<doc/pty-fd>):
@@ -465,8 +468,8 @@ longer example is in F<doc/pty-fd>):
 
 =item B<-pe> I<string>
 
-Colon-separated list of perl extension scripts to use in this terminal
-instance. See resource B<perl-ext>.
+Comma-separated list of perl extension scripts to use (or not to use) in
+this terminal instance. See resource B<perl-ext> for details.
 
 =back
 
@@ -475,14 +478,10 @@ instance. See resource B<perl-ext>.
 Note: `@@RXVT_NAME@@ --help' gives a list of all resources (long
 options) compiled into your version.
 
-There are two different methods that @@RXVT_NAME@@ can use to get the
-Xresource data: using the X libraries (Xrm*-functions) or internal
-Xresources reader (B<~/.Xdefaults>). For the first method (ie.
-B<@@RXVT_NAME@@ -h> lists B<XGetDefaults>), you can set and change the
-resources using X11 tools like B<xrdb>. Many distribution do also load
-settings from the B<~/.Xresources> file when X starts. @@RXVT_NAME@@
-will consult the following files/resources in order, with later settings
-overwriting earlier ones:
+You can set and change the resources using X11 tools like B<xrdb>. Many
+distribution do also load settings from the B<~/.Xresources> file when X
+starts. @@RXVT_NAME@@ will consult the following files/resources in order,
+with later settings overwriting earlier ones:
 
   1. system-wide app-defaults file, either locale-dependent OR global
   2. app-defaults file in $XAPPLRESDIR
@@ -490,20 +489,16 @@ overwriting earlier ones:
   4. SCREEN_RESOURCES for the current screen
   5. $XENVIRONMENT file OR $HOME/.Xdefaults-<nodename>
 
-If compiled with internal Xresources support (i.e. B<@@RXVT_NAME@@ -h>
-lists B<.Xdefaults>) then B<@@RXVT_NAME@@> accepts application defaults
-set in XAPPLOADDIR/URxvt (compile-time defined: usually
-B</usr/lib/X11/app-defaults/URxvt>) and resources set in
-B<~/.Xdefaults>, or B<~/.Xresources> if B<~/.Xdefaults> does not exist.
-Note that when reading X resources, B<@@RXVT_NAME@@> recognizes two
-class names: B<XTerm> and B<URxvt>. The class name B<Rxvt> allows
-resources common to both B<@@RXVT_NAME@@> and the original I<rxvt> to be
-easily configured, while the class name B<URxvt> allows resources
-unique to B<@@RXVT_NAME@@>, notably colours and key-handling, to be
-shared between different B<@@RXVT_NAME@@> configurations. If no
-resources are specified, suitable defaults will be used. Command-line
-arguments can be used to override resource settings. The following
-resources are allowed:
+Note that when reading X resources, B<@@RXVT_NAME@@> recognizes two class
+names: B<Rxvt> and B<URxvt>. The class name B<Rxvt> allows resources
+common to both B<@@RXVT_NAME@@> and the original I<rxvt> to be easily
+configured, while the class name B<URxvt> allows resources unique to
+B<@@RXVT_NAME@@>, to be shared between different B<@@RXVT_NAME@@>
+configurations. If no resources are specified, suitable defaults will
+be used. Command-line arguments can be used to override resource
+settings. The following resources are supported (you might want to
+check the @@RXVT_NAME@@perl(3) manpage for additional settings by perl
+extensions not documented here):
 
 =over 4
 
@@ -648,11 +643,11 @@ B<PATH> environment variables.
 
 =item B<font:> I<fontlist>
 
-Select the fonts to be used. This is a comma separated list of font
-names that are used in turn when trying to display Unicode characters.
-The first font defines the cell size for characters; other fonts might
-be smaller, but not larger. A reasonable default font list is always
-appended to it; option B<-fn>.
+Select the fonts to be used. This is a comma separated list of font names
+that are checked in order when trying to find glyphs for characters. The
+first font defines the cell size for characters; other fonts might be
+smaller, but not (in general) larger. A (hopefully) reasonable default
+font list is always appended to it; option B<-fn>.
 
 Each font can either be a standard X11 core font (XLFD) name, with
 optional prefix C<x:> or a Xft font (Compile I<xft>), prefixed with C<xft:>.
@@ -1014,10 +1009,10 @@ C<\000>: octal number) or verbatim control characters (C<^?>: delete,
 C<^@>: null, C<^A> ...) and may be enclosed with double quotes so that it
 can start or end with whitespace.
 
-Please note that you need to double the C<\> when using
-C<--enable-xgetdefault>, as X itself does it's own de-escaping (you can
-use C<\033> instead of C<\e> (and so on), which will work with both Xt and
-@@RXVT_NAME@@'s own processing).
+Please note that you need to double the C<\> in resource files, as
+Xlib itself does it's own de-escaping (you can use C<\033> instead of
+C<\e> (and so on), which will work with both Xt and @@RXVT_NAME@@'s own
+processing).
 
 You can define a range of keysyms in one shot by providing a I<string>
 with pattern B<list/PREFIX/MIDDLE/SUFFIX>, where the delimeter `/'
@@ -1083,27 +1078,68 @@ info):
 
 =item B<perl-ext>: I<string>
 
-Colon-separated list(s) of perl extension scripts to use in this terminal
-instance. Each extension is looked up in the library directories, loaded
-if necessary, and bound to the current terminal instance. If this
-resource is empty or missing, then the perl interpreter will not be
-initialized. The idea behind two options is that B<perl-ext-common> will
-be used for extensions that should be available to all instances, while
-B<perl-ext> is used for specific instances; option B<-pe>.
+Comma-separated list(s) of perl extension scripts (default: C<default>) to
+use in this terminal instance; option B<-pe>.
+
+Extension names can be prefixed with a C<-> sign to prohibit using
+them. This can be useful to selectively disable some extensions loaded
+by default, or specified via the C<perl-ext-common> resource. For
+example, C<default,-selection> will use all the default extension except
+C<selection>.
+
+Extension names can also be followed by an argument in angle brackets
+(e.g.  C<< searchable-scrollback<M-s> >>, which binds the hotkey for
+searchable scorllback to Alt/Meta-s). Mentioning the same extension
+multiple times with different arguments will pass multiple arguments to
+the extension.
+
+Each extension is looked up in the library directories, loaded if
+necessary, and bound to the current terminal instance.
+
+If both of these resources are the empty string, then the perl
+interpreter will not be initialized. The idea behind two options is that
+B<perl-ext-common> will be used for extensions that should be available to
+all instances, while B<perl-ext> is used for specific instances.
 
 =item B<perl-eval>: I<string>
 
-Perl code to be evaluated when all extensions have been registered. See the
-@@RXVT_NAME@@perl(3) manpage.
+Perl code to be evaluated when all extensions have been registered. See
+the @@RXVT_NAME@@perl(3) manpage. Due to security reasons, this resource
+will be ignored when running setuid/setgid.
 
 =item B<perl-lib>: I<path>
 
 Colon-separated list of additional directories that hold extension
 scripts. When looking for extensions specified by the C<perl> resource,
 @@RXVT_NAME@@ will first look in these directories and then in
-F<@@RXVT_LIBDIR@@/urxvt/perl/>.
+F<@@RXVT_LIBDIR@@/urxvt/perl/>. Due to security reasons, this resource
+will be ignored when running setuid/setgid.
 
 See the @@RXVT_NAME@@perl(3) manpage.
+
+=item B<< selection.pattern-I<idx> >>: I<perl-regex>
+
+Additional selection patterns, see the @@RXVT_NAME@@perl(3) manpage for
+details.
+
+=item B<< selection-autotransform.I<idx> >>: I<perl-transform>
+
+Selection auto-transform patterns, see the @@RXVT_NAME@@perl(3) manpage
+for details.
+
+=item B<searchable-scrollback:> I<keysym>
+
+Sets the hotkey that starts the incremental scrollback buffer search
+(default: C<M-s>).
+
+=item B<urlLauncher>: I<string>
+
+Specifies the program to be started with a URL argument. Used by the
+C<selection-popup> and C<mark-urls> perl extensions.
+
+=item B<transient-for>: I<windowid>
+
+Sets the WM_TRANSIENT_FOR property to the given window iw.
 
 =back
 

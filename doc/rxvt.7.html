@@ -75,6 +75,63 @@ also available on the World Wide Web at
 <hr />
 <h1><a name="frequently_asked_questions">FREQUENTLY ASKED QUESTIONS</a></h1>
 <dl>
+<dt><strong><a name="item_the_new_selection_selects_pieces_that_are_too_big_">The new selection selects pieces that are too big, how can I select
+single words?</a></strong><br />
+</dt>
+<dd>
+Yes. For example, if you want to select alphanumeric words, you can use
+the following resource:
+</dd>
+<dd>
+<pre>
+   URxvt.selection.pattern-0: ([[:word:]]+)</pre>
+</dd>
+<dd>
+<p>If you click more than twice, the selection will be extended
+more and more.</p>
+</dd>
+<dd>
+<p>To get a selection that is very similar to the old code, try this pattern:</p>
+</dd>
+<dd>
+<pre>
+   URxvt.selection.pattern-0: ([^&quot;&amp;'()*,;&lt;=&gt;?@[\\\\]^`{|})]+)</pre>
+</dd>
+<dd>
+<p>Please also note that the <em>LeftClick Shift-LeftClik</em> combination also
+selects words like the old code.</p>
+</dd>
+<p></p>
+<dt><strong><a name="item_i_don_27t_like_the_new_selection_2fpopups_2fhotkey">I don't like the new selection/popups/hotkeys/perl, how do I
+change/disable it?</a></strong><br />
+</dt>
+<dd>
+You can disable the perl extension completely by setting the
+<strong>perl-ext-common</strong> resource to the empty string, which also keeps
+rxvt-unicode from initialising perl, saving memory.
+</dd>
+<dd>
+<p>If you only want to disable specific features, you first have to
+identify which perl extension is responsible. For this, read the section
+<strong>PREPACKAGED EXTENSIONS</strong> in the <code>urxvtperl(3)</code> manpage. For
+example, to disable the <strong>selection-popup</strong> and <strong>option-popup</strong>, specify
+this <strong>perl-ext-common</strong> resource:</p>
+</dd>
+<dd>
+<pre>
+   URxvt.perl-ext-common: default,-selection-popup,-option-popup</pre>
+</dd>
+<dd>
+<p>This will keep the default extensions, but disable the two popup
+extensions. Some extensions can also be configured, for example,
+scrollback search mode is triggered by <strong>M-s</strong>. You can move it to any
+other combination either by setting the <strong>searchable-scrollback</strong> resource:</p>
+</dd>
+<dd>
+<pre>
+   URxvt.searchable-scrollback: CM-s</pre>
+</dd>
+<p></p>
 <dt><strong><a name="item_isn_27t_rxvt_supposed_to_be_small_3f_don_27t_all_t">Isn't rxvt supposed to be small? Don't all those features bloat?</a></strong><br />
 </dt>
 <dd>
@@ -122,7 +179,7 @@ memory.</p>
 <p>Compared to e.g. Eterm (5112k), aterm (3132k) and xterm (4680k), this
 still fares rather well. And compared to some monsters like gnome-terminal
 (21152k + extra 4204k in separate processes) or konsole (22200k + extra
-43180k in daemons that stay around after exit, plus half aminute of
+43180k in daemons that stay around after exit, plus half a minute of
 startup time, including the hundreds of warnings it spits out), it fares
 extremely well *g*.</p>
 </dd>
@@ -187,7 +244,7 @@ embedding application.
 <dd>
 The version number is displayed with the usage (-h). Also the escape
 sequence <code>ESC [ 8 n</code> sets the window title to the version number. When
-using the rxvtc client, the version displayed is that of the
+using the urxvtc client, the version displayed is that of the
 daemon.
 </dd>
 <p></p>
@@ -208,6 +265,53 @@ the bug).
 probably should use the Debian BTS, too, because, after all, it's also a
 bug in the Debian version and it serves as a reminder for other users that
 might encounter the same issue.</p>
+</dd>
+<p></p>
+<dt><strong><a name="item_i_am_maintaining_rxvt_2dunicode_for_distribution_2">I am maintaining rxvt-unicode for distribution/OS XXX, any recommendation?</a></strong><br />
+</dt>
+<dd>
+You should build one binary with the default options. <em>configure</em>
+now enables most useful options, and the trend goes to making them
+runtime-switchable, too, so there is usually no drawback to enbaling them,
+except higher disk and possibly memory usage. The perl interpreter should
+be enabled, as important functionality (menus, selection, likely more in
+the future) depends on it.
+</dd>
+<dd>
+<p>You should not overwrite the <code>perl-ext-common</code> snd <code>perl-ext</code> resources
+system-wide (except maybe with <code>defaults</code>). This will result in useful
+behaviour. If your distribution aims at low memory, add an empty
+<code>perl-ext-common</code> resource to the app-defaults file. This will keep the
+perl interpreter disabled until the user enables it.</p>
+</dd>
+<dd>
+<p>If you can/want build more binaries, I recommend building a minimal
+one with <code>--disable-everything</code> (very useful) and a maximal one with
+<a href="#item__2d_2denable_2deverything"><code>--enable-everything</code></a> (less useful, it will be very big due to a lot of
+encodings built-in that increase download times and are rarely used).</p>
+</dd>
+<p></p>
+<dt><strong><a name="item_i_need_to_make_it_setuid_2fsetgid_to_support_utmp_">I need to make it setuid/setgid to support utmp/ptys on my OS, is this safe?</a></strong><br />
+</dt>
+<dd>
+Likely not. While I honestly try to make it secure, and am probably not
+bad at it, I think it is simply unreasonable to expect all of freetype
++ fontconfig + xft + xlib + perl + ... + rxvt-unicode itself to all be
+secure. Also, rxvt-unicode disables some options when it detects that it
+runs setuid or setgid, which is not nice. Besides, with the embedded perl
+interpreter the possibility for security problems easily multiplies.
+</dd>
+<dd>
+<p>Elevated privileges are only required for utmp and pty operations on some
+systems (for example, GNU/Linux doesn't need any extra privileges for
+ptys, but some need it for utmp support). It is planned to mvoe this into
+a forked handler process, but this is not yet done.</p>
+</dd>
+<dd>
+<p>So, while setuid/setgid operation is supported and not a problem on your
+typical single-user-no-other-logins unix desktop, always remember that
+its an awful lot of code, most of which isn't checked for security issues
+regularly.</p>
 </dd>
 <p></p>
 <dt><strong><a name="item_when_i_log_2din_to_another_system_it_tells_me_abou">When I log-in to another system it tells me about missing terminfo data?</a></strong><br />
@@ -256,7 +360,7 @@ Most likely it's the empty definition for <code>enacs=</code>. Just replace it b
 <code>enacs=\E[0@</code> and try again.
 </dd>
 <p></p>
-<dt><strong><a name="item_bash_27s_readline_does_not_work_correctly_under_rx"><code>bash</code>'s readline does not work correctly under rxvt.</a></strong><br />
+<dt><strong><a name="item_bash_27s_readline_does_not_work_correctly_under_ur"><code>bash</code>'s readline does not work correctly under urxvt.</a></strong><br />
 </dt>
 <dt><strong><a name="item_i_need_a_termcap_file_entry_2e">I need a termcap file entry.</a></strong><br />
 </dt>
@@ -420,7 +524,7 @@ e.g.:</p>
 </dd>
 <dd>
 <pre>
-   rxvt -fn basefont,font2,font3...</pre>
+   urxvt -fn basefont,font2,font3...</pre>
 </dd>
 <dd>
 <p>When rxvt-unicode sees a character, it will first look at the base
@@ -804,7 +908,7 @@ Make sure that mouse reporting is actually turned off since killing
 some editors prematurely may leave the mouse in mouse report mode. I've
 heard that tcsh may use mouse reporting unless it otherwise specified. A
 quick check is to see if cut/paste works when the Alt or Shift keys are
-depressed. See <code>rxvt(7)</code>
+depressed.
 </dd>
 <p></p>
 <dt><strong><a name="item_what_27s_with_this_bold_2fblink_stuff_3f">What's with this bold/blink stuff?</a></strong><br />
@@ -888,10 +992,10 @@ me) as ``pretty girly''.</p>
    URxvt.color15:      #e1dddd</pre>
 </dd>
 <p></p>
-<dt><strong><a name="item_how_can_i_start_rxvtd_in_a_race_2dfree_way_3f">How can I start rxvtd in a race-free way?</a></strong><br />
+<dt><strong><a name="item_how_can_i_start_urxvtd_in_a_race_2dfree_way_3f">How can I start urxvtd in a race-free way?</a></strong><br />
 </dt>
 <dd>
-Try <code>rxvtd -f -o</code>, which tells rxvtd to open the
+Try <code>urxvtd -f -o</code>, which tells urxvtd to open the
 display, create the listening socket and then fork.
 </dd>
 <p></p>
@@ -922,16 +1026,16 @@ be used (which may not be the same as your stty setting).</p>
 <pre>
    # use Backspace = ^H
    $ stty erase ^H
-   $ rxvt</pre>
+   $ urxvt</pre>
 </dd>
 <dd>
 <pre>
    # use Backspace = ^?
    $ stty erase ^?
-   $ rxvt</pre>
+   $ urxvt</pre>
 </dd>
 <dd>
-<p>Toggle with <code>ESC [ 36 h</code> / <code>ESC [ 36 l</code> as documented in rxvt(7).</p>
+<p>Toggle with <code>ESC [ 36 h</code> / <code>ESC [ 36 l</code>.</p>
 </dd>
 <dd>
 <p>For an existing rxvt-unicode:</p>
@@ -979,7 +1083,7 @@ you have run ``configure'' with the <a href="#item__2d_2ddisable_2dresources"><c
 use the `keysym' resource to alter the keystrings associated with keysyms.
 </dd>
 <dd>
-<p>Here's an example for a URxvt session started using <code>rxvt -name URxvt</code></p>
+<p>Here's an example for a URxvt session started using <code>urxvt -name URxvt</code></p>
 </dd>
 <dd>
 <pre>
@@ -1861,8 +1965,8 @@ Set XTerm Parameters. 8-bit ST: 0x9c, 7-bit ST sequence: ESC \ (0x1b,
 <tr><td>Ps = 12</td><td>Change colour of text cursor foreground to Pt</td></tr>
 <tr><td>Ps = 13</td><td>Change colour of mouse foreground to Pt</td></tr>
 <tr><td>Ps = 17</td><td>Change colour of highlight characters to Pt</td></tr>
-<tr><td>Ps = 18</td><td>Change colour of bold characters to Pt</td></tr>
-<tr><td>Ps = 19</td><td>Change colour of underlined characters to Pt</td></tr>
+<tr><td>Ps = 18</td><td>Change colour of bold characters to Pt [deprecated, see 706]</td></tr>
+<tr><td>Ps = 19</td><td>Change colour of underlined characters to Pt [deprecated, see 707]</td></tr>
 <tr><td>Ps = 20</td><td>Change default background to Pt</td></tr>
 <tr><td>Ps = 39</td><td>Change default foreground colour to Pt.</td></tr>
 <tr><td>Ps = 46</td><td>Change Log File to Pt unimplemented</td></tr>
@@ -1873,6 +1977,8 @@ Set XTerm Parameters. 8-bit ST: 0x9c, 7-bit ST sequence: ESC \ (0x1b,
 <tr><td>Ps = 703</td><td>Menubar command Pt (Compile menubar).</td></tr>
 <tr><td>Ps = 704</td><td>Change colour of italic characters to Pt</td></tr>
 <tr><td>Ps = 705</td><td>Change background pixmap tint colour to Pt (Compile transparency).</td></tr>
+<tr><td>Ps = 706</td><td>Change colour of bold characters to Pt</td></tr>
+<tr><td>Ps = 707</td><td>Change colour of underlined characters to Pt</td></tr>
 <tr><td>Ps = 710</td><td>Set normal fontset to Pt. Same as Ps = 50.</td></tr>
 <tr><td>Ps = 711</td><td>Set bold fontset to Pt. Similar to Ps = 50 (Compile styles).</td></tr>
 <tr><td>Ps = 712</td><td>Set italic fontset to Pt. Similar to Ps = 50 (Compile styles).</td></tr>
@@ -2799,13 +2905,13 @@ Write user and tty to lastlog file (used by programs like
 --enable-utmp to also be specified.
 </dd>
 <p></p>
-<dt><strong><a name="item_background">--enable-xpm-background (default: off)</a></strong><br />
+<dt><strong><a name="item_background">--enable-xpm-background (default: on)</a></strong><br />
 </dt>
 <dd>
 Add support for XPM background pixmaps.
 </dd>
 <p></p>
-<dt><strong><a name="item_transparency">--enable-transparency (default: off)</a></strong><br />
+<dt><strong><a name="item_transparency">--enable-transparency (default: on)</a></strong><br />
 </dt>
 <dd>
 Add support for inheriting parent backgrounds thus giving a fake
@@ -2824,11 +2930,12 @@ Add support for fading the text when focus is lost (requires <code>--enable-tran
 Add support for tinting of transparent backgrounds (requires <code>--enable-transparency</code>).
 </dd>
 <p></p>
-<dt><strong><a name="item_menubar">--enable-menubar (default: off)</a></strong><br />
+<dt><strong><a name="item_menubar">--enable-menubar (default: off) [DEPRECATED]</a></strong><br />
 </dt>
 <dd>
-Add support for our menu bar system (this interacts badly with
-dynamic locale switching currently).
+Add support for our menu bar system (this interacts badly with dynamic
+locale switching currently). This option is DEPRECATED and will be removed
+in the future.
 </dd>
 <p></p>
 <dt><strong><a name="item_scroll">--enable-rxvt-scroll (default: on)</a></strong><br />
@@ -2890,19 +2997,6 @@ do it.
 Removes any support for resource checking.
 </dd>
 <p></p>
-<dt><strong><a name="item__2d_2denable_2dxgetdefault">--enable-xgetdefault</a></strong><br />
-</dt>
-<dd>
-Make resources checking via <code>XGetDefault()</code> instead of our small
-version which only checks ~/.Xdefaults, or if that doesn't exist then
-~/.Xresources.
-</dd>
-<dd>
-<p>Please note that nowadays, things like XIM will automatically pull in and
-use the full X resource manager, so the overhead of using it might be very
-small, if nonexistant.</p>
-</dd>
-<p></p>
 <dt><strong><a name="item_strings">--enable-strings (default: off)</a></strong><br />
 </dt>
 <dd>
@@ -2954,7 +3048,7 @@ in combination with other switches) is:</p>
 <dt><strong><a name="item_iso14755">--enable-iso14755 (default: on)</a></strong><br />
 </dt>
 <dd>
-Enable extended ISO 14755 support (see rxvt(1), or
+Enable extended ISO 14755 support (see urxvt(1), or
 <em>doc/rxvt.1.txt</em>). Basic support (section 5.1) is enabled by
 <code>--enable-frills</code>, while support for 5.2, 5.3 and 5.4 is enabled with
 this switch.
@@ -3024,7 +3118,7 @@ Add support to have the pointer disappear when typing or inactive.
 <dt><strong><a name="item_perl">--enable-perl (default: off)</a></strong><br />
 </dt>
 <dd>
-Enable an embedded perl interpreter. See the <strong>rxvtperl(3)</strong>
+Enable an embedded perl interpreter. See the <strong>urxvtperl(3)</strong>
 manpage (<em>doc/rxvtperl.txt</em>) for more info on this feature, or the files
 in <em>src/perl-ext/</em> for the extensions that are installed by default. The
 perl interpreter that is used can be specified via the <code>PERL</code> environment

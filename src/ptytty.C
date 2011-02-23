@@ -4,7 +4,7 @@
  *
  * All portions of code are copyright by their respective author/s.
  * Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
- * Copyright (c) 2004      Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -24,17 +24,14 @@
 #include "../config.h"		/* NECESSARY */
 #include "rxvt.h"
 
-#ifdef HAVE_STDLIB_H
 # include <cstdlib>
-#endif
+# include <cstring>
+
 #ifdef HAVE_SYS_TYPES_H
 # include <sys/types.h>
 #endif
 #ifdef HAVE_UNISTD_H
 # include <unistd.h>
-#endif
-#if defined(HAVE_STRING_H)
-# include <cstring>
 #endif
 #ifdef HAVE_FCNTL_H
 # include <fcntl.h>
@@ -48,14 +45,11 @@
 #ifdef HAVE_ISASTREAM
 # include <stropts.h>
 #endif
-#ifdef HAVE_PTY_H
+#if defined(HAVE_PTY_H)
 # include <pty.h>
-#endif
-
-// better do this via configure, but....
-#if defined(__FreeBSD__)
+#elif defined(HAVE_LIBUTIL_H)
 # include <libutil.h>
-#elif defined(__DARWIN__) || (defined (__MACH__) && defined (__APPLE__))
+#elif defined(HAVE_UTIL_H)
 # include <util.h>
 #endif
 
@@ -95,23 +89,12 @@ get_pty (int *fd_tty, char **ttydev)
     return pfd;
 #endif
 
-#ifdef PTYS_ARE_GETPTY
-  char           *ptydev;
-
-  while ((ptydev = getpty ()) != NULL)
-    if ((pfd = open (ptydev, O_RDWR | O_NOCTTY, 0)) >= 0)
-      {
-        *ttydev = ptydev;
-        return pfd;
-      }
-#endif
-
 #if defined(HAVE_GRANTPT) && defined(HAVE_UNLOCKPT)
-# if defined(PTYS_ARE_GETPT) || defined(PTYS_ARE_PTMX)
+# if defined(PTYS_ARE_POSIX) || defined(PTYS_ARE_PTMX)
 
   {
-#  ifdef PTYS_ARE_GETPT
-    pfd = getpt ();
+#  ifdef PTYS_ARE_POSIX
+    pfd = posix_openpt (O_RDWR);
 #  else
     pfd = open ("/dev/ptmx", O_RDWR | O_NOCTTY, 0);
 #  endif
@@ -398,7 +381,10 @@ void
 
 rxvt_ptytty::close_tty ()
 {
-  if (tty >= 0) close (tty);
+  if (tty < 0)
+    return;
+
+  close (tty);
   tty = -1;
 }
 
@@ -453,24 +439,24 @@ void
 rxvt_ptytty::set_utf8_mode (bool on)
 {
 #ifdef IUTF8
-  if (pty != -1)
+  if (pty < 0)
+    return;
+
+  struct termios tio;
+
+  if (tcgetattr (pty, &tio) != -1)
     {
-      struct termios tio;
+      tcflag_t new_cflag = tio.c_iflag;
 
-      if (tcgetattr (pty, &tio) != -1)
+      if (on)
+        new_cflag |= IUTF8;
+      else
+        new_cflag &= ~IUTF8;
+
+      if (new_cflag != tio.c_iflag)
         {
-          tcflag_t new_cflag = tio.c_iflag;
-
-          if (on)
-            new_cflag |= IUTF8;
-          else
-            new_cflag &= ~IUTF8;
-
-          if (new_cflag != tio.c_iflag)
-            {
-              tio.c_iflag = new_cflag;
-              tcsetattr (pty, TCSANOW, &tio);
-            }
+          tio.c_iflag = new_cflag;
+          tcsetattr (pty, TCSANOW, &tio);
         }
     }
 #endif

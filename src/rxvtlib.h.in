@@ -79,32 +79,10 @@ typedef uint32_t text_t;
 typedef uint16_t text_t; // saves lots of memory
 #endif
 typedef uint32_t rend_t;
-typedef  int32_t tlen_t; // was int16_t, but this result sin smaller code and memory use
+typedef  int32_t tlen_t;  // was int16_t, but this results in smaller code and memory use
+typedef  int32_t tlen_t_; // specifically for use in the line_t structure
 
-#define LINE_CONT -1
-
-struct line_t {
-   text_t *t; // terminal the text
-   rend_t *r; // rendition, uses RS_ flags
-   tlen_t l;  // length of each text line, LINE_CONT == continued on next line
-
-   bool is_longer ()
-   {
-     return l < 0;
-   }
-
-   void set_is_longer ()
-   {
-     l = LINE_CONT;
-   }
-
-   void clear ()
-   {
-     t = 0;
-     r = 0;
-     l = 0;
-   }
-};
+struct line_t;
 
 /*
  * terminal limits:
@@ -228,54 +206,13 @@ typedef struct {
 #define Screen_DefaultFlags      (Screen_VisibleCursor | Screen_Autowrap)
 
 /* rxvt_vars.options */
-#define Opt_console              (1UL<<0)
-#define Opt_loginShell           (1UL<<1)
-#define Opt_iconic               (1UL<<2)
-#define Opt_visualBell           (1UL<<3)
-#define Opt_mapAlert             (1UL<<4)
-#define Opt_reverseVideo         (1UL<<5)
-#define Opt_utmpInhibit          (1UL<<6)
-#define Opt_scrollBar            (1UL<<7)
-#define Opt_scrollBar_right      (1UL<<8)
-#define Opt_scrollBar_floating   (1UL<<9)
-#define Opt_meta8                (1UL<<10)
-#define Opt_scrollTtyOutput      (1UL<<11)
-#define Opt_scrollTtyKeypress    (1UL<<12)
-#define Opt_transparent          (1UL<<13)
-#define Opt_tripleclickwords     (1UL<<14)
-#define Opt_scrollWithBuffer     (1UL<<15)
-#define Opt_jumpScroll           (1UL<<16)
-#define Opt_mouseWheelScrollPage (1UL<<17)
-#define Opt_pointerBlank         (1UL<<18)
-#define Opt_cursorBlink          (1UL<<19)
-#define Opt_secondaryScreen      (1UL<<20)
-#define Opt_secondaryScroll      (1UL<<21)
-#define Opt_pastableTabs         (1UL<<22)
-#define Opt_cursorUnderline      (1UL<<23)
-#if ENABLE_FRILLS
-# define Opt_insecure		 (1UL<<24) // insecure esc sequences
-# define Opt_borderLess		 (1UL<<25) // mwm borderless hints
-# define Opt_hold		 (1UL<<26) // hold window open after exit
-# define Opt_skipBuiltinGlyphs	 (1UL<<27) // do not use internal glyphs
-#else
-# define Opt_insecure		 0
-# define Opt_borderLess		 0
-# define Opt_hold		 0
-# define Opt_skipBuiltinGlyphs	 0
-#endif
-#if ENABLE_STYLES
-# define Opt_intensityStyles	 (1UL<<28) // font styles imply intensity
-#else
-# define Opt_intensityStyles	 0
-#endif
-
-#define SET_OPTION(opt)		 (options |= (opt))
-#define CLR_OPTION(opt)		 (options &= ~(opt))
-#define OPTION(opt)              (options & (opt))
-#define OPTION_R(opt)            (r->options & (opt))
-#define DEFAULT_OPTIONS          (Opt_scrollBar | Opt_scrollTtyOutput \
-                                  | Opt_jumpScroll | Opt_secondaryScreen \
-                                  | Opt_pastableTabs | Opt_intensityStyles)
+enum {
+# define def(name,idx) Opt_ ## name = 1UL << (idx),
+# define nodef(name)   Opt_ ## name = 0,
+# include "optinc.h"
+# undef nodef
+# undef def
+};
 
 /* ------------------------------------------------------------------------- */
 
@@ -306,7 +243,7 @@ typedef struct {
 struct rxvt_vars : TermWin_t {
   scrollBar_t     scrollBar;
   menuBar_t       menuBar;
-  unsigned long   options;
+  uint32_t        options;
   XSizeHints      szHint;
   rxvt_display   *display;
   rxvt_color     *pix_colors;
@@ -319,9 +256,8 @@ struct rxvt_vars : TermWin_t {
   int             sb_shadow;    /* scrollbar shadow width                    */
   rxvt_ptytty     pty;
   int             numlock_state;
-  line_t         *row_buf;      // all lines, scrollback + terminal, circular
+  line_t         *row_buf;      // all lines, scrollback + terminal, circular, followed by temp_buf
   line_t         *drawn_buf;    // text on screen
-  line_t         *temp_buf;     // temporary buffer
   line_t         *swap_buf;     // lines for swap buffer
   char           *tabs;         /* per location: 1 == tab-stop               */
   screen_t        screen;
@@ -330,6 +266,7 @@ struct rxvt_vars : TermWin_t {
 };
 
 void rxvt_init ();
+bool rxvt_tainted ();
 
 #endif                          /* _RXVTLIB_H_ */
 

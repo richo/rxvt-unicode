@@ -19,8 +19,8 @@
 
 =head1 DESCRIPTION
 
-Everytime a terminal object gets created, scripts specified via the
-C<perl> resource are loaded and associated with it.
+Everytime a terminal object gets created, extension scripts specified via
+the C<perl> resource are loaded and associated with it.
 
 Scripts are compiled in a 'use strict' and 'use utf8' environment, and
 thus must be encoded as UTF-8.
@@ -28,9 +28,9 @@ thus must be encoded as UTF-8.
 Each script will only ever be loaded once, even in @@RXVT_NAME@@d, where
 scripts will be shared (but not enabled) for all terminals.
 
-=head2 Prepackaged Extensions
+=head1 PREPACKAGED EXTENSIONS
 
-This section describes the extensiosn delivered with this version. You can
+This section describes the extensions delivered with this release. You can
 find them in F<@@RXVT_LIBDIR@@/urxvt/perl/>.
 
 You can activate them like this:
@@ -39,14 +39,36 @@ You can activate them like this:
 
 =over 4
 
-=item selection
+=item selection (enabled by default)
 
-Intelligent selection. This extension tries to be more intelligent when
-the user extends selections (double-click). Right now, it tries to select
-urls and complete shell-quoted arguments, which is very convenient, too,
-if your F<ls> supports C<--quoting-style=shell>.
+(More) intelligent selection. This extension tries to be more intelligent
+when the user extends selections (double-click and further clicks). Right
+now, it tries to select words, urls and complete shell-quoted
+arguments, which is very convenient, too, if your F<ls> supports
+C<--quoting-style=shell>.
 
-It also offers the following bindable event:
+A double-click usually selects the word under the cursor, further clicks
+will enlarge the selection.
+
+The selection works by trying to match a number of regexes and displaying
+them in increasing order of length. You can add your own regexes by
+specifying resources of the form:
+
+   URxvt.selection.pattern-0: perl-regex
+   URxvt.selection.pattern-1: perl-regex
+   ...
+
+The index number (0, 1...) must not have any holes, and each regex must
+contain at least one pair of capturing parentheses, which will be used for
+the match. For example, the followign adds a regex that matches everything
+between two vertical bars:
+
+   URxvt.selection.pattern-0: \\|([^|]+)\\|
+
+You can look at the source of the selection extension to see more
+interesting uses, such as parsing a line from beginning to end.
+
+This extension also offers the following bindable keyboard command:
 
 =over 4
 
@@ -57,6 +79,80 @@ Rot-13 the selection when activated. Used via keyboard trigger:
    URxvt.keysym.C-M-r: perl:selection:rot13
 
 =back
+
+=item option-popup (enabled by default)
+
+Binds a popup menu to Ctrl-Button2 that lets you toggle (some) options at
+runtime.
+
+=item selection-popup (enabled by default)
+
+Binds a popup menu to Ctrl-Button3 that lets you convert the selection
+text into various other formats/action (such as uri unescaping, perl
+evalution, web-browser starting etc.), depending on content.
+
+=item searchable-scrollback<hotkey> (enabled by default)
+
+Adds regex search functionality to the scrollback buffer, triggered
+by a hotkey (default: C<M-s>). While in search mode, normal terminal
+input/output is suspended and a regex is displayed at the bottom of the
+screen.
+
+Inputting characters appends them to the regex and continues incremental
+search. C<BackSpace> removes a character from the regex, C<Up> and C<Down>
+search upwards/downwards in the scrollback buffer, C<End> jumps to the
+bottom. C<Escape> leaves search mode and returns to the point where search
+was started, while C<Enter> or C<Return> stay at the current position and
+additionally stores the first match in the current line into the primary
+selection.
+
+=item selection-autotransform
+
+This selection allows you to do automatic transforms on a selection
+whenever a selection is made.
+
+It works by specifying perl snippets (most useful is a single C<s///>
+operator) that modify C<$_> as resources:
+
+   URxvt.selection-autotransform.0: transform
+   URxvt.selection-autotransform.1: transform
+   ...
+
+For example, the following will transform selections of the form
+C<filename:number>, often seen in compiler messages, into C<vi +$filename
+$word>:
+
+   URxvt.selection-autotransform.0: s/^([^:[:space:]]+):(\\d+):?$/vi +$2 \\Q$1\\E\\x0d/
+
+And this example matches the same,but replaces it with vi-commands you can
+paste directly into your (vi :) editor:
+
+   URxvt.selection-autotransform.0: s/^([^:[:space:]]+(\\d+):?$/\\x1b:e \\Q$1\\E\\x0d:$2\\x0d/
+
+Of course, this can be modified to suit your needs and your editor :)
+
+To expand the example above to typical perl error messages ("XXX at
+FILENAME line YYY."), you need a slightly more elaborate solution:
+
+   URxvt.selection.pattern-0: ( at .*? line \\d+\\.)
+   URxvt.selection-autotransform.0: s/^ at (.*?) line (\\d+)\\.$/\x1b:e \\Q$1\E\\x0d:$2\\x0d/
+
+The first line tells the selection code to treat the unchanging part of
+every error message as a selection pattern, and the second line transforms
+the message into vi commands to load the file.
+
+=item mark-urls
+
+Uses per-line display filtering (C<on_line_update>) to underline urls and
+make them clickable. When middle-clicked, the program specified in the
+resource C<urlLauncher> (default C<x-www-browser>) will be started with
+the URL as first argument.
+
+=item block-graphics-to-ascii
+
+A not very useful example of filtering all text output to the terminal,
+by replacing all line-drawing characters (U+2500 .. U+259F) by a
+similar-looking ascii character.
 
 =item digital-clock
 
@@ -69,6 +165,8 @@ window. Illustrates overwriting the refresh callbacks to create your own
 overlays or changes.
 
 =back
+
+=head1 API DOCUMENTATION
 
 =head2 General API Considerations
 
@@ -83,29 +181,85 @@ emptied, so its best to store related objects such as time watchers and
 the like inside the terminal object so they get destroyed as soon as the
 terminal is destroyed.
 
+Argument names also often indicate the type of a parameter. Here are some
+hints on what they mean:
+
+=over 4
+
+=item $text
+
+Rxvt-unicodes special way of encoding text, where one "unicode" character
+always represents one screen cell. See L<ROW_t> for a discussion of this format.
+
+=item $string
+
+A perl text string, with an emphasis on I<text>. It can store all unicode
+characters and is to be distinguished with text encoded in a specific
+encoding (often locale-specific) and binary data.
+
+=item $octets
+
+Either binary data or - more common - a text string encoded in a
+locale-specific way.
+
+=back
+
+=head2 Extension Objects
+
+Very perl extension is a perl class. A separate perl object is created
+for each terminal and each extension and passed as the first parameter to
+hooks. So extensions can use their C<$self> object without having to think
+about other extensions, with the exception of methods and members that
+begin with an underscore character C<_>: these are reserved for internal
+use.
+
+Although it isn't a C<urxvt::term> object, you can call all methods of the
+C<urxvt::term> class on this object.
+
+It has the following methods and data members:
+
+=over 4
+
+=item $urxvt_term = $self->{term}
+
+Returns the C<urxvt::term> object associated with this instance of the
+extension. This member I<must not> be changed in any way.
+
+=item $self->enable ($hook_name => $cb, [$hook_name => $cb..])
+
+Dynamically enable the given hooks (named without the C<on_> prefix) for
+this extension, replacing any previous hook. This is useful when you want
+to overwrite time-critical hooks only temporarily.
+
+=item $self->disable ($hook_name[, $hook_name..])
+
+Dynamically disable the given hooks.
+
+=back
+
 =head2 Hooks
 
-The following subroutines can be declared in loaded scripts, and will be
+The following subroutines can be declared in extension files, and will be
 called whenever the relevant event happens.
 
-The first argument passed to them is an object private to each terminal
-and extension package.  You can call all C<urxvt::term> methods on it, but
-its not a real C<urxvt::term> object. Instead, the real C<urxvt::term>
-object that is shared between all packages is stored in the C<term>
-member.
+The first argument passed to them is an extension oject as described in
+the in the C<Extension Objects> section.
 
-All of them must return a boolean value. If it is true, then the event
-counts as being I<consumed>, and the invocation of other hooks is skipped,
-and the relevant action might not be carried out by the C++ code.
+B<All> of these hooks must return a boolean value. If it is true, then the
+event counts as being I<consumed>, and the invocation of other hooks is
+skipped, and the relevant action might not be carried out by the C++ code.
 
-When in doubt, return a false value (preferably C<()>).
+I<< When in doubt, return a false value (preferably C<()>). >>
 
 =over 4
 
 =item on_init $term
 
 Called after a new terminal object has been initialized, but before
-windows are created or the command gets run.
+windows are created or the command gets run. Most methods are unsafe to
+call or deliver senseless data, as terminal size and other characteristics
+have not yet been determined. You can safely query and change resources,
+though.
 
 =item on_reset $term
 
@@ -140,19 +294,11 @@ Returning a true value aborts selection grabbing. It will still be hilighted.
 Called whenever the user tries to extend the selection (e.g. with a double
 click) and is either supposed to return false (normal operation), or
 should extend the selection itelf and return true to suppress the built-in
-processing.
+processing. This can happen multiple times, as long as the callback
+returns true, it will be called on every further click by the user and is
+supposed to enlarge the selection more and more, if possible.
 
 See the F<selection> example extension.
-
-=item on_focus_in $term
-
-Called whenever the window gets the keyboard focus, before urxvt does
-focus in processing.
-
-=item on_focus_out $term
-
-Called wheneever the window loses keyboard focus, before urxvt does focus
-out processing.
 
 =item on_view_change $term, $offset
 
@@ -170,10 +316,6 @@ It is called before lines are scrolled out (so rows 0 .. min ($lines - 1,
 $nrow - 1) represent the lines to be scrolled out). C<$saved> is the total
 number of lines that will be in the scrollback buffer.
 
-=item on_tty_activity $term *NYI*
-
-Called whenever the program(s) running in the urxvt window send output.
-
 =item on_osc_seq $term, $string
 
 Called whenever the B<ESC ] 777 ; string ST> command sequence (OSC =
@@ -186,6 +328,33 @@ future.
 Be careful not ever to trust (in a security sense) the data you receive,
 as its source can not easily be controleld (e-mail content, messages from
 other users on the same system etc.).
+
+=item on_add_lines $term, $string
+
+Called whenever text is about to be output, with the text as argument. You
+can filter/change and output the text yourself by returning a true value
+and calling C<< $term->scr_add_lines >> yourself. Please note that this
+might be very slow, however, as your hook is called for B<all> text being
+output.
+
+=item on_tt_write $term, $octets
+
+Called whenever some data is written to the tty/pty and can be used to
+suppress or filter tty input.
+
+=item on_line_update $term, $row
+
+Called whenever a line was updated or changed. Can be used to filter
+screen output (e.g. underline urls or other useless stuff). Only lines
+that are being shown will be filtered, and, due to performance reasons,
+not always immediately.
+
+The row number is always the topmost row of the line if the line spans
+multiple rows.
+
+Please note that, if you change the line, then the hook might get called
+later with the already-modified line (e.g. if unrelated parts change), so
+you cannot just toggle rendition bits, but only set them.
 
 =item on_refresh_begin $term
 
@@ -204,16 +373,92 @@ Called whenever the user presses a key combination that has a
 C<perl:string> action bound to it (see description of the B<keysym>
 resource in the @@RXVT_NAME@@(1) manpage).
 
+=item on_x_event $term, $event
+
+Called on every X event received on the vt window (and possibly other
+windows). Should only be used as a last resort. Most event structure
+members are not passed.
+
+=item on_focus_in $term
+
+Called whenever the window gets the keyboard focus, before rxvt-unicode
+does focus in processing.
+
+=item on_focus_out $term
+
+Called wheneever the window loses keyboard focus, before rxvt-unicode does
+focus out processing.
+
+=item on_key_press $term, $event, $keysym, $octets
+
+=item on_key_release $term, $event, $keysym
+
+=item on_button_press $term, $event
+
+=item on_button_release $term, $event
+
+=item on_motion_notify $term, $event
+
+=item on_map_notify $term, $event
+
+=item on_unmap_notify $term, $event
+
+Called whenever the corresponding X event is received for the terminal If
+the hook returns true, then the even will be ignored by rxvt-unicode.
+
+The event is a hash with most values as named by Xlib (see the XEvent
+manpage), with the additional members C<row> and C<col>, which are the row
+and column under the mouse cursor.
+
+C<on_key_press> additionally receives the string rxvt-unicode would
+output, if any, in locale-specific encoding.
+
+subwindow.
+
 =back
+
+=cut
+
+package urxvt;
+
+use utf8;
+use strict;
+use Carp ();
+use Scalar::Util ();
+use List::Util ();
+
+our $VERSION = 1;
+our $TERM;
+our @HOOKNAME;
+our %HOOKTYPE = map +($HOOKNAME[$_] => $_), 0..$#HOOKNAME;
+our %OPTION;
+
+our $LIBDIR;
+our $RESNAME;
+our $RESCLASS;
+our $RXVTNAME;
 
 =head2 Variables in the C<urxvt> Package
 
 =over 4
 
+=item $urxvt::LIBDIR
+
+The rxvt-unicode library directory, where, among other things, the perl
+modules and scripts are stored.
+
+=item $urxvt::RESCLASS, $urxvt::RESCLASS
+
+The resource class and name rxvt-unicode uses to look up X resources.
+
+=item $urxvt::RXVTNAME
+
+The basename of the installed binaries, usually C<urxvt>.
+
 =item $urxvt::TERM
 
-The current terminal. Whenever a callback/Hook is bein executed, this
-variable stores the current C<urxvt::term> object.
+The current terminal. This variable stores the current C<urxvt::term>
+object, whenever a callback/hook is executing.
 
 =back
 
@@ -236,9 +481,41 @@ that calls this function.
 Using this function has the advantage that its output ends up in the
 correct place, e.g. on stderr of the connecting urxvtc client.
 
+Messages have a size limit of 1023 bytes currently.
+
+=item $is_safe = urxvt::safe
+
+Returns true when it is safe to do potentially unsafe things, such as
+evaluating perl code specified by the user. This is true when urxvt was
+started setuid or setgid.
+
 =item $time = urxvt::NOW
 
 Returns the "current time" (as per the event loop).
+
+=item urxvt::CurrentTime
+
+=item urxvt::ShiftMask, LockMask, ControlMask, Mod1Mask, Mod2Mask,
+Mod3Mask, Mod4Mask, Mod5Mask, Button1Mask, Button2Mask, Button3Mask,
+Button4Mask, Button5Mask, AnyModifier
+
+=item urxvt::NoEventMask, KeyPressMask, KeyReleaseMask,
+ButtonPressMask, ButtonReleaseMask, EnterWindowMask, LeaveWindowMask,
+PointerMotionMask, PointerMotionHintMask, Button1MotionMask, Button2MotionMask,
+Button3MotionMask, Button4MotionMask, Button5MotionMask, ButtonMotionMask,
+KeymapStateMask, ExposureMask, VisibilityChangeMask, StructureNotifyMask,
+ResizeRedirectMask, SubstructureNotifyMask, SubstructureRedirectMask,
+FocusChangeMask, PropertyChangeMask, ColormapChangeMask, OwnerGrabButtonMask
+
+=item urxvt::KeyPress, KeyRelease, ButtonPress, ButtonRelease, MotionNotify,
+EnterNotify, LeaveNotify, FocusIn, FocusOut, KeymapNotify, Expose,
+GraphicsExpose, NoExpose, VisibilityNotify, CreateNotify, DestroyNotify,
+UnmapNotify, MapNotify, MapRequest, ReparentNotify, ConfigureNotify,
+ConfigureRequest, GravityNotify, ResizeRequest, CirculateNotify,
+CirculateRequest, PropertyNotify, SelectionClear, SelectionRequest,
+SelectionNotify, ColormapNotify, ClientMessage, MappingNotify
+
+Various constants for use in X calls and event processing.
 
 =back
 
@@ -275,35 +552,26 @@ the bitset.
 
 Return the foreground/background colour index, respectively.
 
-=item $rend = urxvt::SET_FGCOLOR ($rend, $new_colour)
+=item $rend = urxvt::SET_FGCOLOR $rend, $new_colour
 
-=item $rend = urxvt::SET_BGCOLOR ($rend, $new_colour)
+=item $rend = urxvt::SET_BGCOLOR $rend, $new_colour
 
 Replace the foreground/background colour in the rendition mask with the
 specified one.
 
-=item $value = urxvt::GET_CUSTOM ($rend)
+=item $value = urxvt::GET_CUSTOM $rend
 
 Return the "custom" value: Every rendition has 5 bits for use by
 extensions. They can be set and changed as you like and are initially
 zero.
 
-=item $rend = urxvt::SET_CUSTOM ($rend, $new_value)
+=item $rend = urxvt::SET_CUSTOM $rend, $new_value
 
 Change the custom value.
 
 =back
 
 =cut
-
-package urxvt;
-
-use strict;
-use Scalar::Util ();
-
-our $TERM;
-our @HOOKNAME;
-our $LIBDIR;
 
 BEGIN {
    urxvt->bootstrap;
@@ -315,9 +583,14 @@ BEGIN {
          unless $msg =~ /\n$/;
       urxvt::warn ($msg);
    };
+
+   # %ENV is the original startup environment
+   delete $ENV{IFS};
+   delete $ENV{CDPATH};
+   delete $ENV{BASH_ENV};
+   $ENV{PATH} = "/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/bin:/opt/sbin";
 }
 
-my @hook_count;
 my $verbosity = $ENV{URXVT_PERL_VERBOSITY};
 
 sub verbose {
@@ -325,44 +598,30 @@ sub verbose {
    warn "$msg\n" if $level <= $verbosity;
 }
 
-# find on_xxx subs in the package and register them
-# as hooks
-sub register_package($) {
-   my ($pkg) = @_;
-
-   for my $htype (0.. $#HOOKNAME) {
-      my $name = $HOOKNAME[$htype];
-
-      my $ref = $pkg->can ("on_" . lc $name)
-         or next;
-
-      $TERM->{_hook}[$htype]{$pkg} = $ref;
-      $hook_count[$htype]++
-         or set_should_invoke $htype, 1;
-   }
-}
-
-my $script_pkg = "script0000";
-my %script_pkg;
+my $extension_pkg = "extension0000";
+my %extension_pkg;
 
 # load a single script into its own package, once only
-sub script_package($) {
+sub extension_package($) {
    my ($path) = @_;
 
-   $script_pkg{$path} ||= do {
-      my $pkg = "urxvt::" . ($script_pkg++);
+   $extension_pkg{$path} ||= do {
+      my $pkg = "urxvt::" . ($extension_pkg++);
 
-      verbose 3, "loading script '$path' into package '$pkg'";
+      verbose 3, "loading extension '$path' into package '$pkg'";
 
       open my $fh, "<:raw", $path
          or die "$path: $!";
 
-      my $source = "package $pkg; use strict; use utf8;\n"
-                   . "#line 1 \"$path\"\n{\n"
-                   . (do { local $/; <$fh> })
-                   . "\n};\n1";
+      my $source = untaint
+         "package $pkg; use strict; use utf8;\n"
+         . "use base urxvt::term::extension::;\n"
+         . "#line 1 \"$path\"\n{\n"
+         . (do { local $/; <$fh> })
+         . "\n};\n1";
 
-      eval $source or die "$path: $@";
+      eval $source
+         or die "$path: $@";
 
       $pkg
    }
@@ -377,16 +636,33 @@ sub invoke {
 
    if ($htype == 0) { # INIT
       my @dirs = ((split /:/, $TERM->resource ("perl_lib")), "$LIBDIR/perl");
+      
+      my %ext_arg;
 
-      for my $ext (map { split /:/, $TERM->resource ("perl_ext_$_") } 1, 2) {
+      for (map { split /,/, $TERM->resource ("perl_ext_$_") } 1, 2) {
+         if ($_ eq "default") {
+            $ext_arg{$_} ||= [] for qw(selection option-popup selection-popup searchable-scrollback);
+         } elsif (/^-(.*)$/) {
+            delete $ext_arg{$1};
+         } elsif (/^([^<]+)<(.*)>$/) {
+            push @{ $ext_arg{$1} }, $2;
+         } else {
+            $ext_arg{$_} ||= [];
+         }
+      }
+
+      while (my ($ext, $argv) = each %ext_arg) {
          my @files = grep -f $_, map "$_/$ext", @dirs;
 
          if (@files) {
-            register_package script_package $files[0];
+            $TERM->register_package (extension_package $files[0], $argv);
          } else {
             warn "perl extension '$ext' not found in perl library search path\n";
          }
       }
+
+      eval "#line 1 \"--perl-eval resource/argument\"\n" . $TERM->resource ("perl_eval");
+      warn $@ if $@;
    }
 
    $retval = undef;
@@ -398,26 +674,20 @@ sub invoke {
       keys %$cb;
 
       while (my ($pkg, $cb) = each %$cb) {
-         $retval = $cb->(
-            $TERM->{_pkg}{$pkg} ||= do {
-               my $proxy = bless { }, urxvt::term::proxy::;
-               Scalar::Util::weaken ($proxy->{term} = $TERM);
-               $proxy
-            },
-            @_,
-         ) and last;
-      }
-   }
+         $retval = eval { $cb->($TERM->{_pkg}{$pkg}, @_) }
+            and last;
 
-   if ($htype == 1) { # DESTROY
-      # remove hooks if unused
-      if (my $hook = $TERM->{_hook}) {
-         for my $htype (0..$#$hook) {
-            $hook_count[$htype] -= scalar keys %{ $hook->[$htype] || {} }
-               or set_should_invoke $htype, 0;
+         if ($@) {
+            $TERM->ungrab; # better to lose the grab than the session
+            warn $@;
          }
       }
 
+      verbose 11, "$HOOKNAME[$htype] returning <$retval>"
+         if $verbosity >= 11;
+   }
+
+   if ($htype == 1) { # DESTROY
       # clear package objects
       %$_ = () for values %{ $TERM->{_pkg} };
 
@@ -428,24 +698,219 @@ sub invoke {
    $retval
 }
 
-sub urxvt::term::proxy::AUTOLOAD {
-   $urxvt::term::proxy::AUTOLOAD =~ /:([^:]+)$/
-      or die "FATAL: \$AUTOLOAD '$urxvt::term::proxy::AUTOLOAD' unparsable";
+sub exec_async(@) {
+   my $pid = fork;
+
+   return
+      if !defined $pid or $pid;
+
+   %ENV = %{ $TERM->env };
+
+   exec @_;
+   _exit 255;
+}
+
+# urxvt::term::extension
+
+package urxvt::term::extension;
+
+sub enable {
+   my ($self, %hook) = @_;
+   my $pkg = $self->{_pkg};
+
+   while (my ($name, $cb) = each %hook) {
+      my $htype = $HOOKTYPE{uc $name};
+      defined $htype
+         or Carp::croak "unsupported hook type '$name'";
+
+      $self->set_should_invoke ($htype, +1)
+         unless exists $self->{term}{_hook}[$htype]{$pkg};
+
+      $self->{term}{_hook}[$htype]{$pkg} = $cb;
+   }
+}
+
+sub disable {
+   my ($self, @hook) = @_;
+   my $pkg = $self->{_pkg};
+
+   for my $name (@hook) {
+      my $htype = $HOOKTYPE{uc $name};
+      defined $htype
+         or Carp::croak "unsupported hook type '$name'";
+
+      $self->set_should_invoke ($htype, -1)
+         if delete $self->{term}{_hook}[$htype]{$pkg};
+   }
+}
+
+our $AUTOLOAD;
+
+sub AUTOLOAD {
+   $AUTOLOAD =~ /:([^:]+)$/
+      or die "FATAL: \$AUTOLOAD '$AUTOLOAD' unparsable";
 
    eval qq{
-      sub $urxvt::term::proxy::AUTOLOAD {
+      sub $AUTOLOAD {
          my \$proxy = shift;
          \$proxy->{term}->$1 (\@_)
       }
       1
    } or die "FATAL: unable to compile method forwarder: $@";
 
-   goto &$urxvt::term::proxy::AUTOLOAD;
+   goto &$AUTOLOAD;
 }
+
+sub DESTROY {
+   # nop
+}
+
+# urxvt::destroy_hook
+
+sub urxvt::destroy_hook::DESTROY {
+   ${$_[0]}->();
+}
+
+sub urxvt::destroy_hook(&) {
+   bless \shift, urxvt::destroy_hook::
+}
+
+package urxvt::anyevent;
+
+=head2 The C<urxvt::anyevent> Class
+
+The sole purpose of this class is to deliver an interface to the
+C<AnyEvent> module - any module using it will work inside urxvt without
+further programming. The only exception is that you cannot wait on
+condition variables, but non-blocking condvar use is ok. What this means
+is that you cannot use blocking APIs, but the non-blocking variant should
+work.
+
+=cut
+
+our $VERSION = 1;
+
+$INC{"urxvt/anyevent.pm"} = 1; # mark us as there
+push @AnyEvent::REGISTRY, [urxvt => urxvt::anyevent::];
+
+sub timer {
+   my ($class, %arg) = @_;
+
+   my $cb = $arg{cb};
+
+   urxvt::timer
+      ->new
+      ->start (urxvt::NOW + $arg{after})
+      ->cb (sub {
+        $_[0]->stop; # need to cancel manually
+        $cb->();
+      })
+}
+
+sub io {
+   my ($class, %arg) = @_;
+
+   my $cb = $arg{cb};
+
+   bless [$arg{fh}, urxvt::iow
+             ->new
+             ->fd (fileno $arg{fh})
+             ->events (($arg{poll} =~ /r/ ? 1 : 0)
+                     | ($arg{poll} =~ /w/ ? 2 : 0))
+             ->start
+             ->cb (sub {
+                $cb->(($_[1] & 1 ? 'r' : '')
+                    . ($_[1] & 2 ? 'w' : ''));
+             })],
+         urxvt::anyevent::
+}
+
+sub DESTROY {
+   $_[0][1]->stop;
+}
+
+sub condvar {
+   bless \my $flag, urxvt::anyevent::condvar::
+}
+
+sub urxvt::anyevent::condvar::broadcast {
+   ${$_[0]}++;
+}
+
+sub urxvt::anyevent::condvar::wait {
+   unless (${$_[0]}) {
+      Carp::croak "AnyEvent->condvar blocking wait unsupported in urxvt, use a non-blocking API";
+   }
+}
+
+package urxvt::term;
 
 =head2 The C<urxvt::term> Class
 
 =over 4
+
+=cut
+
+# find on_xxx subs in the package and register them
+# as hooks
+sub register_package {
+   my ($self, $pkg, $argv) = @_;
+
+   my $proxy = bless {
+      _pkg => $pkg,
+      argv => $argv,
+   }, $pkg;
+   Scalar::Util::weaken ($proxy->{term} = $self);
+
+   $self->{_pkg}{$pkg} = $proxy;
+
+   for my $name (@HOOKNAME) {
+      if (my $ref = $pkg->can ("on_" . lc $name)) {
+         $proxy->enable ($name => $ref);
+      }
+   }
+}
+
+=item $term = new urxvt::term $envhashref, $rxvtname, [arg...]
+
+Creates a new terminal, very similar as if you had started it with system
+C<$rxvtname, arg...>. C<$envhashref> must be a reference to a C<%ENV>-like
+hash which defines the environment of the new terminal.
+
+Croaks (and probably outputs an error message) if the new instance
+couldn't be created.  Returns C<undef> if the new instance didn't
+initialise perl, and the terminal object otherwise. The C<init> and
+C<start> hooks will be called during this call.
+
+=cut
+
+sub new {
+   my ($class, $env, @args) = @_;
+
+   _new ([ map "$_=$env->{$_}", keys %$env ], @args);
+}
+
+=item $term->destroy
+
+Destroy the terminal object (close the window, free resources
+etc.). Please note that @@RXVT_NAME@@ will not exit as long as any event
+watchers (timers, io watchers) are still active.
+
+=item $isset = $term->option ($optval[, $set])
+
+Returns true if the option specified by C<$optval> is enabled, and
+optionally change it. All option values are stored by name in the hash
+C<%urxvt::OPTION>. Options not enabled in this binary are not in the hash.
+
+Here is a a likely non-exhaustive list of option names, please see the
+source file F</src/optinc.h> to see the actual list:
+
+ borderLess console cursorBlink cursorUnderline hold iconic insecure
+ intensityStyles jumpScroll loginShell mapAlert meta8 mouseWheelScrollPage
+ pastableTabs pointerBlank reverseVideo scrollBar scrollBar_floating
+ scrollBar_right scrollTtyKeypress scrollTtyOutput scrollWithBuffer
+ secondaryScreen secondaryScroll skipBuiltinGlyphs transparent
+ tripleclickwords utmpInhibit visualBell
 
 =item $value = $term->resource ($name[, $newval])
 
@@ -465,8 +930,8 @@ Please note that resource strings will currently only be freed when the
 terminal is destroyed, so changing options frequently will eat memory.
 
 Here is a a likely non-exhaustive list of resource names, not all of which
-are supported in every build, please see the source to see the actual
-list:
+are supported in every build, please see the source file F</src/rsinc.h>
+to see the actual list:
 
   answerbackstring backgroundPixmap backspace_key boldFont boldItalicFont
   borderLess color cursorBlink cursorUnderline cutchars delete_key
@@ -483,16 +948,32 @@ list:
 
 =cut
 
-sub urxvt::term::resource($$;$) {
+sub resource($$;$) {
    my ($self, $name) = (shift, shift);
    unshift @_, $self, $name, ($name =~ s/\s*\+\s*(\d+)$// ? $1 : 0);
-   goto &urxvt::term::_resource;
+   &urxvt::term::_resource
 }
 
-=item $rend = $term->screen_rstyle ([$new_rstyle])
+=item $value = $term->x_resource ($pattern)
 
-Return and optionally change the current rendition. Text thta is output by
-the temrianl application will use this style.
+Returns the X-Resource for the given pattern, excluding the program or
+class name, i.e.  C<< $term->x_resource ("boldFont") >> should return the
+same value as used by this instance of rxvt-unicode. Returns C<undef> if no
+resource with that pattern exists.
+
+This method should only be called during the C<on_start> hook, as there is
+only one resource database per display, and later invocations might return
+the wrong resources.
+
+=item $success = $term->parse_keysym ($keysym_spec, $command_string)
+
+Adds a keymap translation exactly as specified via a resource. See the
+C<keysym> resource in the @@RXVT_NAME@@(1) manpage.
+
+=item $rend = $term->rstyle ([$new_rstyle])
+
+Return and optionally change the current rendition. Text that is output by
+the terminal application will use this style.
 
 =item ($row, $col) = $term->screen_cur ([$row, $col])
 
@@ -508,34 +989,40 @@ set it (which is usually bad as applications don't expect that).
 Return the current values of the selection mark, begin or end positions,
 and optionally set them to new values.
 
+=item $term->selection_make ($eventtime[, $rectangular])
+
+Tries to make a selection as set by C<selection_beg> and
+C<selection_end>. If C<$rectangular> is true (default: false), a
+rectangular selection will be made. This is the prefered function to make
+a selection.
+
 =item $success = $term->selection_grab ($eventtime)
 
-Try to request the primary selection from the server (for example, as set
-by the next method).
+Try to request the primary selection text from the server (for example, as
+set by the next method). No visual feedback will be given. This function
+is mostly useful from within C<on_sel_grab> hooks.
 
 =item $oldtext = $term->selection ([$newtext])
 
 Return the current selection text and optionally replace it by C<$newtext>.
 
-#=item $term->overlay ($x, $y, $text)
-#
-#Create a simple multi-line overlay box. See the next method for details.
-#
-#=cut
+=item $term->overlay_simple ($x, $y, $text)
 
-sub urxvt::term::scr_overlay {
-die;
+Create a simple multi-line overlay box. See the next method for details.
+
+=cut
+
+sub overlay_simple {
    my ($self, $x, $y, $text) = @_;
 
    my @lines = split /\n/, $text;
 
-   my $w = 0;
-   for (map $self->strwidth ($_), @lines) {
-      $w = $_ if $w < $_;
-   }
+   my $w = List::Util::max map $self->strwidth ($_), @lines;
 
-   $self->scr_overlay_new ($x, $y, $w, scalar @lines);
-   $self->scr_overlay_set (0, $_, $lines[$_]) for 0.. $#lines;
+   my $overlay = $self->overlay ($x, $y, $w, scalar @lines);
+   $overlay->set (0, $_, $lines[$_]) for 0.. $#lines;
+
+   $overlay
 }
 
 =item $term->overlay ($x, $y, $width, $height[, $rstyle[, $border]])
@@ -573,24 +1060,107 @@ If hidden, display the overlay again.
 
 =back
 
-=item $cellwidth = $term->strwidth $string
+=item $popup = $term->popup ($event)
+
+Creates a new C<urxvt::popup> object that implements a popup menu. The
+C<$event> I<must> be the event causing the menu to pop up (a button event,
+currently).
+
+=cut
+
+sub popup {
+   my ($self, $event) = @_;
+
+   $self->grab ($event->{time}, 1)
+      or return;
+
+   my $popup = bless {
+      term  => $self,
+      event => $event,
+   }, urxvt::popup::;
+
+   Scalar::Util::weaken $popup->{term};
+
+   $self->{_destroy}{$popup} = urxvt::destroy_hook { $popup->{popup}->destroy };
+   Scalar::Util::weaken $self->{_destroy}{$popup};
+
+   $popup
+}
+
+=item $cellwidth = $term->strwidth ($string)
 
 Returns the number of screen-cells this string would need. Correctly
 accounts for wide and combining characters.
 
-=item $octets = $term->locale_encode $string
+=item $octets = $term->locale_encode ($string)
 
 Convert the given text string into the corresponding locale encoding.
 
-=item $string = $term->locale_decode $octets
+=item $string = $term->locale_decode ($octets)
 
 Convert the given locale-encoded octets into a perl string.
+
+=item $term->scr_xor_span ($beg_row, $beg_col, $end_row, $end_col[, $rstyle])
+
+XORs the rendition values in the given span with the provided value
+(default: C<RS_RVid>), which I<MUST NOT> contain font styles. Useful in
+refresh hooks to provide effects similar to the selection.
+
+=item $term->scr_xor_rect ($beg_row, $beg_col, $end_row, $end_col[, $rstyle1[, $rstyle2]])
+
+Similar to C<scr_xor_span>, but xors a rectangle instead. Trailing
+whitespace will additionally be xored with the C<$rstyle2>, which defaults
+to C<RS_RVid | RS_Uline>, which removes reverse video again and underlines
+it instead. Both styles I<MUST NOT> contain font styles.
+
+=item $term->scr_bell
+
+Ring the bell!
+
+=item $term->scr_add_lines ($string)
+
+Write the given text string to the screen, as if output by the application
+running inside the terminal. It may not contain command sequences (escape
+codes), but is free to use line feeds, carriage returns and tabs. The
+string is a normal text string, not in locale-dependent encoding.
+
+Normally its not a good idea to use this function, as programs might be
+confused by changes in cursor position or scrolling. Its useful inside a
+C<on_add_lines> hook, though.
+
+=item $term->cmd_parse ($octets)
+
+Similar to C<scr_add_lines>, but the argument must be in the
+locale-specific encoding of the terminal and can contain command sequences
+(escape codes) that will be interpreted.
 
 =item $term->tt_write ($octets)
 
 Write the octets given in C<$data> to the tty (i.e. as program input). To
 pass characters instead of octets, you should convert your strings first
 to the locale-specific encoding using C<< $term->locale_encode >>.
+
+=item $old_events = $term->pty_ev_events ([$new_events])
+
+Replaces the event mask of the pty watcher by the given event mask. Can
+be used to suppress input and output handling to the pty/tty. See the
+description of C<< urxvt::timer->events >>. Make sure to always restore
+the previous value.
+
+=item $windowid = $term->parent
+
+Return the window id of the toplevel window.
+
+=item $windowid = $term->vt
+
+Return the window id of the terminal window.
+
+=item $term->vt_emask_add ($x_event_mask)
+
+Adds the specified events to the vt event mask. Useful e.g. when you want
+to receive pointer events all the times:
+
+   $term->vt_emask_add (urxvt::PointerMotionMask);
 
 =item $window_width = $term->width
 
@@ -617,6 +1187,38 @@ to the locale-specific encoding using C<< $term->locale_encode >>.
 =item $lines_in_scrollback = $term->nsaved
 
 Return various integers describing terminal characteristics.
+
+=item $x_display = $term->display_id
+
+Return the DISPLAY used by rxvt-unicode.
+
+=item $lc_ctype = $term->locale
+
+Returns the LC_CTYPE category string used by this rxvt-unicode.
+
+=item $env = $term->env
+
+Returns a copy of the environment in effect for the terminal as a hashref
+similar to C<\%ENV>.
+
+=cut
+
+sub env {
+   if (my $env = $_[0]->_env) {
+      +{ map /^([^=]+)(?:=(.*))?$/s && ($1 => $2), @$env }
+   } else {
+      +{ %ENV }
+   }
+}
+
+=item $modifiermask = $term->ModLevel3Mask
+
+=item $modifiermask = $term->ModMetaMask
+
+=item $modifiermask = $term->ModNumLockMask
+
+Return the modifier masks corresponding to the "ISO Level 3 Shift" (often
+AltGr), the meta key (often Alt) and the num lock key, if applicable.
 
 =item $view_start = $term->view_start ([$newvalue])
 
@@ -689,13 +1291,13 @@ following methods:
 
 =over 4
 
-=item $text = $line->t
+=item $text = $line->t ([$new_text])
 
-Returns the full text of the line, similar to C<ROW_t>
+Returns or replaces the full text of the line, similar to C<ROW_t>
 
-=item $rend = $line->r
+=item $rend = $line->r ([$new_rend])
 
-Returns the full rendition array of the line, similar to C<ROW_r>
+Returns or replaces the full rendition array of the line, similar to C<ROW_r>
 
 =item $length = $line->l
 
@@ -710,7 +1312,8 @@ Return the row number of the first/last row of the line, respectively.
 =item $offset = $line->offset_of ($row, $col)
 
 Returns the character offset of the given row|col pair within the logical
-line.
+line. Works for rows outside the line, too, and returns corresponding
+offsets outside the string.
 
 =item ($row, $col) = $line->coord_of ($offset)
 
@@ -720,7 +1323,7 @@ Translates a string offset into terminal coordinates again.
 
 =cut
 
-sub urxvt::term::line {
+sub line {
    my ($self, $row) = @_;
 
    my $maxrow = $self->nrow - 1;
@@ -734,6 +1337,7 @@ sub urxvt::term::line {
       term => $self,
       beg  => $beg,
       end  => $end,
+      ncol => $self->ncol,
       len  => ($end - $beg) * $self->ncol + $self->ROW_l ($end),
    }, urxvt::line::
 }
@@ -741,18 +1345,35 @@ sub urxvt::term::line {
 sub urxvt::line::t {
    my ($self) = @_;
 
-   substr +(join "", map $self->{term}->ROW_t ($_), $self->{beg} .. $self->{end}),
-          0, $self->{len}
+   if (@_ > 1)
+     {
+       $self->{term}->ROW_t ($_, $_[1], 0, ($_ - $self->{beg}) * $self->{ncol}, $self->{ncol})
+          for $self->{beg} .. $self->{end};
+     }
+
+   defined wantarray &&
+      substr +(join "", map $self->{term}->ROW_t ($_), $self->{beg} .. $self->{end}),
+             0, $self->{len}
 }
 
 sub urxvt::line::r {
    my ($self) = @_;
 
-   my $rend = [
-      map @{ $self->{term}->ROW_r ($_) }, $self->{beg} .. $self->{end}
-   ];
-   $#$rend = $self->{len} - 1;
-   $rend
+   if (@_ > 1)
+     {
+       $self->{term}->ROW_r ($_, $_[1], 0, ($_ - $self->{beg}) * $self->{ncol}, $self->{ncol})
+          for $self->{beg} .. $self->{end};
+     }
+
+   if (defined wantarray) {
+      my $rend = [
+         map @{ $self->{term}->ROW_r ($_) }, $self->{beg} .. $self->{end}
+      ];
+      $#$rend = $self->{len} - 1;
+      return $rend;
+   }
+
+   ()
 }
 
 sub urxvt::line::beg { $_[0]{beg} }
@@ -762,7 +1383,7 @@ sub urxvt::line::l   { $_[0]{len} }
 sub urxvt::line::offset_of {
    my ($self, $row, $col) = @_;
 
-   ($row - $self->{beg}) * $self->{term}->ncol + $col
+   ($row - $self->{beg}) * $self->{ncol} + $col
 }
 
 sub urxvt::line::coord_of {
@@ -771,12 +1392,11 @@ sub urxvt::line::coord_of {
    use integer;
 
    (
-      $offset / $self->{term}->ncol + $self->{beg},
-      $offset % $self->{term}->ncol
+      $offset / $self->{ncol} + $self->{beg},
+      $offset % $self->{ncol}
    )
 }
 
-=item ($row, $col) = $line->coord_of ($offset)
 =item $text = $term->special_encode $string
 
 Converts a perl string into the special encoding used by rxvt-unicode,
@@ -787,6 +1407,159 @@ C<< $term->ROW_t >> for details.
 
 Converts rxvt-unicodes text reprsentation into a perl string. See
 C<< $term->ROW_t >> for details.
+
+=item $success = $term->grab_button ($button, $modifiermask)
+
+Registers a synchronous button grab. See the XGrabButton manpage.
+
+=item $success = $term->grab ($eventtime[, $sync])
+
+Calls XGrabPointer and XGrabKeyboard in asynchronous (default) or
+synchronous (C<$sync> is true). Also remembers the grab timestampe.
+
+=item $term->allow_events_async
+
+Calls XAllowEvents with AsyncBoth for the most recent grab.
+
+=item $term->allow_events_sync
+
+Calls XAllowEvents with SyncBoth for the most recent grab.
+
+=item $term->allow_events_replay
+
+Calls XAllowEvents with both ReplayPointer and ReplayKeyboard for the most
+recent grab.
+
+=item $term->ungrab
+
+Calls XUngrab for the most recent grab. Is called automatically on
+evaluation errors, as it is better to lose the grab in the error case as
+the session.
+
+=back
+
+=cut
+
+package urxvt::popup;
+
+=head2 The C<urxvt::popup> Class
+
+=over 4
+
+=cut
+
+sub add_item {
+   my ($self, $item) = @_;
+
+   $item->{rend}{normal} = "\x1b[0;30;47m" unless exists $item->{rend}{normal};
+   $item->{rend}{hover}  = "\x1b[0;30;46m" unless exists $item->{rend}{hover};
+   $item->{rend}{active} = "\x1b[m"        unless exists $item->{rend}{active};
+
+   $item->{render} ||= sub { $_[0]{text} };
+
+   push @{ $self->{item} }, $item;
+}
+
+=item $popup->add_title ($title)
+
+Adds a non-clickable title to the popup.
+
+=cut
+
+sub add_title {
+   my ($self, $title) = @_;
+
+   $self->add_item ({
+      rend => { normal => "\x1b[38;5;11;44m", hover => "\x1b[38;5;11;44m", active => "\x1b[38;5;11;44m" },
+      text => $title,
+      activate => sub { },
+   });
+}
+
+=item $popup->add_separator ([$sepchr])
+
+Creates a separator, optionally using the character given as C<$sepchr>.
+
+=cut
+
+sub add_separator {
+   my ($self, $sep) = @_;
+
+   $sep ||= "=";
+
+   $self->add_item ({
+      rend => { normal => "\x1b[0;30;47m", hover => "\x1b[0;30;47m", active => "\x1b[0;30;47m" },
+      text => "",
+      render => sub { $sep x $self->{term}->ncol },
+      activate => sub { },
+   });
+}
+
+=item $popup->add_button ($text, $cb)
+
+Adds a clickable button to the popup. C<$cb> is called whenever it is
+selected.
+
+=cut
+
+sub add_button {
+   my ($self, $text, $cb) = @_;
+
+   $self->add_item ({ type => "button", text => $text, activate => $cb});
+}
+
+=item $popup->add_toggle ($text, $cb, $initial_value)
+
+Adds a toggle/checkbox item to the popup. Teh callback gets called
+whenever it gets toggled, with a boolean indicating its value as its first
+argument.
+
+=cut
+
+sub add_toggle {
+   my ($self, $text, $cb, $value) = @_;
+
+   my $item; $item = {
+      type => "button",
+      text => "  $text",
+      value => $value,
+      render => sub { ($_[0]{value} ? "* " : "  ") . $text },
+      activate => sub { $cb->($_[1]{value} = !$_[1]{value}); },
+   };
+
+   $self->add_item ($item);
+}
+
+=item $popup->show
+
+Displays the popup (which is initially hidden).
+
+=cut
+
+sub show {
+   my ($self) = @_;
+
+   local $urxvt::popup::self = $self;
+
+   my $env = $self->{term}->env;
+   # we can't hope to reproduce the locale algorithm, so nuke LC_ALL and set LC_CTYPE.
+   delete $env->{LC_ALL};
+   $env->{LC_CTYPE} = $self->{term}->locale;
+
+   urxvt::term->new ($env, $self->{term}->resource ("name"),
+                     "--perl-lib" => "", "--perl-ext-common" => "", "-pty-fd" => -1, "-sl" => 0, "-b" => 0,
+                     "--transient-for" => $self->{term}->parent,
+                     "-display" => $self->{term}->display_id,
+                     "-pe" => "urxvt-popup")
+      or die "unable to create popup window\n";
+}
+
+sub DESTROY {
+   my ($self) = @_;
+
+   delete $self->{term}{_destroy}{$self};
+   $self->{term}->ungrab;
+}
 
 =back
 
@@ -851,7 +1624,7 @@ This class implements io watchers/events. Example:
   $term->{iow} = urxvt::iow
                  ->new
                  ->fd (fileno $term->{socket})
-                 ->events (1) # wait for read data
+                 ->events (urxvt::EVENT_READ)
                  ->start
                  ->cb (sub {
                    my ($iow, $revents) = @_;
@@ -878,8 +1651,9 @@ Set the filedescriptor (not handle) to watch.
 
 =item $iow = $iow->events ($eventmask)
 
-Set the event mask to watch. Bit #0 (value C<1>) enables watching for read
-data, Bit #1 (value C<2>) enables watching for write data.
+Set the event mask to watch. The only allowed values are
+C<urxvt::EVENT_READ> and C<urxvt::EVENT_WRITE>, which might be ORed
+together, or C<urxvt::EVENT_NONE>.
 
 =item $iow = $iow->start
 
@@ -900,11 +1674,13 @@ numbers indicate more verbose output.
 
 =over 4
 
-=item =0 - only fatal messages
+=item == 0 - fatal messages
 
-=item =3 - script loading and management
+=item >= 3 - script loading and management
 
-=item =10 - all events received
+=item >=10 - all called hooks
+
+=item >=11 - hook reutrn values
 
 =back
 

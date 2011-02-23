@@ -11,7 +11,7 @@
  *                              - extensive modifications
  * Copyright (c) 1999      D J Hawkey Jr <hawkeyd@visi.com>
  *                              - QNX support
- * Copyright (c) 2003-2004 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -341,6 +341,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   /*
    * Open display, get options/resources and create the window
    */
+
   if ((rs[Rs_display_name] = getenv ("DISPLAY")) == NULL)
     rs[Rs_display_name] = ":0";
 
@@ -350,6 +351,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     rxvt_fatal ("can't open display %s, aborting.\n", rs[Rs_display_name]);
 
   extract_resources ();
+
   free (r_argv);
 
   /*
@@ -393,7 +395,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 
   /* no point having a scrollbar without having any scrollback! */
   if (!saveLines)
-    CLR_OPTION (Opt_scrollBar);
+    set_option (Opt_scrollBar, 0);
 
 #ifdef PRINTPIPE
   if (!rs[Rs_print_pipe])
@@ -578,6 +580,8 @@ rxvt_term::init_env ()
 void
 rxvt_term::set_locale (const char *locale)
 {
+  set_environ (envv);
+
 #if HAVE_XSETLOCALE || HAVE_SETLOCALE
   free (this->locale);
   this->locale = setlocale (LC_CTYPE, locale);
@@ -586,13 +590,13 @@ rxvt_term::set_locale (const char *locale)
     {
       if (*locale)
         {
-          rxvt_warn ("unable to set locale \"%s\", using default locale instead.\n", locale);
-          setlocale (LC_CTYPE, "");
+          rxvt_warn ("unable to set locale \"%s\", using C locale instead.\n", locale);
+          setlocale (LC_CTYPE, "C");
         }
       else
         rxvt_warn ("default locale unavailable, check LC_* and LANG variables. Continuing.\n");
 
-      this->locale = "";
+      this->locale = "C";
     }
 
 
@@ -617,6 +621,8 @@ rxvt_term::set_locale (const char *locale)
 void
 rxvt_term::init_xlocale ()
 {
+  set_environ (envv);
+
 #ifdef USE_XIM
   if (!locale)
     rxvt_warn ("setting locale failed, working without locale support.\n");
@@ -918,7 +924,6 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   MWMHints mwmhints;
 #endif
   XGCValues gcvalue;
-  long vt_emask;
   XSetWindowAttributes attributes;
   XWindowAttributes gattr;
   Window top, parent;
@@ -1034,6 +1039,11 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   XSetWMProtocols (disp, top, protocols, sizeof (protocols) / sizeof (protocols[0]));
 
+#if ENABLE_FRILLS
+  if (rs[Rs_transient_for])
+    XSetTransientForHint (disp, top, (Window)strtol (rs[Rs_transient_for], 0, 0));
+#endif
+
 #if ENABLE_EWMH
   long pid = getpid ();
 
@@ -1086,14 +1096,13 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   vt_emask = ExposureMask | ButtonPressMask | ButtonReleaseMask | PropertyChangeMask;
 
-#ifdef POINTER_BLANK
   if (OPTION (Opt_pointerBlank))
     vt_emask |= PointerMotionMask;
   else
-#endif
     vt_emask |= Button1MotionMask | Button3MotionMask;
 
-  XSelectInput (disp, vt, vt_emask);
+  vt_select_input ();
+
   vt_ev.start (display, vt);
 
 #if defined(MENUBAR) && (MENUBAR_MAX > 1)
@@ -1404,11 +1413,14 @@ rxvt_term::run_command (const char *const *argv)
     {
       pty.pty = atoi (rs[Rs_pty_fd]);
 
-      if (getfd_hook)
-        pty.pty = (*getfd_hook) (pty.pty);
+      if (pty.pty >= 0)
+        {
+          if (getfd_hook)
+            pty.pty = (*getfd_hook) (pty.pty);
 
-      if (pty.pty < 0 || fcntl (pty.pty, F_SETFL, O_NONBLOCK))
-        rxvt_fatal ("unusable pty-fd filehandle, aborting.\n");
+          if (pty.pty < 0 || fcntl (pty.pty, F_SETFL, O_NONBLOCK))
+            rxvt_fatal ("unusable pty-fd filehandle, aborting.\n");
+        }
     }
   else
 #endif
@@ -1572,7 +1584,7 @@ rxvt_term::run_child (const char *const *argv)
     }
   else
     {
-      const char     *argv0, *shell;
+      const char *argv0, *shell;
 
       if ((shell = getenv ("SHELL")) == NULL || *shell == '\0')
         shell = "/bin/sh";
@@ -1587,6 +1599,7 @@ rxvt_term::run_child (const char *const *argv)
           strcpy (&login[1], argv0);
           argv0 = login;
         }
+
       execlp (shell, argv0, NULL);
       /* no error message: STDERR is closed! */
     }

@@ -1,7 +1,7 @@
 /*--------------------------------*-C-*---------------------------------*
  * File:	rxvtfont.C
  *----------------------------------------------------------------------*
- * Copyright (c) 2003-2004 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
  *				- original version.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -310,7 +310,7 @@ struct rxvt_font_default : rxvt_font {
       return true;
 
     if (unicode >= 0x2500 && unicode <= 0x259f &&
-        ! OPTION_R (Opt_skipBuiltinGlyphs))
+        !r->option (Opt_skipBuiltinGlyphs))
       return true;
 
     if (IS_COMPOSE (unicode))
@@ -356,8 +356,7 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
       int width = text - tp;
       int fwidth = r->fwidth * width;
 
-      if (0x2500 <= t && t <= 0x259f &&
-          ! OPTION_R (Opt_skipBuiltinGlyphs))
+      if (0x2500 <= t && t <= 0x259f)
         {
           uint16_t offs = linedraw_offs[t - 0x2500];
           uint32_t *a = linedraw_command + (offs >> 4);
@@ -1272,14 +1271,15 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
                      const text_t *text, int len,
                      int fg, int bg)
 {
+  XGlyphInfo extents;
+  XftGlyphSpec *enc = (XftGlyphSpec *)get_enc_buf (len * sizeof (XftGlyphSpec));
+  XftGlyphSpec *ep = enc;
+
   clear_rect (d, x, y, r->fwidth * len, r->fheight, bg);
 
-  int base = ascent; // should be fbase, but that is incorrect
-
-  XGlyphInfo extents;
-  FcChar32 *enc = (FcChar32 *) get_enc_buf (len * sizeof (FcChar32));
-  FcChar32 *ep = enc;
-  int ewidth = 0;
+  // cut trailing spaces
+  while (len && text [len - 1] == ' ')
+    len--;
 
   while (len)
     {
@@ -1289,44 +1289,22 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
       while (len && *text == NOCHAR)
         text++, len--, cwidth += r->fwidth;
       
-      if (fc == ' ' && ep == enc) // skip leading spaces
-        x += cwidth;
-      else
+      if (fc != ' ') // skip spaces
         {
-          FT_UInt gl = XftCharIndex (d.display->display, f, fc);
-          XftGlyphExtents (d.display->display, f, &gl, 1, &extents);
+          FT_UInt glyph = XftCharIndex (d.display->display, f, fc);
+          XftGlyphExtents (d.display->display, f, &glyph, 1, &extents);
 
-          if (extents.xOff != cwidth)
-            {
-              if (ewidth)
-                {
-                  XftDrawGlyphs (d, &r->pix_colors[fg].c, f,
-                                 x, y + base, enc, ep - enc);
-                  x += ewidth;
-
-                  ep = enc;
-                  ewidth = 0;
-                }
-
-              if (extents.xOff > cwidth)
-                extents.xOff = cwidth;
-
-              XftDrawGlyphs (d, &r->pix_colors[fg].c, f,
-                             x + (cwidth - extents.xOff >> 1),
-                             y + base, &gl, 1);
-              x += cwidth;
-            }
-          else
-            {
-              *ep++ = gl;
-              ewidth += cwidth;
-            }
+          ep->glyph = glyph;
+          ep->x = x + (cwidth - extents.xOff >> 1);
+          ep->y = y + ascent;
+          ep++;
         }
+
+      x += cwidth;
     }
 
   if (ep != enc)
-    XftDrawGlyphs (d, &r->pix_colors[fg].c, f,
-                   x, y + base, enc, ep - enc);
+    XftDrawGlyphSpec (d, &r->pix_colors[fg].c, f, enc, ep - enc);
 }
 #endif
 

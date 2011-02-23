@@ -27,7 +27,7 @@
  * Copyright (c) 2001      Marius Gedminas
  *				- Ctrl/Mod4+Tab works like Meta+Tab (options)
  * Copyright (c) 2003      Rob McMullen <robm@flipturn.org>
- * Copyright (c) 2003-2005 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -869,6 +869,9 @@ rxvt_term::lookup_key (XKeyEvent &ev)
         }
     }
 
+  if (HOOK_INVOKE ((this, HOOK_KEY_PRESS, DT_XEVENT, &ev, DT_INT, keysym, DT_STR_LEN, kbuf, len, DT_END)))
+    return;
+
   if (len <= 0)
     return;			/* not mapped */
 
@@ -969,6 +972,44 @@ rxvt_term::flush ()
 
   if (want_refresh)
     {
+      if (SHOULD_INVOKE (HOOK_LINE_UPDATE))
+        {
+          int row = -view_start;
+          int end_row = row + nrow;
+
+          while (row > -nsaved && ROW (row - 1).is_longer ())
+            --row;
+
+          do
+            {
+              int start_row = row;
+              line_t *l;
+
+              do
+                {
+                  l = &ROW (row++);
+
+                  if (!(l->f & LINE_FILTERED))
+                    {
+                      // line not filtered, mark it as filtered
+                      l->f |= LINE_FILTERED;
+                      while (l->is_longer ())
+                        {
+                          l = &ROW (row++);
+                          l->f |= LINE_FILTERED;
+                        }
+
+                      // and filter it
+                      HOOK_INVOKE ((this, HOOK_LINE_UPDATE, DT_INT, start_row, DT_END));
+
+                      break;
+                    }
+                }
+              while (l->is_longer () && row < end_row);
+            }
+          while (row < end_row);
+        }
+
       scr_refresh (refresh_type);
       scrollbar_show (1);
 #ifdef USE_XIM
@@ -1165,7 +1206,7 @@ rxvt_term::pointer_unblank ()
 void
 rxvt_term::pointer_blank ()
 {
-  if (! OPTION (Opt_pointerBlank))
+  if (!OPTION (Opt_pointerBlank))
     return;
 
   XDefineCursor (display->display, vt, display->blank_cursor);
@@ -1272,33 +1313,11 @@ rxvt_term::x_cb (XEvent &ev)
   SET_R (this);
   SET_LOCALE (locale);
 
-#if defined(CURSOR_BLINK)
-  if (OPTION (Opt_cursorBlink) && ev.type == KeyPress)
-    {
-      if (hidden_cursor)
-        {
-          hidden_cursor = 0;
-          want_refresh = 1;
-        }
+  if (ev.xany.window == vt
+      && HOOK_INVOKE ((this, HOOK_X_EVENT, DT_XEVENT, &ev, DT_END)))
+    return;
 
-      cursor_blink_ev.start (NOW + BLINK_INTERVAL);
-    }
-#endif
-
-#if defined(POINTER_BLANK)
-  if (OPTION (Opt_pointerBlank) && pointerBlankDelay > 0)
-    {
-      if (ev.type == MotionNotify
-          || ev.type == ButtonPress
-          || ev.type == ButtonRelease)
-        if (hidden_pointer)
-          pointer_unblank ();
-
-      if (ev.type == KeyPress && hidden_pointer == 0)
-        pointer_blank ();
-    }
-#endif
-
+  // for XQueryPointer
   Window unused_root, unused_child;
   int unused_root_x, unused_root_y;
   unsigned int unused_mask;
@@ -1315,10 +1334,10 @@ rxvt_term::x_cb (XEvent &ev)
 
       case KeyRelease:
         {
-#if (MOUSE_WHEEL && MOUSE_SLIP_WHEELING) || ISO_14755
-          KeySym ks;
+#if (MOUSE_WHEEL && MOUSE_SLIP_WHEELING) || ISO_14755 || ENABLE_PERL
+          KeySym keysym;
 
-          ks = XLookupKeysym (&ev.xkey, ev.xkey.state & ShiftMask ? 1 : 0); // sorry, only shift supported :/
+          keysym = XLookupKeysym (&ev.xkey, ev.xkey.state & ShiftMask ? 1 : 0); // sorry, only shift supported :/
 #endif
 
 #if ENABLE_FRILLS || ISO_14755
@@ -1333,20 +1352,20 @@ rxvt_term::x_cb (XEvent &ev)
                 // iso14755 part 5.2 handling: release time
                 // first: controls
                 if ((ev.xkey.state & ControlMask)
-                     && ((ks >= 0x40 && ks <= 0x5f)
-                         || (ks >= 0x61 && ks <= 0x7f)))
+                     && ((keysym >= 0x40 && keysym <= 0x5f)
+                         || (keysym >= 0x61 && keysym <= 0x7f)))
                   {
-                    iso14755buf = ISO_14755_51 | 0x2400 | (ks & 0x1f);
+                    iso14755buf = ISO_14755_51 | 0x2400 | (keysym & 0x1f);
                     commit_iso14755 ();
-                    return; // case-break;
+                    goto skip_switch;
                   }
 
                 for (unsigned short *i = iso14755_symtab; i[0]; i+= 2)
-                  if (i[0] == ks)
+                  if (i[0] == keysym)
                     {
                       iso14755buf = ISO_14755_51 | i[1];
                       commit_iso14755 ();
-                      return; // case-break;
+                      goto skip_switch;
                     }
 
                 scr_bell ();
@@ -1375,10 +1394,14 @@ rxvt_term::x_cb (XEvent &ev)
               }
 #endif
 
+          if (ev.xany.window == vt
+              && HOOK_INVOKE ((this, HOOK_KEY_RELEASE, DT_XEVENT, &ev, DT_INT, keysym, DT_END)))
+            break;
+
 #if defined(MOUSE_WHEEL) && defined(MOUSE_SLIP_WHEELING)
           if (!(ev.xkey.state & ControlMask))
             slip_wheel_ev.stop ();
-          else if (ks == XK_Control_L || ks == XK_Control_R)
+          else if (keysym == XK_Control_L || keysym == XK_Control_R)
             mouse_slip_wheel_speed = 0;
 #endif
           break;
@@ -1518,18 +1541,20 @@ rxvt_term::x_cb (XEvent &ev)
         selection_send (ev.xselectionrequest);
         break;
 
-      case UnmapNotify:
-        mapped = 0;
-#ifdef TEXT_BLINK
-        text_blink_ev.stop ();
-#endif
-        break;
-
       case MapNotify:
         mapped = 1;
 #ifdef TEXT_BLINK
         text_blink_ev.start (NOW + TEXT_BLINK_INTERVAL);
 #endif
+        HOOK_INVOKE ((this, HOOK_MAP_NOTIFY, DT_XEVENT, &ev, DT_END));
+        break;
+
+      case UnmapNotify:
+        mapped = 0;
+#ifdef TEXT_BLINK
+        text_blink_ev.stop ();
+#endif
+        HOOK_INVOKE ((this, HOOK_UNMAP_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
 
 #ifdef TRANSPARENT
@@ -1553,7 +1578,7 @@ rxvt_term::x_cb (XEvent &ev)
               scr_expose (ev.xexpose.x, ev.xexpose.y,
                           ev.xexpose.width, ev.xexpose.height, False);
 
-            scr_refresh (refresh_type);
+            want_refresh = 1;
           }
         else
           {
@@ -1598,7 +1623,9 @@ rxvt_term::x_cb (XEvent &ev)
 
         if (ev.xany.window == vt)
           {
-            if (ev.xbutton.state & (Button1Mask | Button3Mask))
+            if (HOOK_INVOKE ((this, HOOK_MOTION_NOTIFY, DT_XEVENT, &ev, DT_END)))
+              ; // nop
+            else if (ev.xbutton.state & (Button1Mask | Button3Mask))
               {
                 while (XCheckTypedWindowEvent (disp, vt, MotionNotify, &ev))
                   ;
@@ -1688,12 +1715,41 @@ rxvt_term::x_cb (XEvent &ev)
                           &unused_mask);
             scr_move_to (scrollbar_position (ev.xbutton.y) - csrO,
                          scrollbar_size ());
-            scr_refresh (refresh_type);
+            want_refresh = 1;
             refresh_limit = 0;
             scrollbar_show (1);
           }
         break;
     }
+
+skip_switch: ;
+
+#if defined(CURSOR_BLINK)
+  if (OPTION (Opt_cursorBlink) && ev.type == KeyPress)
+    {
+      if (hidden_cursor)
+        {
+          hidden_cursor = 0;
+          want_refresh = 1;
+        }
+
+      cursor_blink_ev.start (NOW + BLINK_INTERVAL);
+    }
+#endif
+
+#if defined(POINTER_BLANK)
+  if (OPTION (Opt_pointerBlank) && pointerBlankDelay > 0)
+    {
+      if (ev.type == MotionNotify
+          || ev.type == ButtonPress
+          || ev.type == ButtonRelease)
+        if (hidden_pointer)
+          pointer_unblank ();
+
+      if (ev.type == KeyPress && hidden_pointer == 0)
+        pointer_blank ();
+    }
+#endif
 }
 
 void
@@ -1704,7 +1760,7 @@ rxvt_term::focus_in ()
       focus = 1;
       want_refresh = 1;
 
-      PERL_INVOKE ((this, HOOK_FOCUS_OUT, DT_END));
+      HOOK_INVOKE ((this, HOOK_FOCUS_OUT, DT_END));
 
 #if USE_XIM
       if (Input_Context != NULL)
@@ -1735,7 +1791,7 @@ rxvt_term::focus_out ()
       focus = 0;
       want_refresh = 1;
 
-      PERL_INVOKE ((this, HOOK_FOCUS_OUT, DT_END));
+      HOOK_INVOKE ((this, HOOK_FOCUS_OUT, DT_END));
 
 #if ENABLE_FRILLS || ISO_14755
       if (iso14755buf)
@@ -1828,6 +1884,7 @@ rxvt_term::button_press (XButtonEvent &ev)
             {
               /* same button, within alloted time */
               MEvent.clicks++;
+
               if (MEvent.clicks > 1)
                 {
                   /* only report double clicks */
@@ -1857,7 +1914,7 @@ rxvt_term::button_press (XButtonEvent &ev)
           if (ev.button != MEvent.button)
             MEvent.clicks = 0;
 
-          if (!PERL_INVOKE ((this, HOOK_MOUSE_CLICK, DT_XEVENT, &ev, DT_END)))
+          if (!HOOK_INVOKE ((this, HOOK_BUTTON_PRESS, DT_XEVENT, &ev, DT_END)))
             switch (ev.button)
               {
                 case Button1:
@@ -1870,7 +1927,7 @@ rxvt_term::button_press (XButtonEvent &ev)
 #endif
 
                   /* allow shift+left click to extend selection */
-                  if (ev.state & ShiftMask && ! (priv_modes & PrivMode_mouse_report))
+                  if (ev.state & ShiftMask && !(priv_modes & PrivMode_mouse_report))
                     {
                       if (MEvent.button == Button1 && clickintime)
                         selection_rotate (ev.x, ev.y);
@@ -2045,8 +2102,10 @@ rxvt_term::button_press (XButtonEvent &ev)
                   break;
               }
         }
+
       return;
     }
+
 #if MENUBAR
   /*
    * Menubar window processing of button press
@@ -2119,6 +2178,9 @@ rxvt_term::button_release (XButtonEvent &ev)
           && ev.button == Button1 && MEvent.clicks <= 1)
         selection_extend (ev.x, ev.y, 0);
 
+      if (HOOK_INVOKE ((this, HOOK_BUTTON_RELEASE, DT_XEVENT, &ev, DT_END)))
+        return;
+
       switch (ev.button)
         {
           case Button1:
@@ -2159,21 +2221,11 @@ rxvt_term::button_release (XButtonEvent &ev)
               else
                 {
 # endif
-# ifdef JUMP_MOUSE_WHEEL
                   scr_page (v, i);
-                  scr_refresh (SMOOTH_REFRESH);
                   scrollbar_show (1);
-# else
-                  while (i--)
-                    {
-                      scr_page (v, 1);
-                      scr_refresh (SMOOTH_REFRESH);
-                      scrollbar_show (1);
-                    }
-# endif
 # ifdef MOUSE_SLIP_WHEELING
                 }
-#endif
+# endif
             }
             break;
 #endif
@@ -2672,7 +2724,7 @@ bool
 rxvt_term::cmd_parse ()
 {
   bool flag = false;
-  unicode_t ch = NOCHAR;
+  wchar_t ch = NOCHAR;
   char *seq_begin; // remember start of esc-sequence here
 
   for (;;)
@@ -2681,10 +2733,10 @@ rxvt_term::cmd_parse ()
         {
           seq_begin = cmdbuf_ptr;
           ch = next_char ();
-        }
 
-      if (ch == NOCHAR) // TODO: improve
-        break;
+          if (ch == NOCHAR)
+            break;
+        }
 
       if (!IS_CONTROL (ch) || ch == C0_LF || ch == C0_CR || ch == C0_HT)
         {
@@ -2703,11 +2755,11 @@ rxvt_term::cmd_parse ()
             }
 
           /* Read a text string from the input buffer */
-          unicode_t buf[UBUFSIZ];
+          wchar_t buf[UBUFSIZ];
           bool refreshnow = false;
           int nlines = 0;
-          unicode_t *str = buf;
-          unicode_t *eol = str + min (ncol, UBUFSIZ);
+          wchar_t *str = buf;
+          wchar_t *eol = str + min (ncol, UBUFSIZ);
 
           for (;;)
             {
@@ -2735,7 +2787,9 @@ rxvt_term::cmd_parse ()
                   // scr_add_lines only works for nlines <= nrow - 1.
                   if (nlines >= nrow - 1)
                     {
-                      scr_add_lines (buf, nlines, str - buf);
+                      if (!HOOK_INVOKE ((this, HOOK_ADD_LINES, DT_WCS_LEN, buf, str - buf, DT_END)))
+                        scr_add_lines (buf, str - buf, nlines);
+
                       nlines = 0;
                       str = buf;
                       eol = str + min (ncol, UBUFSIZ);
@@ -2758,7 +2812,8 @@ rxvt_term::cmd_parse ()
               ch = next_char ();
             }
 
-          scr_add_lines (buf, nlines, str - buf);
+          if (!HOOK_INVOKE ((this, HOOK_ADD_LINES, DT_WCS_LEN, buf, str - buf, DT_END)))
+            scr_add_lines (buf, str - buf, nlines);
 
           /*
            * If there have been a lot of new lines, then update the screen
@@ -2774,7 +2829,7 @@ rxvt_term::cmd_parse ()
                 {
                   flag = true;
                   scr_refresh (refresh_type);
-                  flush_ev.stop ();
+                  want_refresh = 1;
                 }
             }
 
@@ -2799,17 +2854,8 @@ rxvt_term::cmd_parse ()
   return flag;
 }
 
-// read the next octet
-unicode_t
-rxvt_term::next_octet ()
-{
-  return cmdbuf_ptr < cmdbuf_endp
-         ? *cmdbuf_ptr++
-         : NOCHAR;
-}
-
 // read the next character
-unicode_t
+wchar_t
 rxvt_term::next_char ()
 {
   while (cmdbuf_ptr < cmdbuf_endp)
@@ -2829,7 +2875,7 @@ rxvt_term::next_char ()
         }
 
       if (len == (size_t)-1)
-        return *cmdbuf_ptr++; // the _occasional_ latin1 character is allowed to slip through
+        return (unsigned char)*cmdbuf_ptr++; // the _occasional_ latin1 character is allowed to slip through
 
       // assume wchar == unicode
       cmdbuf_ptr += len;
@@ -2839,15 +2885,24 @@ rxvt_term::next_char ()
   return NOCHAR;
 }
 
+// read the next octet
+uint32_t
+rxvt_term::next_octet ()
+{
+  return cmdbuf_ptr < cmdbuf_endp
+         ? (unsigned char)*cmdbuf_ptr++
+         : NOCHAR;
+}
+
 /* rxvt_cmd_getc () - Return next input character */
 /*
  * Return the next input character after first passing any keyboard input
  * to the command.
  */
-unicode_t
+wchar_t
 rxvt_term::cmd_getc ()
 {
-  unicode_t c = next_char ();
+  wchar_t c = next_char ();
 
   if (c == NOCHAR)
     throw out_of_input;
@@ -2855,10 +2910,10 @@ rxvt_term::cmd_getc ()
   return c;
 }
 
-unicode_t
+uint32_t
 rxvt_term::cmd_get8 ()
 {
-  unicode_t c = next_octet ();
+  uint32_t c = next_octet ();
 
   if (c == NOCHAR)
     throw out_of_input;
@@ -3135,8 +3190,8 @@ rxvt_term::process_escape_seq ()
         /* 8.3.87: NEXT LINE */
       case C1_NEL:		/* ESC E */
         {
-          unicode_t nlcr[] = { C0_LF, C0_CR };
-          scr_add_lines (nlcr, 1, 2);
+          wchar_t nlcr[] = { C0_LF, C0_CR };
+          scr_add_lines (nlcr, sizeof (nlcr) / sizeof (nlcr [0]), 1);
         }
         break;
 
@@ -3810,9 +3865,9 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
               break;
 
             *name++ = '\0';
-            color = atoi (buf);
+            color = atoi (buf) + minCOLOR;
 
-            if (color < 0 || color >= TOTAL_COLORS)
+            if (!IN_RANGE_INC (color, minCOLOR, maxTermCOLOR))
               break;
 
             if ((buf = strchr (name, ';')) != NULL)
@@ -3821,18 +3876,18 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
             if (name[0] == '?' && !name[1])
               {
                 unsigned short r, g, b;
-                pix_colors_focused[color + minCOLOR].get (display, r, g, b);
+                pix_colors_focused[color].get (display, r, g, b);
                 tt_printf ("\033]%d;%d;rgb:%04x/%04x/%04x%c", XTerm_Color, color, r, g, b, resp);
               }
             else
-              set_window_color (color + minCOLOR, name);
+              set_window_color (color, name);
           }
         break;
       case XTerm_Color00:
         process_color_seq (XTerm_Color00, Color_fg, str, resp);
         break;
       case XTerm_Color01:
-        process_color_seq (XTerm_Color00, Color_bg, str, resp);
+        process_color_seq (XTerm_Color01, Color_bg, str, resp);
         break;
 #ifndef NO_CURSORCOLOR
       case XTerm_Color_cursor:
@@ -3846,14 +3901,16 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
         process_color_seq (XTerm_Color_pointer_bg, Color_pointer_bg, str, resp);
         break;
 #ifndef NO_BOLD_UNDERLINE_REVERSE
-      case XTerm_Color_BD:
-        process_color_seq (XTerm_Color_BD, Color_BD, str, resp);
-        break;
-      case XTerm_Color_UL:
-        process_color_seq (XTerm_Color_UL, Color_UL, str, resp);
-        break;
       case XTerm_Color_RV:
         process_color_seq (XTerm_Color_RV, Color_RV, str, resp);
+        break;
+      case Rxvt_Color_BD:
+      case URxvt_Color_BD:
+        process_color_seq (op, Color_BD, str, resp);
+        break;
+      case Rxvt_Color_UL:
+      case URxvt_Color_UL:
+        process_color_seq (op, Color_UL, str, resp);
         break;
       case URxvt_Color_IT:
         process_color_seq (URxvt_Color_IT, Color_IT, str, resp);
@@ -3868,15 +3925,16 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
         break;
 #endif
 
-      case XTerm_Pixmap:
+      case Rxvt_Pixmap:
         if (*str != ';')
           {
 #if XPM_BACKGROUND
             scale_pixmap ("");	/* reset to default scaling */
             set_bgPixmap (str);	/* change pixmap */
-#endif
             scr_touch (true);
+#endif
           }
+
         while ((str = strchr (str, ';')) != NULL)
           {
             str++;
@@ -3889,15 +3947,15 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
           {
 #ifdef XPM_BACKGROUND
             resize_pixmap ();
-#endif
             scr_touch (true);
+#endif
           }
         break;
 
-      case XTerm_restoreFG:
+      case Rxvt_restoreFG:
         set_window_color (Color_fg, str);
         break;
-      case XTerm_restoreBG:
+      case Rxvt_restoreBG:
         set_window_color (Color_bg, str);
         break;
 
@@ -3912,7 +3970,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
        break;
 #endif
 #if 0
-      case XTerm_dumpscreen:	/* no error notices */
+      case Rxvt_dumpscreen:	/* no error notices */
         {
           int fd;
           if ((fd = open (str, O_RDWR | O_CREAT | O_EXCL, 0600)) >= 0)
@@ -3974,7 +4032,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
 
 #if ENABLE_PERL
       case URxvt_perl:
-        if (PERL_INVOKE ((this, HOOK_OSC_SEQ, DT_STRING, str, DT_END)))
+        if (HOOK_INVOKE ((this, HOOK_OSC_SEQ, DT_STR, str, DT_END)))
           ; // no responses yet
         break;
 #endif
@@ -4096,10 +4154,7 @@ rxvt_term::process_terminal_mode (int mode, int priv __attribute__ ((unused)), u
         {
 #if ENABLE_STYLES
           case 1021:
-            if (mode)
-              SET_OPTION (Opt_intensityStyles);
-            else
-              CLR_OPTION (Opt_intensityStyles);
+            set_option (Opt_intensityStyles, mode);
 
             scr_touch (true);
             break;
@@ -4131,10 +4186,7 @@ rxvt_term::process_terminal_mode (int mode, int priv __attribute__ ((unused)), u
                 set_widthheight (((state ? 132 : 80) * fwidth), height);
               break;
             case 4:			/* smooth scrolling */
-              if (!state)
-                SET_OPTION (Opt_jumpScroll);
-              else
-                CLR_OPTION (Opt_jumpScroll);
+              set_option (Opt_jumpScroll, !state);
               break;
             case 5:			/* reverse video */
               scr_rvideo_mode (state);
@@ -4185,16 +4237,10 @@ rxvt_term::process_terminal_mode (int mode, int priv __attribute__ ((unused)), u
               break;		/* X11 mouse highlighting */
 #endif
             case 1010:		/* scroll to bottom on TTY output inhibit */
-              if (!state)
-                SET_OPTION (Opt_scrollTtyOutput);
-              else
-                CLR_OPTION (Opt_scrollTtyOutput);
+              set_option (Opt_scrollTtyOutput, !state);
               break;
             case 1011:		/* scroll to bottom on key press */
-              if (state)
-                SET_OPTION (Opt_scrollTtyKeypress);
-              else
-                CLR_OPTION (Opt_scrollTtyKeypress);
+              set_option (Opt_scrollTtyKeypress, state);
               break;
             case 1047:		/* secondary screen w/ clearing last */
               if (OPTION (Opt_secondaryScreen))
@@ -4414,6 +4460,12 @@ const unsigned int MAX_PTY_WRITE = 255; // minimum MAX_INPUT
 void
 rxvt_term::tt_write (const char *data, unsigned int len)
 {
+  if (HOOK_INVOKE ((this, HOOK_TT_WRITE, DT_STR_LEN, data, len, DT_END)))
+    return;
+
+  if (pty.pty < 0)
+    return;
+
   if (v_buflen == 0)
     {
       ssize_t written = write (pty.pty, data, min (len, MAX_PTY_WRITE));

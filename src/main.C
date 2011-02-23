@@ -13,7 +13,7 @@
  * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  *                              - extensive modifications
- * Copyright (c) 2003-2004 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -48,6 +48,21 @@
 # include <termios.h>
 #endif
 
+#if (defined(HAVE_SETEUID) || defined(HAVE_SETREUID)) && !defined(__CYGWIN32__)
+static uid_t saved_euid;
+static gid_t saved_egid;
+#endif
+
+bool
+rxvt_tainted ()
+{
+#if (defined(HAVE_SETEUID) || defined(HAVE_SETREUID)) && !defined(__CYGWIN32__)
+  return getuid () != saved_euid || getgid () != saved_egid;
+#else
+  return false;
+#endif
+}
+
 vector<rxvt_term *> rxvt_term::termlist;
 
 static char curlocale[128], savelocale[128];
@@ -63,7 +78,7 @@ rxvt_set_locale (const char *locale)
   return true;
 }
 
-bool
+void
 rxvt_push_locale (const char *locale)
 {
   strcpy (savelocale, curlocale);
@@ -208,7 +223,7 @@ void rxvt_term::emergency_cleanup ()
 
 rxvt_term::~rxvt_term ()
 {
-  PERL_INVOKE ((this, HOOK_DESTROY, DT_END));
+  HOOK_INVOKE ((this, HOOK_DESTROY, DT_END));
 
   termlist.erase (find (termlist.begin (), termlist.end(), this));
 
@@ -271,7 +286,6 @@ rxvt_term::~rxvt_term ()
     }
 
   // TODO: free pixcolours, colours should become part of rxvt_display
-
   delete pix_colors_focused;
 #if OFF_FOCUS_FADING
   delete pix_colors_unfocused;
@@ -466,6 +480,7 @@ bool
 rxvt_term::init (int argc, const char *const *argv)
 {
   SET_R (this);
+  set_environ (envv); // few things in X do not call setlocale :(
 
   set_locale ("");
 
@@ -489,12 +504,29 @@ rxvt_term::init (int argc, const char *const *argv)
 #endif
 
 #if ENABLE_PERL
+  if (!rs[Rs_perl_ext_1])
+    rs[Rs_perl_ext_1] = "default";
+
   if ((rs[Rs_perl_ext_1] && *rs[Rs_perl_ext_1])
       || (rs[Rs_perl_ext_2] && *rs[Rs_perl_ext_2])
       || (rs[Rs_perl_eval] && *rs[Rs_perl_eval]))
     {
+#if (defined(HAVE_SETEUID) || defined(HAVE_SETREUID)) && !defined(__CYGWIN32__)
+      // ignore some perl-related arguments if some bozo installed us set[ug]id
+      if (rxvt_tainted ())
+        {
+          if ((rs[Rs_perl_lib] && *rs[Rs_perl_lib])
+              || (rs[Rs_perl_eval] && *rs[Rs_perl_eval]))
+            {
+              rxvt_warn ("running with elevated privileges: ignoring perl-lib and perl-eval.\n");
+              rs[Rs_perl_lib]  = 0;
+              rs[Rs_perl_eval] = 0;
+            }
+        }
+#endif
       rxvt_perl.init ();
-      PERL_INVOKE ((this, HOOK_INIT, DT_END));
+      setlocale (LC_CTYPE, curlocale); // perl init destroys current locale
+      HOOK_INVOKE ((this, HOOK_INIT, DT_END));
     }
 #endif
 
@@ -504,7 +536,7 @@ rxvt_term::init (int argc, const char *const *argv)
 
   init_xlocale ();
 
-  scr_reset ();         /* initialize screen */
+  scr_reset (); // initialize screen
 
 #if 0
   XSynchronize (disp, True);
@@ -536,11 +568,12 @@ rxvt_term::init (int argc, const char *const *argv)
 
   free (cmd_argv);
 
-  pty_ev.start (pty.pty, EVENT_READ);
+  if (pty.pty >= 0)
+    pty_ev.start (pty.pty, EVENT_READ);
 
   check_ev.start ();
 
-  PERL_INVOKE ((this, HOOK_START, DT_END));
+  HOOK_INVOKE ((this, HOOK_START, DT_END));
 
   return true;
 }
@@ -585,9 +618,13 @@ static struct sig_handlers
   }
 } sig_handlers;
 
+char **rxvt_environ; // startup environment
+
 void
 rxvt_init ()
 {
+  rxvt_environ = environ;
+
   /*
    * Save and then give up any super-user privileges
    * If we need privileges in any area then we must specifically request it.
@@ -611,6 +648,8 @@ rxvt_init ()
   old_xerror_handler = XSetErrorHandler ((XErrorHandler) rxvt_xerror_handler);
   // TODO: handle this with exceptions and tolerate the memory loss
   XSetIOErrorHandler (rxvt_xioerror_handler);
+
+  XrmInitialize ();
 }
 
 /* ------------------------------------------------------------------------- *
@@ -656,11 +695,6 @@ rxvt_realloc (void *ptr, size_t size)
 void
 rxvt_privileges (rxvt_privaction action)
 {
-#if (defined(HAVE_SETEUID) || defined(HAVE_SETREUID)) && !defined(__CYGWIN32__)
-  static uid_t euid;
-  static gid_t egid;
-#endif
-
 #if ! defined(__CYGWIN32__)
 # if !defined(HAVE_SETEUID) && defined(HAVE_SETREUID)
   /* setreuid () is the poor man's setuid (), seteuid () */
@@ -676,24 +710,24 @@ rxvt_privileges (rxvt_privaction action)
          * change effective uid/gid - not real uid/gid - so we can switch
          * back to root later, as required
          */
-        seteuid (getuid ());
         setegid (getgid ());
+        seteuid (getuid ());
         break;
       case SAVE:
-        euid = geteuid ();
-        egid = getegid ();
+        saved_egid = getegid ();
+        saved_euid = geteuid ();
         break;
       case RESTORE:
-        seteuid (euid);
-        setegid (egid);
+        setegid (saved_egid);
+        seteuid (saved_euid);
         break;
     }
 # else
   switch (action)
     {
       case IGNORE:
-        setuid (getuid ());
         setgid (getgid ());
+        setuid (getuid ());
         /* FALLTHROUGH */
       case SAVE:
         /* FALLTHROUGH */
@@ -1418,6 +1452,8 @@ rxvt_term::IM_get_IC (const char *modifiers)
   const char *p;
   char **s;
   XIMStyles *xim_styles;
+
+  set_environ (envv);
 
   if (! ((p = XSetLocaleModifiers (modifiers)) && *p))
     return false;
