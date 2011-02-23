@@ -45,12 +45,12 @@ const struct rxvt_fallback_font {
   { CS_ISO8859_1,    "-*-*-*-r-*--*-*-*-*-c-*-iso8859-1"           },
   { CS_ISO8859_15,   "-*-*-*-r-*--*-*-*-*-c-*-iso8859-15"          },
   { CS_ISO8859_15,   "-*-*-*-r-*--*-*-*-*-c-*-fcd8859-15"          },
-                                                                   
-#if ENCODING_EU                                                    
-  // cyrillic                                                      
+
+#if ENCODING_EU
+  // cyrillic
   { CS_KOI8_R,        "-*-*-*-r-*--*-*-*-*-c-*-koi8-r"             },
   { CS_KOI8_U,        "-*-*-*-r-*--*-*-*-*-c-*-koi8-u"             },
-                                                                   
+
   { CS_ISO8859_2,    "-*-*-*-r-*--*-*-*-*-c-*-iso8859-2"           },
   { CS_ISO8859_3,    "-*-*-*-r-*--*-*-*-*-c-*-iso8859-3"           },
   { CS_ISO8859_4,    "-*-*-*-r-*--*-*-*-*-c-*-iso8859-4"           },
@@ -67,7 +67,7 @@ const struct rxvt_fallback_font {
 
 # if XFT
   { CS_KOI8_U,       "xft::lang=ru"                                },
-                                                                   
+
   { CS_ISO8859_5,    "xft::lang=ru"                                },
   { CS_ISO8859_6,    "xft::lang=ar"                                },
   { CS_ISO8859_7,    "xft::lang=el"                                },
@@ -233,7 +233,7 @@ rxvt_font::clear_rect (rxvt_drawable &d, int x, int y, int w, int h, int color) 
 {
   dTermDisplay;
   dTermGC;
-  
+
   if (color == Color_bg || color == Color_transparent)
     XClearArea (disp, d, x, y, w, h, false);
   else if (color >= 0)
@@ -252,7 +252,7 @@ rxvt_font::clear_rect (rxvt_drawable &d, int x, int y, int w, int h, int color) 
               done = true;
             }
         }
-#endif        
+#endif
       if (!done)
         XftDrawRect (d, &term->pix_colors[color].c, x, y, w, h);
 #else
@@ -263,8 +263,6 @@ rxvt_font::clear_rect (rxvt_drawable &d, int x, int y, int w, int h, int color) 
 }
 
 /////////////////////////////////////////////////////////////////////////////
-
-#include "table/linedraw.h"
 
 struct rxvt_font_default : rxvt_font {
   struct rxvt_fontset *fs;
@@ -310,9 +308,11 @@ struct rxvt_font_default : rxvt_font {
     if (unicode <= 0x009f)
       return true;
 
+#ifdef BUILTIN_GLYPHS
     if (unicode >= 0x2500 && unicode <= 0x259f &&
         !term->option (Opt_skipBuiltinGlyphs))
       return true;
+#endif
 
     if (IS_COMPOSE (unicode))
       return true;
@@ -358,8 +358,10 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
       int width = text - tp;
       int fwidth = term->fwidth * width;
 
+#ifdef BUILTIN_GLYPHS
       if (0x2500 <= t && t <= 0x259f)
         {
+# include "table/linedraw.h"
           uint16_t offs = linedraw_offs[t - 0x2500];
           uint32_t *a = linedraw_command + (offs >> 4);
           uint32_t *b = a + (offs & 15);
@@ -407,7 +409,7 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
                     if (a)
                       {
                         static char bm[] = { 0,0 , 3,1 , 1,2 , 1,0 };
- 
+
                         gcv.fill_style = FillStippled;
                         gcv.stipple = XCreateBitmapFromData (disp, d, bm + a * 2, 2, 2);
                         gcv.ts_x_origin = x;
@@ -436,6 +438,10 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
                 }
             }
         }
+#else
+      if (0)
+        ;
+#endif
 #if ENABLE_COMBINING
       else if (IS_COMPOSE (t) && (cc = rxvt_composite[t]))
         {
@@ -514,7 +520,7 @@ rxvt_font_x11::get_property (XFontStruct *f, Atom property, const char *repl) co
   if (XGetFontProperty (f, property, &value))
     return XGetAtomName (term->dpy, value);
   else
-    return rxvt_strdup (repl);
+    return repl ? strdup (repl) : 0;
 }
 
 rxvt_fontprop
@@ -676,7 +682,7 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
 
       if (prop.weight != rxvt_fontprop::unset)
         {
-          replace_field (fname, name, 2, 0, 
+          replace_field (fname, name, 2, 0,
                          prop.weight < rxvt_fontprop::bold
                            ? "medium" : "bold");
           set_name (strdup (fname));
@@ -830,7 +836,7 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
       if (encm)
         N += (f->max_byte1 - f->min_byte1)
              * (f->max_char_or_byte2 - f->min_char_or_byte2 + 1);
-       
+
       while (N)
         {
           if (f->per_char[N].width > width)
@@ -992,7 +998,7 @@ rxvt_font_x11::draw (rxvt_drawable &d, int x, int y,
           clear_rect (d, x, y, term->fwidth * len, term->fheight, bg);
 
           XChangeGC (disp, gc, GCForeground | GCFont, &v);
-          
+
           if (slow)
             {
               do
@@ -1024,7 +1030,7 @@ rxvt_font_x11::draw (rxvt_drawable &d, int x, int y,
           clear_rect (d, x, y, term->fwidth * len, term->fheight, bg);
 
           XChangeGC (disp, gc, GCForeground | GCFont, &v);
-          
+
           if (slow)
             {
               do
@@ -1290,7 +1296,7 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
   int h = term->fheight;
 
   /* TODO: this logic needs some more thinking, since we no longer do pseudo-transparency.
-   * Maybe make buffering into a resource flag? Compile time option doesn't seems like a 
+   * Maybe make buffering into a resource flag? Compile time option doesn't seems like a
    * good idea from the perspective of packaging for wide variety of user configs.
    */
   bool buffered = true
@@ -1312,7 +1318,7 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
 
       while (len && *text == NOCHAR)
         text++, len--, cwidth += term->fwidth;
-      
+
       if (fc != ' ') // skip spaces
         {
           FT_UInt glyph = XftCharIndex (disp, f, fc);
@@ -1345,17 +1351,17 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
 
               if (bg >= 0 && term->pix_colors[bg].c.color.alpha < 0x0ff00)
                 dst = XftDrawPicture (d2);
-                
+
               if (bg < 0 || dst != 0)
                 {
-                  int src_x = x, src_y = y ; 
-                  
+                  int src_x = x, src_y = y ;
+
                   if (term->bgPixmap.is_parentOrigin ())
                     {
                       src_x += term->window_vt_x;
                       src_y += term->window_vt_y;
                     }
-                    
+
                   if (term->bgPixmap.pmap_width >= src_x+w
                       && term->bgPixmap.pmap_height >= src_y+h)
                     {
@@ -1447,7 +1453,7 @@ rxvt_font *
 rxvt_fontset::new_font (const char *name, codeset cs)
 {
   rxvt_font *f;
-  
+
   if (!name || !*name)
     {
       name = "";
@@ -1676,7 +1682,7 @@ rxvt_fontset::find_font (unicode_t unicode)
                       char fontname[4096];
                       sprintf (fontname, "xft:%-.4090s", font);
 
-                      fonts.push_back (new_font (fontname, CS_UNICODE)); 
+                      fonts.push_back (new_font (fontname, CS_UNICODE));
                     }
 
                   free (font);

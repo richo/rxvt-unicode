@@ -42,7 +42,7 @@ You can activate them like this:
 
 Or by adding them to the resource for extensions loaded by default:
 
-  URxvt.perl-ext-common: default,automove-background,selection-autotransform
+  URxvt.perl-ext-common: default,selection-autotransform
 
 =over 4
 
@@ -103,7 +103,7 @@ Other extensions can extend this popup menu by pushing a code reference
 onto C<@{ $term->{option_popup_hook} }>, which gets called whenever the
 popup is being displayed.
 
-It's sole argument is the popup menu, which can be modified.  It should
+Its sole argument is the popup menu, which can be modified.  It should
 either return nothing or a string, the initial boolean value and a code
 reference. The string will be used as button text and the code reference
 will be called when the toggle changes, with the new boolean value as
@@ -126,7 +126,7 @@ Other extensions can extend this popup menu by pushing a code reference
 onto C<@{ $term->{selection_popup_hook} }>, which gets called whenever the
 popup is being displayed.
 
-It's sole argument is the popup menu, which can be modified. The selection
+Its sole argument is the popup menu, which can be modified. The selection
 is in C<$_>, which can be used to decide whether to add something or not.
 It should either return nothing or a string and a code reference. The
 string will be used as button text and the code reference will be called
@@ -137,7 +137,7 @@ the selection to C<b>s, but only if the selection currently contains any
 C<a>s:
 
    push @{ $self->{term}{selection_popup_hook} }, sub {
-      /a/ ? ("a to be" => sub { s/a/b/g }
+      /a/ ? ("a to b" => sub { s/a/b/g }
           : ()
    };
 
@@ -278,7 +278,7 @@ Example configuration:
 
 This (experimental) perl extension implements OnTheSpot editing. It does
 not work perfectly, and some input methods don't seem to work well with
-OnTheSpot editing in general, but it seems to work at leats for SCIM and
+OnTheSpot editing in general, but it seems to work at least for SCIM and
 kinput2.
 
 You enable it by specifying this extension and a preedit style of
@@ -296,7 +296,7 @@ or show it again.
 
 Initially, the window will not be shown when using this extension.
 
-This is useful if you need a single terminal thats not using any desktop
+This is useful if you need a single terminal that is not using any desktop
 space most of the time but is quickly available at the press of a key.
 
 The accelerator key is grabbed regardless of any modifiers, so this
@@ -304,19 +304,6 @@ extension will actually grab a physical key just for this function.
 
 If you want a quake-like animation, tell your window manager to do so
 (fvwm can do it).
-
-=item automove-background
-
-This is basically a very small extension that dynamically changes the
-background pixmap offset to the window position, in effect creating the
-same effect as pseudo transparency with a custom pixmap. No scaling is
-supported in this mode. Example:
-
-   @@RXVT_NAME@@ -pixmap background.xpm -pe automove-background
-
-L<http://wiki.archlinux.org/index.php/Perl_Background_Rotation/Extensions>
-shows how this extension can be used to implement an automatically blurred
-transparent background.
 
 =item block-graphics-to-ascii
 
@@ -331,7 +318,7 @@ Displays a digital clock using the built-in overlay.
 =item remote-clipboard
 
 Somewhat of a misnomer, this extension adds two menu entries to the
-selection popup that allows one ti run external commands to store the
+selection popup that allows one to run external commands to store the
 selection somewhere and fetch it again.
 
 We use it to implement a "distributed selection mechanism", which just
@@ -930,7 +917,7 @@ sub invoke {
 
    if ($htype == 0) { # INIT
       my @dirs = ((split /:/, $TERM->resource ("perl_lib")), "$LIBDIR/perl");
-      
+
       my %ext_arg;
 
       {
@@ -2004,7 +1991,7 @@ fractional number of seconds since the epoch. Example:
                     ->cb (sub {
                        $term->{overlay}->set (0, 0,
                           sprintf "%2d:%02d:%02d", (localtime urxvt::NOW)[2,1,0]);
-                    });                                                                                                                                      
+                    });
 
 =over 4
 
@@ -2057,7 +2044,7 @@ This class implements io watchers/events. Example:
   $term->{iow} = urxvt::iow
                  ->new
                  ->fd (fileno $term->{socket})
-                 ->events (urxvt::EVENT_READ)
+                 ->events (urxvt::EV_READ)
                  ->start
                  ->cb (sub {
                    my ($iow, $revents) = @_;
@@ -2085,8 +2072,8 @@ Set the file descriptor (not handle) to watch.
 =item $iow = $iow->events ($eventmask)
 
 Set the event mask to watch. The only allowed values are
-C<urxvt::EVENT_READ> and C<urxvt::EVENT_WRITE>, which might be ORed
-together, or C<urxvt::EVENT_NONE>.
+C<urxvt::EV_READ> and C<urxvt::EV_WRITE>, which might be ORed
+together, or C<urxvt::EV_NONE>.
 
 =item $iow = $iow->start
 
@@ -2137,7 +2124,7 @@ process exits, after which they stop automatically.
                     ->cb (sub {
                        my ($pw, $exit_status) = @_;
                        ...
-                    });                                                                                                                                      
+                    });
 
 =over 4
 

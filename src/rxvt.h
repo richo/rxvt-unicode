@@ -20,6 +20,7 @@
 # define ENABLE_XIM_ONTHESPOT 1
 # define CURSOR_BLINK         1
 # define OPTION_HC            1
+# define BUILTIN_GLYPHS       1
 #else
 # define ENABLE_MINIMAL 1
 #endif
@@ -38,7 +39,7 @@
 #include "rxvtutil.h"
 #include "rxvtfont.h"
 #include "rxvttoolkit.h"
-#include "iom.h"
+#include "ev_cpp.h"
 #include "salloc.h"
 #include "libptytty.h"
 
@@ -93,7 +94,7 @@ class out_of_input { };
 
 /*
  *****************************************************************************
- * PROTOTYPES                    
+ * PROTOTYPES
  *****************************************************************************
  */
 // main.C
@@ -106,8 +107,6 @@ char *           rxvt_wcstombs                    (const wchar_t *str, int len =
 wchar_t *        rxvt_mbstowcs                    (const char *str, int len = -1);
 char *           rxvt_wcstoutf8                   (const wchar_t *str, int len = -1);
 wchar_t *        rxvt_utf8towcs                   (const char *str, int len = -1);
-
-#define rxvt_strdup(s) ((s) ? strdup(s) : 0)
 
 char *           rxvt_basename                    (const char *str) NOTHROW;
 void             rxvt_vlog                        (const char *fmt, va_list arg_ptr) NOTHROW;
@@ -185,24 +184,24 @@ typedef struct _mwmhints {
 
 #if ENABLE_XEMBED
 // XEMBED messages
-# define XEMBED_EMBEDDED_NOTIFY          0 
-# define XEMBED_WINDOW_ACTIVATE          1 
-# define XEMBED_WINDOW_DEACTIVATE        2 
-# define XEMBED_REQUEST_FOCUS            3 
-# define XEMBED_FOCUS_IN                 4 
-# define XEMBED_FOCUS_OUT                5 
-# define XEMBED_FOCUS_NEXT               6 
+# define XEMBED_EMBEDDED_NOTIFY          0
+# define XEMBED_WINDOW_ACTIVATE          1
+# define XEMBED_WINDOW_DEACTIVATE        2
+# define XEMBED_REQUEST_FOCUS            3
+# define XEMBED_FOCUS_IN                 4
+# define XEMBED_FOCUS_OUT                5
+# define XEMBED_FOCUS_NEXT               6
 # define XEMBED_FOCUS_PREV               7
 
-# define XEMBED_MODALITY_ON              10 
-# define XEMBED_MODALITY_OFF             11 
-# define XEMBED_REGISTER_ACCELERATOR     12 
-# define XEMBED_UNREGISTER_ACCELERATOR   13 
+# define XEMBED_MODALITY_ON              10
+# define XEMBED_MODALITY_OFF             11
+# define XEMBED_REGISTER_ACCELERATOR     12
+# define XEMBED_UNREGISTER_ACCELERATOR   13
 # define XEMBED_ACTIVATE_ACCELERATOR     14
 
 // XEMBED detail code
-# define XEMBED_FOCUS_CURRENT            0 
-# define XEMBED_FOCUS_FIRST              1 
+# define XEMBED_FOCUS_CURRENT            0
+# define XEMBED_FOCUS_FIRST              1
 # define XEMBED_FOCUS_LAST               2
 
 # define XEMBED_MAPPED			(1 << 0)
@@ -425,7 +424,7 @@ enum {
   C0_BS , C0_HT , C0_LF , C0_VT , C0_FF , C0_CR , C0_SO , C0_SI ,
   C0_DLE, C0_DC1, C0_DC2, D0_DC3, C0_DC4, C0_NAK, C0_SYN, C0_ETB,
   C0_CAN, C0_EM , C0_SUB, C0_ESC, C0_IS4, C0_IS3, C0_IS2, C0_IS1,
-}; 
+};
 #define CHAR_ST                 0x9c    /* 0234 */
 
 /*
@@ -790,7 +789,7 @@ struct line_t {
 
 /****************************************************************************/
 
-// primivite wrapper around mbstate_t to ensure initialisation
+// primitive wrapper around mbstate_t to ensure initialisation
 struct mbstate {
   mbstate_t mbs;
 
@@ -857,7 +856,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   static const char resval_undef [];    // options specifically unset
   static const char resval_on [];       // boolean options switched on
   static const char resval_off [];      // or off
-  
+
   log_callback   *log_hook;             // log error messages through this hook, if != 0
   getfd_callback *getfd_hook;           // convert remote to local fd, if != 0
 #if ENABLE_PERL
@@ -1015,6 +1014,9 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 #ifdef KEYSYM_RESOURCE
   keyboard_manager *keyboard;
 #endif
+#ifndef NO_RESOURCES
+  XrmDatabase option_db;
+#endif
 
   const char     *rs[NUM_RESOURCES];
   /* command input buffering */
@@ -1052,8 +1054,12 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
 #endif
 #ifdef HAVE_BG_PIXMAP
   int update_background ();
-  void update_background_cb (time_watcher &w);
-  time_watcher update_background_ev;
+#if TRACE_PIXMAPS
+  int trace_update_background (const char* file, int line);
+# define update_background() trace_update_background (__FILE__, __LINE__)
+#endif
+  void update_background_cb (ev::timer &w, int revents);
+  ev::timer update_background_ev;
 #endif
 
   void x_cb (XEvent &xev);
@@ -1063,37 +1069,37 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   xevent_watcher scrollbar_ev;
 #endif
 
-  void child_cb (child_watcher &w, int status); child_watcher child_ev;
-  void check_cb (check_watcher &w); check_watcher check_ev;
-  void destroy_cb (time_watcher &w); time_watcher destroy_ev;
+  void child_cb (ev::child &w, int revents); ev::child child_ev;
+  void prepare_cb (ev::prepare &w, int revents); ev::prepare prepare_ev;
+  void destroy_cb (ev::idle &w, int revents); ev::idle destroy_ev;
   void flush ();
-  void flush_cb (time_watcher &w); time_watcher flush_ev;
+  void flush_cb (ev::timer &w, int revents); ev::timer flush_ev;
   bool pty_fill ();
-  void pty_cb (io_watcher &w, short revents); io_watcher pty_ev;
-  void incr_cb (time_watcher &w) NOTHROW; time_watcher incr_ev;
+  void pty_cb (ev::io &w, int revents); ev::io pty_ev;
+  void incr_cb (ev::timer &w, int revents) NOTHROW; ev::timer incr_ev;
 
 #ifdef CURSOR_BLINK
-  void cursor_blink_cb (time_watcher &w); time_watcher cursor_blink_ev;
+  void cursor_blink_cb (ev::timer &w, int revents); ev::timer cursor_blink_ev;
 #endif
 #ifdef TEXT_BLINK
-  void text_blink_cb (time_watcher &w); time_watcher text_blink_ev;
+  void text_blink_cb (ev::timer &w, int revents); ev::timer text_blink_ev;
 #endif
-#ifndef NO_BELL     
-  void bell_cb (time_watcher &w); time_watcher bell_ev;
+#ifndef NO_BELL
+  void bell_cb (ev::timer &w, int revents); ev::timer bell_ev;
 #endif
 
 #ifndef NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING
-  void cont_scroll_cb (time_watcher &w); time_watcher cont_scroll_ev;
+  void cont_scroll_cb (ev::timer &w, int revents); ev::timer cont_scroll_ev;
 #endif
 #ifdef SELECTION_SCROLLING
-  void sel_scroll_cb (time_watcher &w); time_watcher sel_scroll_ev;
+  void sel_scroll_cb (ev::timer &w, int revents); ev::timer sel_scroll_ev;
 #endif
 #if defined(MOUSE_WHEEL) && defined(MOUSE_SLIP_WHEELING)
-  void slip_wheel_cb (time_watcher &w); time_watcher slip_wheel_ev;
+  void slip_wheel_cb (ev::timer &w, int revents); ev::timer slip_wheel_ev;
 #endif
 
 #ifdef POINTER_BLANK
-  void pointer_cb (time_watcher &w); time_watcher pointer_ev;
+  void pointer_cb (ev::timer &w, int revents); ev::timer pointer_ev;
   void pointer_blank ();
 #endif
   void pointer_unblank ();
@@ -1400,5 +1406,5 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen {
   void extract_resources ();
 };
 
-#endif                          /* _RXVT_H_ */
+#endif /* _RXVT_H_ */
 

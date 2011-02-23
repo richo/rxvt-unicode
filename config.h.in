@@ -55,6 +55,9 @@
 /* Define to 1 if you have the <clocale> header file. */
 #undef HAVE_CLOCALE
 
+/* Define to 1 if you have the `clock_gettime' function. */
+#undef HAVE_CLOCK_GETTIME
+
 /* Define to 1 if you have the <cwchar> header file. */
 #undef HAVE_CWCHAR
 
@@ -66,6 +69,9 @@
 
 /* Define to 1 if you have /dev/ptmx */
 #undef HAVE_DEV_PTMX
+
+/* Define to 1 if you have the `epoll_ctl' function. */
+#undef HAVE_EPOLL_CTL
 
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
@@ -79,14 +85,20 @@
 /* Define to 1 if you have the `isastream' function. */
 #undef HAVE_ISASTREAM
 
+/* Define to 1 if you have the `kqueue' function. */
+#undef HAVE_KQUEUE
+
 /* Define to 1 if you have the <lastlog.h> header file. */
 #undef HAVE_LASTLOG_H
 
+/* Define to 1 if you have the `m' library (-lm). */
+#undef HAVE_LIBM
+
+/* Define to 1 if you have the `rt' library (-lrt). */
+#undef HAVE_LIBRT
+
 /* Define to 1 if you have the <libutil.h> header file. */
 #undef HAVE_LIBUTIL_H
-
-/* Define to 1 if you have the `Xft' library (-lXft). */
-#undef HAVE_LIBXFT
 
 /* Define to 1 if you have the <memory.h> header file. */
 #undef HAVE_MEMORY_H
@@ -94,11 +106,20 @@
 /* Define if nl_langinfo(CODESET) works */
 #undef HAVE_NL_LANGINFO
 
-/* Define to 1 if you have the `on_exit' function. */
-#undef HAVE_ON_EXIT
-
 /* Define to 1 if you have the `openpty' function. */
 #undef HAVE_OPENPTY
+
+/* Define to 1 if you have the `poll' function. */
+#undef HAVE_POLL
+
+/* Define to 1 if you have the <poll.h> header file. */
+#undef HAVE_POLL_H
+
+/* Define to 1 if you have the `port_create' function. */
+#undef HAVE_PORT_CREATE
+
+/* Define to 1 if you have the <port.h> header file. */
+#undef HAVE_PORT_H
 
 /* Define to 1 if you have the `posix_openpt' function. */
 #undef HAVE_POSIX_OPENPT
@@ -108,6 +129,9 @@
 
 /* Define to 1 if you have the `revoke' function. */
 #undef HAVE_REVOKE
+
+/* Define to 1 if you have the `select' function. */
+#undef HAVE_SELECT
 
 /* Define to 1 if you have the `seteuid' function. */
 #undef HAVE_SETEUID
@@ -123,9 +147,6 @@
 
 /* Define to 1 if you have the `setuid' function. */
 #undef HAVE_SETUID
-
-/* Define to 1 if you have the `setutent' function. */
-#undef HAVE_SETUTENT
 
 /* Define to 1 if you have the <stdarg.h> header file. */
 #undef HAVE_STDARG_H
@@ -157,8 +178,17 @@
 /* Define to 1 if you have the <sys/byteorder.h> header file. */
 #undef HAVE_SYS_BYTEORDER_H
 
+/* Define to 1 if you have the <sys/epoll.h> header file. */
+#undef HAVE_SYS_EPOLL_H
+
+/* Define to 1 if you have the <sys/event.h> header file. */
+#undef HAVE_SYS_EVENT_H
+
 /* Define to 1 if you have the <sys/ioctl.h> header file. */
 #undef HAVE_SYS_IOCTL_H
+
+/* Define to 1 if you have the <sys/queue.h> header file. */
+#undef HAVE_SYS_QUEUE_H
 
 /* Define to 1 if you have the <sys/select.h> header file. */
 #undef HAVE_SYS_SELECT_H
@@ -187,9 +217,6 @@
 /* Define to 1 if you have the <termios.h> header file. */
 #undef HAVE_TERMIOS_H
 
-/* Define to 1 if you have the `ttyslot' function. */
-#undef HAVE_TTYSLOT
-
 /* Define to 1 if you have the <unistd.h> header file. */
 #undef HAVE_UNISTD_H
 
@@ -199,6 +226,9 @@
 
 /* Define to 1 if you have the `unsetenv' function. */
 #undef HAVE_UNSETENV
+
+/* Define to 1 if you have the `updlastlogx' function. */
+#undef HAVE_UPDLASTLOGX
 
 /* Define to 1 if you have the `updwtmp' function. */
 #undef HAVE_UPDWTMP
@@ -250,9 +280,6 @@
 
 /* Define location of lastlog */
 #undef LASTLOG_FILE
-
-/* Define if lastlog is provided via a directory */
-#undef LASTLOG_IS_DIR
 
 /* Define if you want to have lastlog support when utmp/utmpx is enabled */
 #undef LASTLOG_SUPPORT
@@ -362,9 +389,6 @@
 
 /* Define to 1 if you can safely include both <sys/time.h> and <time.h>. */
 #undef TIME_WITH_SYS_TIME
-
-/* Define location of ttys/ttytab */
-#undef TTYTAB_FILENAME
 
 /* "" */
 #undef TTY_GID_SUPPORT

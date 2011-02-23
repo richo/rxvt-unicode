@@ -33,7 +33,7 @@
 
 #include "unistd.h"
 
-#include "iom.h"
+#include "ev_cpp.h"
 #include "rxvt.h"
 #include "keyboard.h"
 #include "rxvtutil.h"
@@ -384,7 +384,7 @@ rxvt_perl_interp::invoke (rxvt_term *term, hook_type htype, ...)
   if (htype == HOOK_REFRESH_END)
     {
       AV *av = (AV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)term->perl.self), "_overlay", 8, 0));
-      
+
       for (int i = 0; i <= AvFILL (av); i++)
         ((overlay *)SvIV (*av_fetch (av, i, 0)))->swap ();
     }
@@ -593,7 +593,7 @@ rxvt_perl_interp::invoke (rxvt_term *term, hook_type htype, ...)
   if (htype == HOOK_REFRESH_BEGIN)
     {
       AV *av = (AV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)term->perl.self), "_overlay", 8, 0));
-      
+
       for (int i = AvFILL (av); i >= 0; i--)
         ((overlay *)SvIV (*av_fetch (av, i, 0)))->swap ();
     }
@@ -601,7 +601,7 @@ rxvt_perl_interp::invoke (rxvt_term *term, hook_type htype, ...)
     {
       clearSVptr ((SV *)term->perl.self);
       SvREFCNT_dec ((SV *)term->perl.self);
-      
+
       // don't allow further calls
       term->perl.self = 0;
     }
@@ -777,7 +777,7 @@ _exit (int status)
 NV
 NOW ()
 	CODE:
-        RETVAL = NOW;
+        RETVAL = ev::now ();
         OUTPUT:
         RETVAL
 
@@ -1141,10 +1141,10 @@ rxvt_term::envv ()
 }
 
 int
-rxvt_term::pty_ev_events (int events = EVENT_UNDEF)
+rxvt_term::pty_ev_events (int events = ev::UNDEF)
 	CODE:
         RETVAL = THIS->pty_ev.events;
-        if (events != EVENT_UNDEF)
+        if (events != ev::UNDEF)
           THIS->pty_ev.set (events);
 	OUTPUT:
         RETVAL
@@ -1478,7 +1478,7 @@ rxvt_term::option (U8 optval, int set = -1)
           {
             THIS->set_option (optval, set);
 
-            if (THIS->check_ev.is_active ()) // avoid doing this before START
+            if (THIS->prepare_ev.is_active ()) // avoid doing this before START
               switch (optval)
                 {
                   case Opt_skipBuiltinGlyphs:
@@ -1674,7 +1674,7 @@ rxvt_term::XListProperties (Window window)
         EXTEND (SP, count);
         while (count--)
           PUSHs (newSVuv ((U32)props [count]));
-        
+
         XFree (props);
 }
 

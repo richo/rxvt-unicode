@@ -156,9 +156,9 @@ const char *const def_colorName[] =
     "rgb:00/00/cd",             // 4: blue              (Blue3)
     "rgb:cd/00/cd",             // 5: magenta           (Magenta3)
     "rgb:00/cd/cd",             // 6: cyan              (Cyan3)
-# ifdef XTERM_COLORS                                    
+# ifdef XTERM_COLORS
     "rgb:e5/e5/e5",             // 7: white             (Grey90)
-# else                                                  
+# else
     "rgb:fa/eb/d7",             // 7: white             (AntiqueWhite)
 # endif
     /* high-intensity colors */
@@ -252,7 +252,7 @@ const char *const def_colorName[] =
 #ifndef NO_CURSORCOLOR
     COLOR_CURSOR_BACKGROUND,
     COLOR_CURSOR_FOREGROUND,
-#endif                          /* ! NO_CURSORCOLOR */
+#endif /* ! NO_CURSORCOLOR */
     NULL,                       /* Color_pointer_fg               */
     NULL,                       /* Color_pointer_bg               */
     NULL,                       /* Color_border                   */
@@ -261,7 +261,7 @@ const char *const def_colorName[] =
     NULL,                       /* Color_IT                       */
     NULL,                       /* Color_UL                       */
     NULL,                       /* Color_RV                       */
-#endif                          /* ! NO_BOLD_UNDERLINE_REVERSE */
+#endif /* ! NO_BOLD_UNDERLINE_REVERSE */
 #if ENABLE_FRILLS
     NULL,			// Color_underline
 #endif
@@ -271,7 +271,7 @@ const char *const def_colorName[] =
 #ifdef KEEP_SCROLLCOLOR
     COLOR_SCROLLBAR,
     COLOR_SCROLLTROUGH,
-#endif                          /* KEEP_SCROLLCOLOR */
+#endif /* KEEP_SCROLLCOLOR */
 #if ENABLE_TRANSPARENCY
     NULL,
 #endif
@@ -371,7 +371,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   if (r_argc == argc)
     cmd_argv = NULL;
   else if (!argv[r_argc + 1])
-    rxvt_fatal ("-e requires an argument\n");
+    rxvt_fatal ("option '-e' requires an argument, aborting.\n");
   else
     {
       cmd_argv = (const char **)rxvt_malloc (sizeof (char *) * (argc - r_argc));
@@ -540,7 +540,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 #ifndef NO_CURSORCOLOR
   color_aliases (Color_cursor);
   color_aliases (Color_cursor2);
-#endif                          /* NO_CURSORCOLOR */
+#endif /* NO_CURSORCOLOR */
   color_aliases (Color_pointer_fg);
   color_aliases (Color_pointer_bg);
   color_aliases (Color_border);
@@ -548,7 +548,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   color_aliases (Color_BD);
   color_aliases (Color_UL);
   color_aliases (Color_RV);
-#endif                          /* ! NO_BOLD_UNDERLINE_REVERSE */
+#endif /* ! NO_BOLD_UNDERLINE_REVERSE */
 
   if (!rs[Rs_color + Color_border])
     rs[Rs_color + Color_border] = rs[Rs_color + Color_bg];
@@ -578,7 +578,7 @@ rxvt_term::init_env ()
   rs[Rs_display_name] = (const char *)val;
 
   if (val == NULL)
-#endif                          /* DISPLAY_IS_IP */
+#endif /* DISPLAY_IS_IP */
     val = XDisplayString (dpy);
 
   if (rs[Rs_display_name] == NULL)
@@ -628,7 +628,7 @@ rxvt_term::init_env ()
   unsetenv ("LINES");
   unsetenv ("COLUMNS");
   unsetenv ("TERMCAP");        /* terminfo should be okay */
-#endif                          /* HAVE_UNSETENV */
+#endif /* HAVE_UNSETENV */
 }
 
 /*----------------------------------------------------------------------*/
@@ -659,7 +659,7 @@ rxvt_term::set_locale (const char *locale)
     }
 
 
-  this->locale = rxvt_strdup (this->locale);
+  this->locale = strdup (this->locale);
   SET_LOCALE (this->locale);
   mbstate.reset ();
 #endif
@@ -749,7 +749,7 @@ rxvt_term::Get_Colours ()
 #ifdef OFF_FOCUS_FADING
   pix_colors = pix_colors_focused;
 #endif
-  
+
   for (i = 0; i < (depth <= 2 ? 2 : NRS_COLORS); i++)
     {
       const char *name = rs[Rs_color + i];
@@ -837,7 +837,7 @@ rxvt_term::Get_Colours ()
                        ))
         alias_color (Color_topShadow, Color_White);
     }
-#endif                          /* KEEP_SCROLLCOLOR */
+#endif /* KEEP_SCROLLCOLOR */
 
 #ifdef OFF_FOCUS_FADING
   for (i = 0; i < (depth <= 2 ? 2 : NRS_COLORS); i++)
@@ -1304,8 +1304,8 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
 
   fprintf (stderr, "\n");
 # undef FOO
-# endif                         /* HAVE_TERMIOS_H */
-#endif                          /* DEBUG_TTYMODE */
+# endif /* HAVE_TERMIOS_H */
+#endif /* DEBUG_TTYMODE */
 }
 
 /*----------------------------------------------------------------------*/
@@ -1430,7 +1430,7 @@ rxvt_term::run_child (const char *const *argv)
       if (fd >= 0)
         if (ioctl (fd, SRIOCSREDIR, NULL) < 0)
           close (fd);
-#endif                          /* SRIOCSREDIR */
+#endif /* SRIOCSREDIR */
     }
 
   /* reset signals and spin off the command interpreter */
@@ -1447,7 +1447,7 @@ rxvt_term::run_child (const char *const *argv)
   signal (SIGTSTP, SIG_IGN);
   signal (SIGTTIN, SIG_IGN);
   signal (SIGTTOU, SIG_IGN);
-#endif                          /* SIGTSTP */
+#endif /* SIGTSTP */
 
   // unblock signals (signals are blocked by iom.C
   sigset_t ss;

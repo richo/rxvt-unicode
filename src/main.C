@@ -95,7 +95,7 @@ class rxvt_composite_vec rxvt_composite;
 text_t rxvt_composite_vec::compose (unicode_t c1, unicode_t c2)
 {
   compose_char *cc;
-  
+
   // break compose chains, as stupid readline really likes to duplicate
   // composing characters for some reason near the end of a line.
   cc = (*this)[c1];
@@ -183,19 +183,19 @@ rxvt_term::rxvt_term ()
     pointer_ev (this, &rxvt_term::pointer_cb),
 #endif
 #ifdef USE_XIM
-    im_ev (this, &rxvt_term::im_cb),
+    im_ev      (this, &rxvt_term::im_cb),
 #endif
-#ifndef NO_BELL     
-    bell_ev (this, &rxvt_term::bell_cb),
+#ifndef NO_BELL
+    bell_ev    (this, &rxvt_term::bell_cb),
 #endif
     termwin_ev (this, &rxvt_term::x_cb),
-    vt_ev (this, &rxvt_term::x_cb),
-    child_ev (this, &rxvt_term::child_cb),
-    check_ev (this, &rxvt_term::check_cb),
-    flush_ev (this, &rxvt_term::flush_cb),
+    vt_ev      (this, &rxvt_term::x_cb),
+    child_ev   (this, &rxvt_term::child_cb),
+    prepare_ev (this, &rxvt_term::prepare_cb),
+    flush_ev   (this, &rxvt_term::flush_cb),
     destroy_ev (this, &rxvt_term::destroy_cb),
-    pty_ev (this, &rxvt_term::pty_cb),
-    incr_ev (this, &rxvt_term::incr_cb)
+    pty_ev     (this, &rxvt_term::pty_cb),
+    incr_ev    (this, &rxvt_term::incr_cb)
 {
   cmdbuf_ptr = cmdbuf_endp = cmdbuf_base;
 
@@ -286,6 +286,9 @@ rxvt_term::~rxvt_term ()
   delete [] pix_colors_unfocused;
 #endif
 
+#ifdef HAVE_BG_PIXMAP
+  bgPixmap.destroy ();
+#endif
   displays.put (display);
 
   scr_release ();
@@ -308,11 +311,14 @@ rxvt_term::~rxvt_term ()
 #ifdef KEYSYM_RESOURCE
   delete keyboard;
 #endif
+#ifndef NO_RESOURCES
+  XrmDestroyDatabase (option_db);
+#endif
 }
 
 // child has exited, usually destroys
 void
-rxvt_term::child_cb (child_watcher &w, int status)
+rxvt_term::child_cb (ev::child &w, int status)
 {
   HOOK_INVOKE ((this, HOOK_CHILD_EXIT, DT_INT, status, DT_END));
 
@@ -350,7 +356,7 @@ rxvt_term::destroy ()
       vt_ev.stop (display);
     }
 
-  check_ev.stop ();
+  prepare_ev.stop ();
   pty_ev.stop ();
 #ifdef CURSOR_BLINK
   cursor_blink_ev.stop ();
@@ -368,11 +374,11 @@ rxvt_term::destroy ()
   pointer_ev.stop ();
 #endif
 
-  destroy_ev.start (0);
+  destroy_ev.start ();
 }
 
 void
-rxvt_term::destroy_cb (time_watcher &w)
+rxvt_term::destroy_cb (ev::idle &w, int revents)
 {
   make_current ();
 
@@ -436,7 +442,7 @@ print_x_error (Display *dpy, XErrorEvent *event)
 				  mesg, BUFSIZ);
 	rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->resourceid);
     }
-    XGetErrorDatabaseText(dpy, mtype, "ErrorSerial", "Error Serial #%d", 
+    XGetErrorDatabaseText(dpy, mtype, "ErrorSerial", "Error Serial #%d",
 			  mesg, BUFSIZ);
     rxvt_warn (strncat (mesg, "\n", BUFSIZ), event->serial);
 }
@@ -520,10 +526,10 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
     if (option (Opt_transparent))
       {
         bgPixmap.set_transparent ();
-#ifdef HAVE_AFTERIMAGE        
+#ifdef HAVE_AFTERIMAGE
         if (rs [Rs_blurradius])
           bgPixmap.set_blur_radius (rs [Rs_blurradius]);
-#endif          
+#endif
         if (ISSET_PIXCOLOR (Color_tint))
           bgPixmap.set_tint (pix_colors_focused [Color_tint]);
         if (rs [Rs_shade])
@@ -567,9 +573,9 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
   free (cmd_argv);
 
   if (pty->pty >= 0)
-    pty_ev.start (pty->pty, EVENT_READ);
+    pty_ev.start (pty->pty, ev::READ);
 
-  check_ev.start ();
+  prepare_ev.start ();
 
   HOOK_INVOKE ((this, HOOK_START, DT_END));
 
@@ -591,16 +597,16 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 
 static struct sig_handlers
 {
-  sig_watcher sw_term, sw_int;
-  
+  ev::sig sw_term, sw_int;
+
   /*
    * Catch a fatal signal and tidy up before quitting
    */
   void
-  sig_term (sig_watcher &w)
+  sig_term (ev::sig &w, int revents)
   {
     rxvt_emergency_cleanup ();
-    signal (w.signum, SIG_DFL);
+    w.stop ();
     kill (getpid (), w.signum);
   }
 
@@ -618,13 +624,16 @@ rxvt_init ()
 {
   ptytty::init ();
 
+  if (!ev_default_loop (0))
+    rxvt_fatal ("cannot initialise libev (bad value for LIBEV_METHODS?)\n");
+
   rxvt_environ = environ;
 
   signal (SIGHUP,  SIG_IGN);
   signal (SIGPIPE, SIG_IGN);
 
-  sig_handlers.sw_term.start (SIGTERM);
-  sig_handlers.sw_int.start  (SIGINT);
+  sig_handlers.sw_term.start (SIGTERM); ev_unref ();
+  sig_handlers.sw_int.start  (SIGINT);  ev_unref ();
 
   /* need to trap SIGURG for SVR4 (Unixware) rlogin */
   /* signal (SIGURG, SIG_DFL); */
@@ -904,7 +913,7 @@ rxvt_term::set_fonts ()
       resize_all_windows (0, 0, 0);
       scr_remap_chars ();
       scr_touch (true);
-    }   
+    }
 
   return true;
 }
@@ -958,7 +967,7 @@ rxvt_term::set_window_color (int idx, const char *color)
 #ifdef XTERM_COLOR_CHANGE
   rxvt_color xcol;
   int i;
-  
+
   if (color == NULL || *color == '\0')
     return;
 
@@ -1002,7 +1011,7 @@ done:
   update_fade_color (idx);
   recolour_cursor ();
   scr_recolour ();
-#endif                          /* XTERM_COLOR_CHANGE */
+#endif /* XTERM_COLOR_CHANGE */
 }
 
 void
@@ -1349,7 +1358,7 @@ xim_preedit_draw (XIC ic, XPointer client_data, XIMPreeditDrawCallbackStruct *ca
         }
       else
         str = (void *)text->string.wide_char;
-      
+
       HOOK_INVOKE ((term, HOOK_XIM_PREEDIT_DRAW,
                     DT_INT, call_data->caret,
                     DT_INT, call_data->chg_first,
@@ -1678,7 +1687,7 @@ rxvt_term::IMSetPosition ()
     {
       im_set_size (preedit_rect);
       preedit_attr = XVaCreateNestedList (0, XNArea, &preedit_rect, NULL);
-    
+
       XSetICValues (Input_Context,
                     XNPreeditAttributes, preedit_attr, NULL);
     }
@@ -1705,7 +1714,7 @@ rxvt_term::IMSetPosition ()
 
    XFree (preedit_attr);
 }
-#endif                          /* USE_XIM */
+#endif /* USE_XIM */
 
 void
 rxvt_term::get_window_origin (int &x, int &y)
@@ -1737,29 +1746,39 @@ rxvt_term::get_pixmap_property (int prop_id)
 }
 
 #ifdef HAVE_BG_PIXMAP
+# if TRACE_PIXMAPS
+#  undef update_background
+int rxvt_term::trace_update_background (const char* file, int line)
+{
+  fprintf (stderr, "%s:%d:update_background()\n", file, line);
+  update_background ();
+}
+# endif
 int
 rxvt_term::update_background ()
 {
   bgPixmap.invalidate ();
 
-  /* no chance of real time refresh if we are blurring ! */
-  if (bgPixmap.invalid_since + 0.5 < NOW && !(bgPixmap.flags & bgPixmap_t::blurNeeded))
+  /* no chance of real time refresh if we are blurring! */
+  if (bgPixmap.invalid_since + 0.5 < ev::now () && !(bgPixmap.flags & bgPixmap_t::blurNeeded))
     bgPixmap.render ();
   else
     {
       update_background_ev.stop ();
+
       if (!bgPixmap.need_client_side_rendering())
-        update_background_ev.start (NOW + .05);
+        update_background_ev.start (.05);
       else if (bgPixmap.flags & bgPixmap_t::blurNeeded)
-        update_background_ev.start (NOW + .2); /* very slow !!! */
+        update_background_ev.start (.20); /* very slow !!! */
       else
-        update_background_ev.start (NOW + .07);
+        update_background_ev.start (.07);
     }
+
   return 0;
 }
 
 void
-rxvt_term::update_background_cb (time_watcher &w)
+rxvt_term::update_background_cb (ev::timer &w, int revents)
 {
   bgPixmap.render ();
 }

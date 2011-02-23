@@ -185,7 +185,7 @@ rxvt_xim::ref_init ()
   ximcallback.client_data = (XPointer)this;
   ximcallback.callback = im_destroy_cb;
 
-  XSetIMValues (xim, XNDestroyCallback, &ximcallback, 0);
+  XSetIMValues (xim, XNDestroyCallback, &ximcallback, (char *)0);
 
   return true;
 }
@@ -464,7 +464,7 @@ bool rxvt_display::ref_init ()
   int fd = XConnectionNumber (dpy);
 
   // try to detect wether we have a local connection.
-  // assume unix domains socket == local, everything else not
+  // assume unix domain socket == local, everything else not
   // TODO: might want to check for inet/127.0.0.1
   is_local = 0;
   sockaddr_un sa;
@@ -473,7 +473,7 @@ bool rxvt_display::ref_init ()
   if (!getsockname (fd, (sockaddr *)&sa, &sl))
     is_local = sa.sun_family == AF_UNIX;
 
-  x_ev.start (fd, EVENT_READ);
+  x_ev.start (fd, ev::READ);
   fcntl (fd, F_SETFD, FD_CLOEXEC);
 
   XSelectInput (dpy, root, PropertyChangeMask);
@@ -540,9 +540,9 @@ void rxvt_display::im_change_check ()
 }
 #endif
 
-void rxvt_display::x_cb (io_watcher &w, short revents)
+void rxvt_display::x_cb (ev::io &w, int revents)
 {
-  do
+  while (XEventsQueued (dpy, QueuedAfterReading))
     {
       XEvent xev;
       XNextEvent (dpy, &xev);
@@ -569,17 +569,13 @@ void rxvt_display::x_cb (io_watcher &w, short revents)
         }
 #endif
     }
-  while (XEventsQueued (dpy, QueuedAlready));
 
   XFlush (dpy);
 }
 
 void rxvt_display::flush ()
 {
-  if (XEventsQueued (dpy, QueuedAlready))
-    x_cb (x_ev, EVENT_READ);
-
-  XFlush (dpy);
+  x_cb (x_ev, ev::READ);
 }
 
 void rxvt_display::reg (xevent_watcher *w)
@@ -668,7 +664,7 @@ insert_component (unsigned int value, unsigned int mask, unsigned int shift)
 {
   return (value * (mask + 1) >> 16) << shift;
 }
- 
+
 bool
 rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
 {
@@ -797,7 +793,7 @@ rxvt_color::set (rxvt_screen *screen, const rgba &color)
 
       for (int i = 0; i < cmap_size; i++)
         colors [i].pixel = i;
- 
+
       // many kilobytes transfer per colour, but pseudocolor isn't worth
       // many extra optimisations.
       XQueryColors (screen->dpy, screen->cmap, colors, cmap_size);
@@ -820,7 +816,7 @@ rxvt_color::set (rxvt_screen *screen, const rgba &color)
 
       //rxvt_warn ("could not allocate %04x %04x %04x, getting %04x %04x %04x instead (%d)\n",
       //    color.r, color.g, color.b, best->red, best->green, best->blue, diff);
-          
+
       got = alloc (screen, rgba (best->red, best->green, best->blue));
 
       delete [] colors;
@@ -858,7 +854,7 @@ rxvt_color::get (XColor &color)
   color.pixel = (Pixel)*this;
 }
 
-void 
+void
 rxvt_color::free (rxvt_screen *screen)
 {
   if (screen->visual->c_class == TrueColor)
@@ -888,3 +884,19 @@ rxvt_color::fade (rxvt_screen *screen, int percent, rxvt_color &result, const rg
   );
 }
 
+#if TRACE_PIXMAPS
+# undef XCreatePixmap
+# undef XFreePixmap
+Pixmap trace_XCreatePixmap (const char *file, int line, Display *dpy, Window r, unsigned int w, unsigned int h, unsigned int d)
+{
+  Pixmap res = XCreatePixmap (dpy, r, w, h, d);
+  fprintf (stderr, "%s:%d: XCreatePixmap (%p,%lX,%u,%u,%u) returned %lX\n", file, line, dpy, r, w, h, d, res);
+  return res;
+}
+
+void trace_XFreePixmap (const char *file, int line, Display *dpy, Pixmap p)
+{
+  fprintf (stderr, "%s:%d: XFreePixmap (%p,%lX)\n", file, line, dpy, p);
+  XFreePixmap (dpy,p);
+}
+#endif

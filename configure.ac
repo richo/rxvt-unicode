@@ -19,6 +19,7 @@ AC_SUBST(VERSION)dnl
 AC_SUBST(DATE)dnl
 AC_SUBST(LSMDATE)dnl
 AC_SUBST(LIBVERSION)dnl
+
 echo ""
 echo "configuring for rxvt $VERSION"
 echo ""
@@ -64,7 +65,7 @@ dnl# Supply default CXXFLAGS, if not specified by `CXXFLAGS=flags ./configure'
 dnl#
 if test -z "$orig_CXXFLAGS"; then
   if test x$GCC = xyes && test "x$GXX" = xyes; then
-     CXXFLAGS="-g -O3 -fno-threadsafe-statics -fno-enforce-eh-specs"
+    CXXFLAGS="-g -O3 -fno-threadsafe-statics -fno-enforce-eh-specs"
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[])], [], [CXXFLAGS="-g -O3"])
   else
     CXXFLAGS="-O"
@@ -195,6 +196,22 @@ AC_ARG_ENABLE(everything,
     fi
   ])
 
+WARNINGS=no
+AC_ARG_ENABLE(warnings,
+  [  --enable-warnings       turn on g++ warnings],
+  [if test x$enableval = xyes; then
+    WARNINGS=yes
+  fi])
+if test x$GXX = xyes; then
+  if test $WARNINGS = yes; then
+    save_CXXFLAGS="$CXXFLAGS"
+    CXXFLAGS="$CXXFLAGS -Wall -Wno-sign-compare -Wno-reorder -Wno-non-virtual-dtor"
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[])], [], [CXXFLAGS="$save_CXXFLAGS"])
+  else
+    CXXFLAGS="$CXXFLAGS -w"
+  fi
+fi
+
 AC_ARG_ENABLE(unicode3,
   [  --enable-unicode3       use 21 instead of 16 bits to represent unicode characters],
   [if test x$enableval = xyes -o x$enableval = xno; then
@@ -280,7 +297,7 @@ AC_ARG_ENABLE(plain-scroll,
   fi])
 
 AC_ARG_WITH(codesets,
-  [  --with-codesets=CS,... compile in additional codesets (jp,jp_ext,kr,zh,zh_ext,all)],
+  [  --with-codesets=CS,...  compile in additional codesets (jp,jp_ext,kr,zh,zh_ext,all)],
   [codesets="$withval"])
 
 AC_ARG_ENABLE(xim,
@@ -418,6 +435,11 @@ AC_ARG_WITH(terminfo,
   [if test x$withval != x; then
     AC_DEFINE_UNQUOTED(RXVT_TERMINFO, "$withval", Set TERMINFO value to the value given by configure) terminfo="$withval"
   fi])
+
+dnl# --------------------------------------------------------------------------
+
+LIBEV_M4_AVOID_LIBRT=1
+m4_include([libev/libev.m4])
 
 dnl# --------------------------------------------------------------------------
 
@@ -628,37 +650,18 @@ dnl# --------------------------------------------------------------------------
 AC_TYPE_SIGNAL
 dnl> AC_FUNC_VPRINTF
 
-AC_CHECK_FUNCS( \
-	unsetenv \
-	setutent \
-	on_exit \
-)
+AC_CHECK_FUNCS(unsetenv)
 
 UTMP_CHECK
 
 dnl# --------------------------------------------------------------------------
 
-dnl# find ttys/ttytab
-AC_CACHE_CHECK(where ttys/ttytab is located, rxvt_cv_path_ttytab,
-[for ttys_file in   dnl
-  /etc/ttys /etc/ttytab;
-do
-  if test -f "$ttys_file" ; then
-    rxvt_cv_path_ttytab=$ttys_file
-    break
-  fi
-done
-])
-if test x$rxvt_cv_path_ttytab != x; then
-  AC_DEFINE_UNQUOTED(TTYTAB_FILENAME, "$rxvt_cv_path_ttytab", Define location of ttys/ttytab)
-fi
-
 dnl# --------------------------------------------------------------------------
 dnl# --------------------------------------------------------------------------
 
 dnl# this is a really hack test for some basic Xlocale stuff
-ac_save_LIBS=$LIBS
-ac_save_CFLAGS=$CFLAGS
+save_LIBS=$LIBS
+save_CFLAGS=$CFLAGS
 CFLAGS="$CFLAGS $X_CFLAGS"
 LIBS="$LIBS $X_LIBS $X_EXTRA_LIBS -lX11"
 if test x$support_xim = xyes; then
@@ -699,8 +702,8 @@ AC_CACHE_CHECK(for working X setlocale, rxvt_cv_func_xsetlocale,
 if test x$rxvt_cv_func_xsetlocale = xyes; then
   AC_DEFINE(HAVE_XSETLOCALE, 1, Define if setlocale (defined to Xsetlocale) works)
 fi
-LIBS=$ac_save_LIBS
-CFLAGS=$ac_save_CFLAGS
+LIBS=$save_LIBS
+CFLAGS=$save_CFLAGS
 
 AC_CACHE_CHECK(for working plain setlocale, rxvt_cv_func_setlocale,
 [AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <clocale>]], [[setlocale(LC_CTYPE, "");]])],[rxvt_cv_func_setlocale=yes],[rxvt_cv_func_setlocale=no])])
@@ -726,18 +729,21 @@ dnl# --------------------------------------------------------------------------
 if test x$support_xft = xyes; then
   AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
   if test $PKG_CONFIG != no && $PKG_CONFIG --exists xft; then
-    LIBS="$LIBS `$PKG_CONFIG xft --libs`"
+    X_LIBS="`$PKG_CONFIG xft --libs` $X_LIBS"
     CPPFLAGS="$CPPFLAGS `$PKG_CONFIG xft --cflags`"
   else
     AC_PATH_PROG(XFT_CONFIG, xft-config, no)
     if test $XFT_CONFIG != no; then
-      LIBS="$LIBS `$XFT_CONFIG --libs`"
+      X_LIBS="`$XFT_CONFIG --libs` $X_LIBS"
       CPPFLAGS="$CPPFLAGS `$XFT_CONFIG --cflags`"
     fi
   fi
 
+  save_LIBS="$LIBS"
+  LIBS="$LIBS $X_LIBS"
   AC_CHECK_HEADERS(X11/Xft/Xft.h,,[support_xft=no])
-  AC_CHECK_LIB(Xft,XftDrawString32,,[support_xft=no])
+  AC_CHECK_LIB(Xft,XftDrawString32,:,[support_xft=no])
+  LIBS="$save_LIBS"
 
   if test x$support_xft = xyes; then
     AC_DEFINE(XFT, 1, Define to enable xft support)

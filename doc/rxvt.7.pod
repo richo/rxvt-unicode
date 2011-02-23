@@ -199,9 +199,9 @@ And here is rxvt-unicode:
 
    libX11.so.6 => /usr/X11R6/lib/libX11.so.6 (0x00002aaaaabc3000)
    libgcc_s.so.1 => /lib/libgcc_s.so.1 (0x00002aaaaada2000)
-   libc.so.6 => /lib/libc.so.6 (0x00002aaaaaeb0000)     
-   libdl.so.2 => /lib/libdl.so.2 (0x00002aaaab0ee000)   
-   /lib64/ld-linux-x86-64.so.2 (0x00002aaaaaaab000)     
+   libc.so.6 => /lib/libc.so.6 (0x00002aaaaaeb0000)
+   libdl.so.2 => /lib/libdl.so.2 (0x00002aaaab0ee000)
+   /lib64/ld-linux-x86-64.so.2 (0x00002aaaaaaab000)
 
 No large bloated libraries (of course, none were linked in statically),
 except maybe libX11 :)
@@ -211,17 +211,17 @@ except maybe libX11 :)
 
 =head3 I can't get transparency working, what am I doing wrong?
 
-First of all, please address all transparency related issues to Sasha Vasko at 
-sasha@aftercode.net and do not bug the author about it. Also, if you can't 
+First of all, please address all transparency related issues to Sasha Vasko at
+sasha@aftercode.net and do not bug the author about it. Also, if you can't
 get it working consider it a rite of passage: ... and you failed.
 
 Here are four ways to get transparency. B<Do> read the manpage and option
 descriptions for the programs mentioned and rxvt-unicode. Really, do it!
 
-1. Use inheritPixmap:
+1. Use transparent mode:
 
    Esetroot wallpaper.jpg
-   @@URXVT_NAME@@ -ip -tint red -sh 40
+   @@URXVT_NAME@@ -tr -tint red -sh 40
 
 That works. If you think it doesn't, you lack transparency and tinting
 support, or you are unable to read.
@@ -231,9 +231,9 @@ to use effects other than tinting and shading: Just shade/tint/whatever
 your picture with gimp or any other tool:
 
    convert wallpaper.jpg -blur 20x20 -modulate 30 background.jpg
-   @@URXVT_NAME@@ -pixmap background.jpg -pe automove-background
+   @@URXVT_NAME@@ -pixmap "background.jpg;:root"
 
-That works. If you think it doesn't, you lack AfterImage and Perl support, or you
+That works. If you think it doesn't, you lack AfterImage support, or you
 are unable to read.
 
 3. Use an ARGB visual:
@@ -343,10 +343,9 @@ If you want antialiasing, you have to specify the fonts manually.
 If no bold colour is set via C<colorBD:>, bold will invert text using the
 standard foreground colour.
 
-For the standard background colour, blinking will actually make the
-text blink when compiled with C<--enable-blinking>. with standard
-colours. Without C<--enable-blinking>, the blink attribute will be
-ignored.
+For the standard background colour, blinking will actually make
+the text blink when compiled with C<--enable-text-blink>. Without
+C<--enable-text-blink>, the blink attribute will be ignored.
 
 On ANSI colours, bold/blink attributes are used to set high-intensity
 foreground/background colors.
@@ -612,7 +611,7 @@ key has been assigned an escape sequence to match the vt100 for Execute
 
 Some other Backspace problems:
 
-some editors use termcap/terminfo, 
+some editors use termcap/terminfo,
 some editors (vim I'm told) expect Backspace = ^H,
 GNU Emacs (and Emacs-like editors) use ^H for help.
 
@@ -1075,7 +1074,7 @@ method servers are running with this command:
 
    xprop -root XIM_SERVERS
 
-=item 
+=item
 
 =back
 
@@ -2367,8 +2366,7 @@ lowered if libAfterImage is configured without support for SVG.
 
 =item --enable-transparency (default: on)
 
-Add support for inheriting parent backgrounds thus giving a fake
-transparency to the term.
+Add support for backgrounds, creating illusion of transparency in the term.
 
 =item --enable-fading (default: on)
 
@@ -2438,6 +2436,7 @@ in combination with other switches) is:
   XEmbed support (-embed)
   user-pty (-pty-fd)
   hold on exit (-hold)
+  compile in built-in block graphics
   skip builtin block graphics (-sbg)
   separate highlightcolor support (-hc)
 
