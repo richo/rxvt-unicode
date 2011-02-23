@@ -41,7 +41,7 @@
 
 #include "perlxsi.c"
 
-#if defined(HAVE_SCROLLBARS) || defined(MENUBAR)
+#ifdef HAVE_SCROLLBARS
 # define GRAB_CURSOR THIS->leftptr_cursor
 #else
 # define GRAB_CURSOR None
@@ -52,25 +52,9 @@
 #undef ROW
 #define ROW(n) THIS->row_buf [LINENO (n)]
 
-#define ENABLE_PERL_FRILLS 0
+typedef int CHAINED UNUSED;
 
 /////////////////////////////////////////////////////////////////////////////
-
-static SV *
-taint (SV *sv)
-{
-  SvTAINT (sv);
-  return sv;
-}
-
-static SV *
-taint_if (SV *sv, SV *src)
-{
-  if (SvTAINTED (src))
-    SvTAINT (sv);
-
-  return sv;
-}
 
 static wchar_t *
 sv2wcs (SV *sv)
@@ -131,10 +115,12 @@ SvPTR (SV *sv, const char *klass)
   return (long)mg->mg_ptr;
 }
 
-#define newSVterm(term) SvREFCNT_inc ((SV *)term->perl.self)
-#define SvTERM(sv) (rxvt_term *)SvPTR (sv, "urxvt::term")
+#define newSVterm(term) SvREFCNT_inc ((SV *)(term)->perl.self)
+#define SvTERM(sv) (rxvt_term *)SvPTR ((sv), "urxvt::term")
 
 /////////////////////////////////////////////////////////////////////////////
+
+#define SvWATCHER(sv) (perl_watcher *)SvPTR (sv, "urxvt::watcher")
 
 struct perl_watcher
 {
@@ -142,7 +128,7 @@ struct perl_watcher
   HV *self;
 
   perl_watcher ()
-  : cbsv (newSV (0))
+  : cbsv (0)
   {
   }
 
@@ -153,7 +139,8 @@ struct perl_watcher
 
   void cb (SV *cb)
   {
-    sv_setsv (cbsv, cb);
+    SvREFCNT_dec (cbsv);
+    cbsv = newSVsv (cb);
   }
 
   void invoke (const char *type, SV *self, int arg = -1);
@@ -186,10 +173,10 @@ perl_watcher::invoke (const char *type, SV *self, int arg)
     rxvt_warn ("%s callback evaluation error: %s", type, SvPV_nolen (ERRSV));
 }
 
-#define newSVtimer(timer) new_ref (timer->self, "urxvt::timer")
-#define SvTIMER(sv) (timer *)SvPTR (sv, "urxvt::timer")
+#define newSVtimer(timer) new_ref ((timer)->self, "urxvt::timer")
+#define SvTIMER(sv) (timer *)(perl_watcher *)SvPTR ((sv), "urxvt::timer")
 
-struct timer : time_watcher, perl_watcher
+struct timer : perl_watcher, time_watcher
 {
   tstamp interval;
 
@@ -207,10 +194,10 @@ struct timer : time_watcher, perl_watcher
   }
 };
 
-#define newSViow(iow) new_ref (iow->self, "urxvt::iow")
-#define SvIOW(sv) (iow *)SvPTR (sv, "urxvt::iow")
+#define newSViow(iow) new_ref ((iow)->self, "urxvt::iow")
+#define SvIOW(sv) (iow *)(perl_watcher *)SvPTR ((sv), "urxvt::iow")
 
-struct iow : io_watcher, perl_watcher
+struct iow : perl_watcher, io_watcher
 {
   iow ()
   : io_watcher (this, &iow::execute)
@@ -223,17 +210,52 @@ struct iow : io_watcher, perl_watcher
   }
 };
 
+#define newSViw(iw) new_ref ((iw)->self, "urxvt::iw")
+#define SvIW(sv) (iw *)(perl_watcher *)SvPTR ((sv), "urxvt::iw")
+
+struct iw : perl_watcher, idle_watcher
+{
+  iw ()
+  : idle_watcher (this, &iw::execute)
+  {
+  }
+
+  void execute (idle_watcher &w)
+  {
+    invoke ("urxvt::iw", newSViw (this));
+  }
+};
+
+#define newSVpw(pw) new_ref ((pw)->self, "urxvt::pw")
+#define SvPW(sv) (pw *)(perl_watcher *)SvPTR ((sv), "urxvt::pw")
+
+struct pw : perl_watcher, child_watcher
+{
+  pw ()
+  : child_watcher (this, &pw::execute)
+  {
+  }
+
+  void execute (child_watcher &w, int status)
+  {
+    invoke ("urxvt::pw", newSVpw (this), status);
+  }
+};
+
 /////////////////////////////////////////////////////////////////////////////
 
 #define SvOVERLAY(sv) (overlay *)SvPTR (sv, "urxvt::overlay")
 
-struct overlay {
-  HV *self;
+class overlay {
   rxvt_term *THIS;
+  AV *overlay_av;
   int x, y, w, h;
   int border;
   text_t **text;
   rend_t **rend;
+
+public:
+  HV *self;
 
   overlay (rxvt_term *THIS, int x_, int y_, int w_, int h_, rend_t rstyle, int border);
   ~overlay ();
@@ -247,7 +269,7 @@ struct overlay {
 };
 
 overlay::overlay (rxvt_term *THIS, int x_, int y_, int w_, int h_, rend_t rstyle, int border)
-: THIS(THIS), x(x_), y(y_), w(w_), h(h_), border(border == 2)
+: THIS(THIS), x(x_), y(y_), w(w_), h(h_), border(border == 2), overlay_av (0)
 {
   if (border == 2)
     {
@@ -296,7 +318,6 @@ overlay::overlay (rxvt_term *THIS, int x_, int y_, int w_, int h_, rend_t rstyle
     }
 
   show ();
-  THIS->want_refresh = 1;
 }
 
 overlay::~overlay ()
@@ -311,31 +332,46 @@ overlay::~overlay ()
 
   delete [] text;
   delete [] rend;
-
-  THIS->want_refresh = 1;
 }
 
 void
 overlay::show ()
 {
-  char key[33]; sprintf (key, "%32lx", (long)this);
+  if (overlay_av)
+    return;
 
-  HV *hv = (HV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)THIS->perl.self), "_overlay", 8, 0));
-  hv_store (hv, key, 32, newSViv ((long)this), 0);
+  overlay_av = (AV *)SvREFCNT_inc (SvRV (
+        *hv_fetch ((HV *)SvRV ((SV *)THIS->perl.self), "_overlay", 8, 0)
+     ));
+  av_push (overlay_av, newSViv ((long)this));
+
+  THIS->want_refresh = 1;
 }
 
 void
 overlay::hide ()
 {
-  SV **ovs = hv_fetch ((HV *)SvRV ((SV *)THIS->perl.self), "_overlay", 8, 0);
+  if (!overlay_av)
+    return;
 
-  if (ovs)
-    {
-      char key[33]; sprintf (key, "%32lx", (long)this);
+  int i;
 
-      HV *hv = (HV *)SvRV (*ovs);
-      hv_delete (hv, key, 32, G_DISCARD);
-    }
+  for (i = AvFILL (overlay_av); i >= 0; i--)
+    if (SvIV (*av_fetch (overlay_av, i, 1)) == (long)this)
+      {
+        av_delete (overlay_av, i, G_DISCARD);
+        break;
+      }
+
+  for (; i < AvFILL (overlay_av); i++)
+    av_store (overlay_av, i, SvREFCNT_inc (*av_fetch (overlay_av, i + 1, 0)));
+
+  av_pop (overlay_av);
+
+  SvREFCNT_dec (overlay_av);
+  overlay_av = 0;
+
+  THIS->want_refresh = 1;
 }
 
 void overlay::swap ()
@@ -351,8 +387,8 @@ void overlay::swap ()
       text_t *t1 = text [y];
       rend_t *r1 = rend [y];
 
-      text_t *t2 = ROW(y + ov_y - THIS->view_start).t + ov_x;
-      rend_t *r2 = ROW(y + ov_y - THIS->view_start).r + ov_x;
+      text_t *t2 = ROW(y + ov_y + THIS->view_start).t + ov_x;
+      rend_t *r2 = ROW(y + ov_y + THIS->view_start).r + ov_x;
 
       for (int x = ov_w; x--; )
         {
@@ -385,7 +421,7 @@ void overlay::set (int x, int y, SV *text, SV *rend)
 
       AV *av = (AV *)SvRV (rend);
 
-      for (int col = min (av_len (av) + 1, w - x - border); col--; )
+      for (int col = min (AvFILL (av) + 1, w - x - border); col--; )
         this->rend [y][x + col] = SvIV (*av_fetch (av, col, 1));
     }
 
@@ -409,23 +445,30 @@ rxvt_perl_interp::~rxvt_perl_interp ()
 }
 
 void
-rxvt_perl_interp::init ()
+rxvt_perl_interp::init (rxvt_term *term)
 {
   if (!perl)
     {
+      rxvt_push_locale (""); // perl init destroys current locale
+
       perl_environ = rxvt_environ;
       swap (perl_environ, environ);
 
       char *argv[] = {
         "",
-        "-T",
-        "-edo '" LIBDIR "/urxvt.pm' or ($@ and die $@) or exit 1",
+        "-e"
+        "BEGIN {"
+        "   urxvt->bootstrap;"
+        "   unshift @INC, '" LIBDIR "';"
+        "}"
+        ""
+        "use urxvt;"
       };
 
       perl = perl_alloc ();
       perl_construct (perl);
 
-      if (perl_parse (perl, xs_init, 3, argv, (char **)NULL)
+      if (perl_parse (perl, xs_init, 2, argv, (char **)NULL)
           || perl_run (perl))
         {
           rxvt_warn ("unable to initialize perl-interpreter, continuing without.\n");
@@ -436,6 +479,15 @@ rxvt_perl_interp::init ()
         }
 
       swap (perl_environ, environ);
+
+      rxvt_pop_locale ();
+    }
+
+  if (perl)
+    {
+      // runs outside of perls ENV
+      term->perl.self = (void *)newSVptr ((void *)term, "urxvt::term");
+      hv_store ((HV *)SvRV ((SV *)term->perl.self), "_overlay", 8, newRV_noinc ((SV *)newAV ()), 0);
     }
 }
 
@@ -444,8 +496,8 @@ ungrab (rxvt_term *THIS)
 {
   if (THIS->perl.grabtime)
     {
-      XUngrabKeyboard (THIS->display->display, THIS->perl.grabtime);
-      XUngrabPointer  (THIS->display->display, THIS->perl.grabtime);
+      XUngrabKeyboard (THIS->xdisp, THIS->perl.grabtime);
+      XUngrabPointer  (THIS->xdisp, THIS->perl.grabtime);
       THIS->perl.grabtime = 0;
     }
 }
@@ -453,188 +505,238 @@ ungrab (rxvt_term *THIS)
 bool
 rxvt_perl_interp::invoke (rxvt_term *term, hook_type htype, ...)
 {
-  if (!perl)
+  if (!perl || !term->perl.self)
     return false;
 
-  if (htype == HOOK_INIT) // first hook ever called
+  // pre-handling of some events
+  if (htype == HOOK_REFRESH_END)
     {
-      term->perl.self = (void *)newSVptr ((void *)term, "urxvt::term");
-      hv_store ((HV *)SvRV ((SV *)term->perl.self), "_overlay", 8, newRV_noinc ((SV *)newHV ()), 0);
-    }
-  else if (!term->perl.self)
-    return false; // perl not initialized for this instance
-  else if (htype == HOOK_DESTROY)
-    {
-      // handled later
-    }
-  else
-    {
-      if (htype == HOOK_REFRESH_BEGIN || htype == HOOK_REFRESH_END)
-        {
-          HV *hv = (HV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)term->perl.self), "_overlay", 8, 0));
-
-          if (HvKEYS (hv))
-            {
-              hv_iterinit (hv);
-
-              while (HE *he = hv_iternext (hv))
-                ((overlay *)SvIV (hv_iterval (hv, he)))->swap ();
-            }
-
-        }
-
-      if (!term->perl.should_invoke [htype])
-        return false;
+      AV *av = (AV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)term->perl.self), "_overlay", 8, 0));
+      
+      for (int i = 0; i <= AvFILL (av); i++)
+        ((overlay *)SvIV (*av_fetch (av, i, 0)))->swap ();
     }
 
   swap (perl_environ, environ);
 
-  try
-    {
-      dSP;
-      va_list ap;
+  bool event_consumed;
 
-      va_start (ap, htype);
+  if (htype == HOOK_INIT || htype == HOOK_DESTROY // must be called always
+      || term->perl.should_invoke [htype])
+    try
+      {
+        dSP;
+        va_list ap;
 
-      ENTER;
-      SAVETMPS;
+        va_start (ap, htype);
 
-      PUSHMARK (SP);
+        ENTER;
+        SAVETMPS;
 
-      XPUSHs (sv_2mortal (newSVterm (term)));
-      XPUSHs (sv_2mortal (newSViv (htype)));
+        PUSHMARK (SP);
 
-      for (;;) {
-        data_type dt = (data_type)va_arg (ap, int);
+        XPUSHs (sv_2mortal (newSVterm (term)));
+        XPUSHs (sv_2mortal (newSViv (htype)));
 
-        switch (dt)
+        for (;;) {
+          data_type dt = (data_type)va_arg (ap, int);
+
+          switch (dt)
+            {
+              case DT_INT:
+                XPUSHs (sv_2mortal (newSViv (va_arg (ap, int))));
+                break;
+
+              case DT_LONG:
+                XPUSHs (sv_2mortal (newSViv (va_arg (ap, long))));
+                break;
+
+              case DT_STR:
+                XPUSHs (sv_2mortal (newSVpv (va_arg (ap, char *), 0)));
+                break;
+
+              case DT_STR_LEN:
+                {
+                  char *str = va_arg (ap, char *);
+                  int len   = va_arg (ap, int);
+
+                  XPUSHs (sv_2mortal (newSVpvn (str, len)));
+                }
+                break;
+
+              case DT_WCS_LEN:
+                {
+                  wchar_t *wstr = va_arg (ap, wchar_t *);
+                  int wlen      = va_arg (ap, int);
+
+                  XPUSHs (sv_2mortal (wcs2sv (wstr, wlen)));
+                }
+               break;
+
+              case DT_LCS_LEN:
+                {
+                  long *lstr = va_arg (ap, long *);
+                  int llen   = va_arg (ap, int);
+
+                  XPUSHs (sv_2mortal (newSVpvn ((char *)lstr, llen * sizeof (long))));
+                }
+               break;
+
+              case DT_XEVENT:
+                {
+                  XEvent *xe = va_arg (ap, XEvent *);
+                  HV *hv = newHV ();
+
+#                 define set(name, sv) hv_store (hv, # name,  sizeof (# name) - 1, sv, 0)
+#                 define setiv(name, val) hv_store (hv, # name,  sizeof (# name) - 1, newSViv (val), 0)
+#                 define setuv(name, val) hv_store (hv, # name,  sizeof (# name) - 1, newSVuv (val), 0)
+#                 undef set
+
+                  setiv (type,       xe->type);
+                  setiv (send_event, xe->xany.send_event);
+                  setiv (serial,     xe->xany.serial);
+
+                  switch (xe->type)
+                    {
+                      case KeyPress:
+                      case KeyRelease:
+                      case ButtonPress:
+                      case ButtonRelease:
+                      case MotionNotify:
+                        setuv (window,    xe->xmotion.window);
+                        setuv (root,      xe->xmotion.root);
+                        setuv (subwindow, xe->xmotion.subwindow);
+                        setuv (time,      xe->xmotion.time);
+                        setiv (x,         xe->xmotion.x);
+                        setiv (y,         xe->xmotion.y);
+                        setiv (row,       xe->xmotion.y / term->fheight + term->view_start);
+                        setiv (col,       xe->xmotion.x / term->fwidth);
+                        setiv (x_root,    xe->xmotion.x_root);
+                        setiv (y_root,    xe->xmotion.y_root);
+                        setuv (state,     xe->xmotion.state);
+
+                        switch (xe->type)
+                          {
+                            case KeyPress:
+                            case KeyRelease:
+                              setuv (keycode, xe->xkey.keycode);
+                              break;
+
+                            case ButtonPress:
+                            case ButtonRelease:
+                              setuv (button,  xe->xbutton.button);
+                              break;
+
+                            case MotionNotify:
+                              setiv (is_hint, xe->xmotion.is_hint);
+                              break;
+                          }
+
+                        break;
+
+                      case MapNotify:
+                      case UnmapNotify:
+                      case ConfigureNotify:
+                        setuv (event,  xe->xconfigure.event);
+                        setuv (window, xe->xconfigure.window);
+
+                        switch (xe->type)
+                          {
+                            case ConfigureNotify:
+                              setiv (x,      xe->xconfigure.x);
+                              setiv (y,      xe->xconfigure.y);
+                              setiv (width,  xe->xconfigure.width);
+                              setiv (height, xe->xconfigure.height);
+                              setuv (above,  xe->xconfigure.above);
+                              break;
+                          }
+
+                        break;
+
+                      case PropertyNotify:
+                        setuv (window,       xe->xproperty.window);
+                        setuv (atom,         xe->xproperty.atom);
+                        setuv (time,         xe->xproperty.time);
+                        setiv (state,        xe->xproperty.state);
+                        break;
+
+                      case ClientMessage:
+                        setuv (window,       xe->xclient.window);
+                        setuv (message_type, xe->xclient.message_type);
+                        setuv (format,       xe->xclient.format);
+                        setuv (l0,           xe->xclient.data.l[0]);
+                        setuv (l1,           xe->xclient.data.l[1]);
+                        setuv (l2,           xe->xclient.data.l[2]);
+                        setuv (l3,           xe->xclient.data.l[3]);
+                        setuv (l4,           xe->xclient.data.l[4]);
+                        break;
+                    }
+
+                  XPUSHs (sv_2mortal (newRV_noinc ((SV *)hv)));
+                }
+                break;
+
+              case DT_END:
+                goto call;
+
+              default:
+                rxvt_fatal ("FATAL: unable to pass data type %d\n", dt);
+            }
+        }
+
+      call:
+        va_end (ap);
+
+        PUTBACK;
+        int count = call_pv ("urxvt::invoke", G_ARRAY | G_EVAL);
+        SPAGAIN;
+
+        if (count)
           {
-            case DT_INT:
-              XPUSHs (sv_2mortal (newSViv (va_arg (ap, int))));
-              break;
-
-            case DT_LONG:
-              XPUSHs (sv_2mortal (newSViv (va_arg (ap, long))));
-              break;
-
-            case DT_STR:
-              XPUSHs (taint (sv_2mortal (newSVpv (va_arg (ap, char *), 0))));
-              break;
-
-            case DT_STR_LEN:
-              {
-                char *str = va_arg (ap, char *);
-                int len = va_arg (ap, int);
-
-                XPUSHs (taint (sv_2mortal (newSVpvn (str, len))));
-              }
-              break;
-
-            case DT_WCS_LEN:
-              {
-                wchar_t *wstr = va_arg (ap, wchar_t *);
-                int wlen = va_arg (ap, int);
-
-                XPUSHs (taint (sv_2mortal (wcs2sv (wstr, wlen))));
-              }
-             break;
-
-            case DT_XEVENT:
-              {
-                XEvent *xe = va_arg (ap, XEvent *);
-                HV *hv = newHV ();
-
-#           define set(name, sv) hv_store (hv, # name,  sizeof (# name) - 1, sv, 0)
-#           define setiv(name, val) hv_store (hv, # name,  sizeof (# name) - 1, newSViv (val), 0)
-#           undef set
-
-                setiv (type,       xe->type);
-                setiv (send_event, xe->xany.send_event);
-                setiv (serial,     xe->xany.serial);
-
-                switch (xe->type)
-                  {
-                    case KeyPress:
-                    case KeyRelease:
-                    case ButtonPress:
-                    case ButtonRelease:
-                    case MotionNotify:
-                      setiv (time,   xe->xmotion.time);
-                      setiv (x,      xe->xmotion.x);
-                      setiv (y,      xe->xmotion.y);
-                      setiv (row,    xe->xmotion.y / term->fheight);
-                      setiv (col,    xe->xmotion.x / term->fwidth);
-                      setiv (x_root, xe->xmotion.x_root);
-                      setiv (y_root, xe->xmotion.y_root);
-                      setiv (state,  xe->xmotion.state);
-                      break;
-                  }
-
-                switch (xe->type)
-                  {
-                    case KeyPress:
-                    case KeyRelease:
-                      setiv (keycode, xe->xkey.keycode);
-                      break;
-
-                    case ButtonPress:
-                    case ButtonRelease:
-                      setiv (button,  xe->xbutton.button);
-                      break;
-
-                    case MotionNotify:
-                      setiv (is_hint, xe->xmotion.is_hint);
-                      break;
-                  }
-
-                XPUSHs (sv_2mortal (newRV_noinc ((SV *)hv)));
-              }
-              break;
-
-            case DT_END:
-              {
-                va_end (ap);
-
-                PUTBACK;
-                int count = call_pv ("urxvt::invoke", G_ARRAY | G_EVAL);
-                SPAGAIN;
-
-                if (count)
-                  {
-                    SV *status = POPs;
-                    count = SvTRUE (status);
-                  }
-
-                PUTBACK;
-                FREETMPS;
-                LEAVE;
-
-                if (SvTRUE (ERRSV))
-                  {
-                    rxvt_warn ("perl hook %d evaluation error: %s", htype, SvPV_nolen (ERRSV));
-                    ungrab (term); // better lose the grab than the session
-                  }
-
-                if (htype == HOOK_DESTROY)
-                  {
-                    clearSVptr ((SV *)term->perl.self);
-                    SvREFCNT_dec ((SV *)term->perl.self);
-                  }
-
-                swap (perl_environ, environ);
-                return count;
-              }
-
-            default:
-              rxvt_fatal ("FATAL: unable to pass data type %d\n", dt);
+            SV *status = POPs;
+            count = SvTRUE (status);
           }
+
+        PUTBACK;
+        FREETMPS;
+        LEAVE;
+
+        if (SvTRUE (ERRSV))
+          {
+            rxvt_warn ("perl hook %d evaluation error: %s", htype, SvPV_nolen (ERRSV));
+            ungrab (term); // better lose the grab than the session
+          }
+
+        event_consumed = !!count;
       }
-    }
-  catch (...)
+    catch (...)
+      {
+        swap (perl_environ, environ);
+        throw;
+      }
+  else
+    event_consumed = false;
+
+  // post-handling of some events
+  if (htype == HOOK_REFRESH_BEGIN)
     {
-      swap (perl_environ, environ);
-      throw;
+      AV *av = (AV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)term->perl.self), "_overlay", 8, 0));
+      
+      for (int i = AvFILL (av); i >= 0; i--)
+        ((overlay *)SvIV (*av_fetch (av, i, 0)))->swap ();
     }
+  else if (htype == HOOK_DESTROY)
+    {
+      clearSVptr ((SV *)term->perl.self);
+      SvREFCNT_dec ((SV *)term->perl.self);
+      
+      // don't allow further calls
+      term->perl.self = 0;
+    }
+
+  swap (perl_environ, environ);
+
+  return event_consumed;
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -756,6 +858,31 @@ BOOT:
     const_iv (ColormapNotify),
     const_iv (ClientMessage),
     const_iv (MappingNotify),
+#   if ENABLE_XIM_ONTHESPOT
+    const_iv (XIMReverse),
+    const_iv (XIMUnderline),
+    const_iv (XIMHighlight),
+    const_iv (XIMPrimary),
+    const_iv (XIMSecondary),
+    const_iv (XIMTertiary),
+    const_iv (XIMVisibleToForward),
+    const_iv (XIMVisibleToBackword),
+    const_iv (XIMVisibleToCenter),
+#   if 0
+    const_iv (XIMForwardChar),
+    const_iv (XIMBackwardChar),
+    const_iv (XIMForwardWord),
+    const_iv (XIMBackwardWord),
+    const_iv (XIMCaretUp),
+    const_iv (XIMCaretDown),
+    const_iv (XIMNextLine),
+    const_iv (XIMPreviousLine),
+    const_iv (XIMLineStart),
+    const_iv (XIMLineEnd),
+    const_iv (XIMAbsolutePosition),
+    const_iv (XIMDontChange),
+#   endif
+#   endif
   };
 
   for (civ = const_iv + sizeof (const_iv) / sizeof (const_iv [0]);
@@ -773,23 +900,8 @@ fatal (const char *msg)
 	CODE:
         rxvt_fatal ("%s", msg);
 
-SV *
-untaint (SV *sv)
-	CODE:
-        RETVAL = newSVsv (sv);
-        SvTAINTED_off (RETVAL);
-        OUTPUT:
-        RETVAL
-
 void
 _exit (int status)
-
-bool
-safe ()
-	CODE:
-        RETVAL = !rxvt_tainted ();
-        OUTPUT:
-        RETVAL
 
 NV
 NOW ()
@@ -846,34 +958,41 @@ SET_CUSTOM (int rend, int new_value)
 	OUTPUT:
         RETVAL
 
+void
+termlist ()
+	PPCODE:
+{
+        EXTEND (SP, rxvt_term::termlist.size ());
+
+        for (rxvt_term **t = rxvt_term::termlist.begin (); t < rxvt_term::termlist.end (); t++)
+          if ((*t)->perl.self)
+            PUSHs (sv_2mortal (newSVterm (*t)));
+}
+
 MODULE = urxvt             PACKAGE = urxvt::term
 
 SV *
-_new (...)
+_new (AV *env, AV *arg)
 	CODE:
 {
-	if (items < 1 || !SvROK (ST (0)) || SvTYPE (SvRV (ST (0))) != SVt_PVAV)
-          croak ("first argument to urxvt::term->_new must be arrayref");
-
         rxvt_term *term = new rxvt_term;
 
-	term->argv = new stringvec;
-	term->envv = new stringvec;
+	stringvec *argv = new stringvec;
+	stringvec *envv = new stringvec;
 
-        for (int i = 1; i < items; i++)
-          term->argv->push_back (strdup (SvPVbyte_nolen (ST (i))));
+        for (int i = 0; i <= AvFILL (arg); i++)
+          argv->push_back (strdup (SvPVbyte_nolen (*av_fetch (arg, i, 1))));
 
-        AV *envv = (AV *)SvRV (ST (0));
-        for (int i = av_len (envv) + 1; i--; )
-          term->envv->push_back (strdup (SvPVbyte_nolen (*av_fetch (envv, i, 1))));
+        for (int i = AvFILL (env) + 1; i--; )
+          envv->push_back (strdup (SvPVbyte_nolen (*av_fetch (env, i, 1))));
 
-        term->envv->push_back (0);
+        envv->push_back (0);
 
         bool success;
 
         try
           {
-            success = term->init (term->argv->size (), term->argv->begin ());
+            success = term->init (argv, envv);
           }
         catch (const class rxvt_failure_exception &e)
           {
@@ -895,112 +1014,52 @@ _new (...)
 void
 rxvt_term::destroy ()
 
-#if ENABLE_PERL_FRILLS
-
-void
-rxvt_term::XListProperties (U32 window)
-	PPCODE:
-{
-	int count;
-	Atom *props = XListProperties (THIS->display->display, (Window)window, &count);
-
-        EXTEND (SP, count);
-        while (count--)
-          PUSHs (newSVuv ((U32)props [count]));
-        
-        XFree (props);
-}
-
-void
-rxvt_term::XGetWindowProperty (U32 window, U32 property)
-	PPCODE:
-{
-        Atom type;
-        int format;
-        unsigned long nitems;
-        unsigned long bytes_after;
-        unsigned char *prop;
-	XGetWindowProperty (THIS->display->display, (Window)window, (Atom)property,
-                            0, 1<<30, 0, AnyPropertyType,
-                            &type, &format, &nitems, &bytes_after, &prop);
-        if (type != None)
-          {
-            EXTEND (SP, 3);
-            PUSHs (newSVuv ((U32)type));
-            PUSHs (newSViv (format));
-            PUSHs (newSVpvn ((char *)prop, nitems * format / 8));
-            XFree (prop);
-          }
-}
-
-void
-rxvt_term::XChangeWindowProperty (U32 window, U32 property, U32 type, int format, SV *data)
-	CODE:
-{
-	STRLEN len;
-        char *data_ = SvPVbyte (data, len);
-
-	XChangeProperty (THIS->display->display, (Window)window, (Atom)property,
-                         type, format, PropModeReplace,
-                         (unsigned char *)data, len * 8 / format);
-}
-
-void
-rxvt_term::XDeleteProperty (U32 window, U32 property)
-	CODE:
-        XDeleteProperty (THIS->display->display, (Window)window, (Atom)property);
-
-U32
-rxvt_term::DefaultRootWindow ()
-	CODE:
-        RETVAL = (U32)THIS->display->root;
-        OUTPUT:
-        RETVAL
-
-U32
-rxvt_term::XCreateSimpleWindow (U32 parent, int x, int y, unsigned int width, unsigned int height)
-	CODE:
-        RETVAL = XCreateSimpleWindow (THIS->display->display, (Window)parent,
-                                      x, y, width, height, 0,
-                                      THIS->pix_colors_focused[Color_border],
-                                      THIS->pix_colors_focused[Color_border]);
-	OUTPUT:
-        RETVAL
-
-void
-rxvt_term::XReparentWindow (U32 window, U32 parent, int x = 0, int y = 0)
-	CODE:
-        XReparentWindow (THIS->display->display, window, parent, x, y);
-
-#endif
-
 void
 rxvt_term::set_should_invoke (int htype, int inc)
 	CODE:
         THIS->perl.should_invoke [htype] += inc;
 
 void
-rxvt_term::grab_button (int button, U32 modifiers)
+rxvt_term::grab_button (int button, U32 modifiers, Window window = THIS->vt)
 	CODE:
-	XGrabButton (THIS->display->display, button, modifiers, THIS->vt, 1,
+        XGrabButton (THIS->xdisp, button, modifiers, window, 1,
                      ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask | PointerMotionMask,
                      GrabModeSync, GrabModeSync, None, GRAB_CURSOR);
 
+void
+rxvt_term::ungrab_button (int button, U32 modifiers, Window window = THIS->vt)
+	CODE:
+        XUngrabButton (THIS->xdisp, button, modifiers, window);
+
+#if 0
+
+void
+XGrabKey (rxvt_term *THIS, int keycode, U32 modifiers, Window window = THIS->vt)
+	C_ARGS:
+        THIS->xdisp, keycode, modifiers, window, 1,
+        GrabModeSync, GrabModeSync
+
+void
+XUngrabKey (rxvt_term *THIS, int keycode, U32 modifiers, Window window = THIS->vt)
+	C_ARGS: THIS->xdisp, keycode, modifiers, window
+
+#endif
+
 bool
-rxvt_term::grab (U32 eventtime, int sync = 0)
+rxvt_term::grab (Time eventtime, int sync = 0)
 	CODE:
 {
         int mode = sync ? GrabModeSync : GrabModeAsync;
 
         THIS->perl.grabtime = 0;
 
-        if (!XGrabPointer (THIS->display->display, THIS->vt, 0,
+        if (!XGrabPointer (THIS->xdisp, THIS->vt, 0,
                            ButtonPressMask | ButtonReleaseMask | EnterWindowMask | LeaveWindowMask | PointerMotionMask,
                            mode, mode, None, GRAB_CURSOR, eventtime))
-          if (!XGrabKeyboard (THIS->display->display, THIS->vt, 0, mode, mode, eventtime))
+          if (!XGrabKeyboard (THIS->xdisp, THIS->vt, 0, mode, mode, eventtime))
             THIS->perl.grabtime = eventtime;
           else
-            XUngrabPointer (THIS->display->display, eventtime);
+            XUngrabPointer (THIS->xdisp, eventtime);
 
         RETVAL = !!THIS->perl.grabtime;
 }
@@ -1010,18 +1069,18 @@ rxvt_term::grab (U32 eventtime, int sync = 0)
 void
 rxvt_term::allow_events_async ()
 	CODE:
-        XAllowEvents (THIS->display->display, AsyncBoth,      THIS->perl.grabtime);
+        XAllowEvents (THIS->xdisp, AsyncBoth,      THIS->perl.grabtime);
 
 void
 rxvt_term::allow_events_sync ()
 	CODE:
-        XAllowEvents (THIS->display->display, SyncBoth,       THIS->perl.grabtime);
+        XAllowEvents (THIS->xdisp, SyncBoth,       THIS->perl.grabtime);
 
 void
 rxvt_term::allow_events_replay ()
 	CODE:
-        XAllowEvents (THIS->display->display, ReplayPointer,  THIS->perl.grabtime);
-        XAllowEvents (THIS->display->display, ReplayKeyboard, THIS->perl.grabtime);
+        XAllowEvents (THIS->xdisp, ReplayPointer,  THIS->perl.grabtime);
+        XAllowEvents (THIS->xdisp, ReplayKeyboard, THIS->perl.grabtime);
 
 void
 rxvt_term::ungrab ()
@@ -1055,7 +1114,7 @@ rxvt_term::locale_encode (SV *str)
 
         free (wstr);
 
-        RETVAL = taint_if (newSVpv (mbstr, 0), str);
+        RETVAL = newSVpv (mbstr, 0);
         free (mbstr);
 }
 	OUTPUT:
@@ -1072,7 +1131,7 @@ rxvt_term::locale_decode (SV *octets)
         wchar_t *wstr = rxvt_mbstowcs (data, len);
         rxvt_pop_locale ();
 
-        RETVAL = taint_if (wcs2sv (wstr), octets);
+        RETVAL = wcs2sv (wstr);
         free (wstr);
 }
 	OUTPUT:
@@ -1089,9 +1148,12 @@ rxvt_term::locale_decode (SV *octets)
 #define TERM_OFFSET_ncol       TERM_OFFSET(ncol)
 #define TERM_OFFSET_focus      TERM_OFFSET(focus)
 #define TERM_OFFSET_mapped     TERM_OFFSET(mapped)
+#define TERM_OFFSET_int_bwidth TERM_OFFSET(int_bwidth)
+#define TERM_OFFSET_ext_bwidth TERM_OFFSET(ext_bwidth)
+#define TERM_OFFSET_lineSpace  TERM_OFFSET(lineSpace)
 #define TERM_OFFSET_saveLines  TERM_OFFSET(saveLines)
 #define TERM_OFFSET_total_rows TERM_OFFSET(total_rows)
-#define TERM_OFFSET_nsaved     TERM_OFFSET(nsaved)
+#define TERM_OFFSET_top_row    TERM_OFFSET(top_row)
 
 int
 rxvt_term::width ()
@@ -1105,9 +1167,12 @@ rxvt_term::width ()
            ncol       = TERM_OFFSET_ncol
            focus      = TERM_OFFSET_focus
            mapped     = TERM_OFFSET_mapped
+           int_bwidth = TERM_OFFSET_int_bwidth
+           ext_bwidth = TERM_OFFSET_ext_bwidth
+           lineSpace  = TERM_OFFSET_lineSpace
            saveLines  = TERM_OFFSET_saveLines
            total_rows = TERM_OFFSET_total_rows
-           nsaved     = TERM_OFFSET_nsaved
+           top_row    = TERM_OFFSET_top_row
 	CODE:
         RETVAL = *(int *)((char *)THIS + ix);
         OUTPUT:
@@ -1119,12 +1184,16 @@ rxvt_term::ModLevel3Mask ()
            ModLevel3Mask  = 0
            ModMetaMask    = 1
            ModNumLockMask = 2
+           current_screen = 3
+           hidden_cursor  = 4
 	CODE:
         switch (ix)
           {
-           case 0: RETVAL = THIS->ModLevel3Mask;  break;
-           case 1: RETVAL = THIS->ModMetaMask;    break;
-           case 2: RETVAL = THIS->ModNumLockMask; break;
+            case 0: RETVAL = THIS->ModLevel3Mask;  break;
+            case 1: RETVAL = THIS->ModMetaMask;    break;
+            case 2: RETVAL = THIS->ModNumLockMask; break;
+            case 3: RETVAL = THIS->current_screen; break;
+            case 4: RETVAL = THIS->hidden_cursor;  break;
           }
         OUTPUT:
         RETVAL
@@ -1172,17 +1241,24 @@ rxvt_term::pty_ev_events (int events = EVENT_UNDEF)
 	OUTPUT:
         RETVAL
 
-U32
+int
+rxvt_term::pty_fd ()
+	CODE:
+        RETVAL = THIS->pty->pty;
+	OUTPUT:
+        RETVAL
+
+Window
 rxvt_term::parent ()
 	CODE:
-        RETVAL = (U32)THIS->parent [0];
+        RETVAL = THIS->parent [0];
         OUTPUT:
         RETVAL
 
-U32
+Window
 rxvt_term::vt ()
 	CODE:
-        RETVAL = (U32)THIS->vt;
+        RETVAL = THIS->vt;
         OUTPUT:
         RETVAL
 
@@ -1201,20 +1277,23 @@ rxvt_term::rstyle (U32 new_rstyle = THIS->rstyle)
 	RETVAL
 
 int
-rxvt_term::view_start (int newval = -1)
+rxvt_term::view_start (int newval = 1)
 	PROTOTYPE: $;$
 	CODE:
 {
         RETVAL = THIS->view_start;
 
-        if (newval >= 0)
-          {
-            THIS->view_start = min (newval, THIS->nsaved);
-            THIS->scr_changeview (RETVAL);
-          }
+        if (newval <= 0)
+          THIS->scr_changeview (max (newval, THIS->top_row));
 }
         OUTPUT:
 	RETVAL
+
+void
+rxvt_term::focus_in ()
+
+void
+rxvt_term::focus_out ()
 
 void
 rxvt_term::want_refresh ()
@@ -1225,21 +1304,19 @@ void
 rxvt_term::ROW_t (int row_number, SV *new_text = 0, int start_col = 0, int start_ofs = 0, int max_len = MAX_COLS)
 	PPCODE:
 {
-        if (!IN_RANGE_EXC (row_number, -THIS->nsaved, THIS->nrow))
+        if (!IN_RANGE_EXC (row_number, THIS->top_row, THIS->nrow))
           XSRETURN_EMPTY;
 
         line_t &l = ROW(row_number);
 
         if (GIMME_V != G_VOID)
           {
-            wchar_t *wstr = new wchar_t [THIS->ncol];
+            wchar_t *wstr = rxvt_temp_buf<wchar_t> (THIS->ncol);
 
             for (int col = 0; col < THIS->ncol; col++)
               wstr [col] = l.t [col];
 
-            XPUSHs (taint (sv_2mortal (wcs2sv (wstr, THIS->ncol))));
-
-            delete [] wstr;
+            XPUSHs (sv_2mortal (wcs2sv (wstr, THIS->ncol)));
           }
 
         if (new_text)
@@ -1248,7 +1325,7 @@ rxvt_term::ROW_t (int row_number, SV *new_text = 0, int start_col = 0, int start
 
             int len = min (wcslen (wstr) - start_ofs, max_len);
 
-            if (!IN_RANGE_INC (start_col, 0, THIS->ncol - len))
+            if (start_col < 0 || start_col + len > THIS->ncol)
               {
                 free (wstr);
                 croak ("new_text extends beyond horizontal margins");
@@ -1268,7 +1345,7 @@ void
 rxvt_term::ROW_r (int row_number, SV *new_rend = 0, int start_col = 0, int start_ofs = 0, int max_len = MAX_COLS)
 	PPCODE:
 {
-        if (!IN_RANGE_EXC (row_number, -THIS->nsaved, THIS->nrow))
+        if (!IN_RANGE_EXC (row_number, THIS->top_row, THIS->nrow))
           XSRETURN_EMPTY;
 
         line_t &l = ROW(row_number);
@@ -1290,9 +1367,9 @@ rxvt_term::ROW_r (int row_number, SV *new_rend = 0, int start_col = 0, int start
               croak ("new_rend must be arrayref");
 
             AV *av = (AV *)SvRV (new_rend);
-            int len = min (av_len (av) + 1 - start_ofs, max_len);
+            int len = min (AvFILL (av) + 1 - start_ofs, max_len);
 
-            if (!IN_RANGE_INC (start_col, 0, THIS->ncol - len))
+            if (start_col < 0 || start_col + len > THIS->ncol)
               croak ("new_rend array extends beyond horizontal margins");
 
             for (int col = start_col; col < start_col + len; col++)
@@ -1308,7 +1385,7 @@ int
 rxvt_term::ROW_l (int row_number, int new_length = -1)
 	CODE:
 {
-        if (!IN_RANGE_EXC (row_number, -THIS->nsaved, THIS->nrow))
+        if (!IN_RANGE_EXC (row_number, THIS->top_row, THIS->nrow))
           XSRETURN_EMPTY;
 
         line_t &l = ROW(row_number);
@@ -1324,7 +1401,7 @@ bool
 rxvt_term::ROW_is_longer (int row_number, int new_is_longer = -1)
 	CODE:
 {
-        if (!IN_RANGE_EXC (row_number, -THIS->nsaved, THIS->nrow))
+        if (!IN_RANGE_EXC (row_number, THIS->top_row, THIS->nrow))
           XSRETURN_EMPTY;
 
         line_t &l = ROW(row_number);
@@ -1342,35 +1419,41 @@ rxvt_term::special_encode (SV *string)
 {
         wchar_t *wstr = sv2wcs (string);
         int wlen = wcslen (wstr);
-        wchar_t *rstr = new wchar_t [wlen]; // cannot become longer
+        wchar_t *rstr = rxvt_temp_buf<wchar_t> (wlen * 2); // cannot become longer
 
 	rxvt_push_locale (THIS->locale);
 
         wchar_t *r = rstr;
         for (wchar_t *s = wstr; *s; s++)
-          if (wcwidth (*s) == 0)
-            {
-              if (r == rstr)
-                croak ("leading combining character unencodable");
+          {
+            int w = WCWIDTH (*s);
 
-              unicode_t n = rxvt_compose (r[-1], *s);
-              if (n == NOCHAR)
-                n = rxvt_composite.compose (r[-1], *s);
+            if (w == 0)
+              {
+                if (r == rstr)
+                  croak ("leading combining character unencodable");
 
-              r[-1] = n;
-            }
+                unicode_t n = rxvt_compose (r[-1], *s);
+                if (n == NOCHAR)
+                  n = rxvt_composite.compose (r[-1], *s);
+
+                r[-1] = n;
+              }
 #if !UNICODE_3
-          else if (*s >= 0x10000)
-            *r++ = rxvt_composite.compose (*s);
+            else if (*s >= 0x10000)
+              *r++ = rxvt_composite.compose (*s);
 #endif
-          else
-            *r++ = *s;
+            else
+              *r++ = *s;
+
+            // the *2 above only allows wcwidth <= 2
+            if (w > 1)
+              *r++ = NOCHAR;
+          }
 
 	rxvt_pop_locale ();
 
-        RETVAL = taint_if (wcs2sv (rstr, r - rstr), string);
-
-        delete [] rstr;
+        RETVAL = wcs2sv (rstr, r - rstr);
 }
 	OUTPUT:
         RETVAL
@@ -1392,7 +1475,7 @@ rxvt_term::special_decode (SV *text)
           else
             dlen++;
 
-        wchar_t *rstr = new wchar_t [dlen];
+        wchar_t *rstr = rxvt_temp_buf<wchar_t> (dlen);
 
         // decode
         wchar_t *r = rstr;
@@ -1404,9 +1487,7 @@ rxvt_term::special_decode (SV *text)
           else
             *r++ = *s;
 
-        RETVAL = taint_if (wcs2sv (rstr, r - rstr), text);
-
-        delete [] rstr;
+        RETVAL = wcs2sv (rstr, r - rstr);
 }
 	OUTPUT:
         RETVAL
@@ -1436,7 +1517,7 @@ rxvt_term::_resource (char *name, int index, SV *newval = 0)
           croak ("requested out-of-bound resource %s+%d,", name, index - rs->value);
 
         if (GIMME_V != G_VOID)
-          XPUSHs (THIS->rs [index] ? sv_2mortal (taint (newSVpv (THIS->rs [index], 0))) : &PL_sv_undef);
+          XPUSHs (THIS->rs [index] ? sv_2mortal (newSVpv (THIS->rs [index], 0)) : &PL_sv_undef);
 
         if (newval)
           {
@@ -1453,8 +1534,6 @@ rxvt_term::_resource (char *name, int index, SV *newval = 0)
 
 const char *
 rxvt_term::x_resource (const char *name)
-	CLEANUP:
-        SvTAINTED_on (ST (0));
 
 bool
 rxvt_term::option (U32 optval, int set = -1)
@@ -1469,24 +1548,25 @@ rxvt_term::option (U32 optval, int set = -1)
             else
               THIS->options &= ~optval;
 
-            switch (optval)
-              {
-                case Opt_skipBuiltinGlyphs:
-                  THIS->set_fonts ();
-                  THIS->scr_remap_chars ();
-                  THIS->scr_touch (true);
-                  THIS->want_refresh = 1;
-                  break;
+            if (THIS->check_ev.is_active ()) // avoid doing this before START
+              switch (optval)
+                {
+                  case Opt_skipBuiltinGlyphs:
+                    THIS->set_fonts ();
+                    THIS->scr_remap_chars ();
+                    THIS->scr_touch (true);
+                    THIS->want_refresh = 1;
+                    break;
 
-                case Opt_cursorUnderline:
-                  THIS->want_refresh = 1;
-                  break;
+                  case Opt_cursorUnderline:
+                    THIS->want_refresh = 1;
+                    break;
 
 #                  case Opt_scrollBar_floating:
 #                  case Opt_scrollBar_right:
 #                    THIS->resize_all_windows (THIS->width, THIS->height, 1);
 #                    break;
-              }
+                }
           }
 }
         OUTPUT:
@@ -1524,8 +1604,27 @@ rxvt_term::screen_cur (...)
 
         if (items == 3)
           {
-            rc.row = clamp (SvIV (ST (1)), -THIS->nsaved, THIS->nrow - 1);
-            rc.col = clamp (SvIV (ST (2)), 0, THIS->ncol - 1);
+            rc.row = SvIV (ST (1));
+            rc.col = SvIV (ST (2));
+
+            if (ix == 2)
+              {
+                if (rc.col == 0)
+                  {
+                    // col == 0 means end of previous line
+                    rc.row--;
+                    rc.col = THIS->ncol;
+                  }
+                else if (IN_RANGE_EXC (rc.row, THIS->top_row, THIS->nrow)
+                         && rc.col > ROW(rc.row).l)
+                  {
+                    // col >= length means while line and add newline
+                    rc.col = THIS->ncol;
+                  }
+              }
+
+            clamp_it (rc.col, 0, THIS->ncol);
+            clamp_it (rc.row, THIS->top_row, THIS->nrow - 1);
 
             if (ix)
               THIS->want_refresh = 1;
@@ -1539,18 +1638,18 @@ rxvt_term::cur_charset ()
 	OUTPUT:
         RETVAL
 
-#void
-#rxvt_term::selection_clear ()
+void
+rxvt_term::selection_clear ()
 
 void
-rxvt_term::selection_make (U32 eventtime, bool rect = false)
+rxvt_term::selection_make (Time eventtime, bool rect = false)
 	CODE:
         THIS->selection.op = SELECTION_CONT;
         THIS->selection.rect = rect;
         THIS->selection_make (eventtime);
 
 int
-rxvt_term::selection_grab (U32 eventtime)
+rxvt_term::selection_grab (Time eventtime)
 
 void
 rxvt_term::selection (SV *newtext = 0)
@@ -1558,7 +1657,7 @@ rxvt_term::selection (SV *newtext = 0)
 {
         if (GIMME_V != G_VOID)
           XPUSHs (THIS->selection.text
-                  ? taint (sv_2mortal (wcs2sv (THIS->selection.text, THIS->selection.len)))
+                  ? sv_2mortal (wcs2sv (THIS->selection.text, THIS->selection.len))
                   : &PL_sv_undef);
 
         if (newtext)
@@ -1578,6 +1677,9 @@ rxvt_term::scr_xor_span (int beg_row, int beg_col, int end_row, int end_col, U32
 
 void
 rxvt_term::scr_bell ()
+
+void
+rxvt_term::scr_change_screen (int screen)
 
 void
 rxvt_term::scr_add_lines (SV *string)
@@ -1628,6 +1730,146 @@ rxvt_term::overlay (int x, int y, int w, int h, int rstyle = OVERLAY_RSTYLE, int
 	OUTPUT:
         RETVAL
 
+#############################################################################
+# Various X Utility Functions
+#############################################################################
+
+void
+rxvt_term::XListProperties (Window window)
+	PPCODE:
+{
+	int count;
+	Atom *props = XListProperties (THIS->xdisp, window, &count);
+
+        EXTEND (SP, count);
+        while (count--)
+          PUSHs (newSVuv ((U32)props [count]));
+        
+        XFree (props);
+}
+
+void
+rxvt_term::XGetWindowProperty (Window window, Atom property)
+	PPCODE:
+{
+        Atom type;
+        int format;
+        unsigned long nitems;
+        unsigned long bytes_after;
+        unsigned char *prop;
+
+	XGetWindowProperty (THIS->xdisp, window, property,
+                            0, 1<<24, 0, AnyPropertyType,
+                            &type, &format, &nitems, &bytes_after, &prop);
+
+        if (type != None)
+          {
+            int elemsize = format == 16 ? sizeof (short)
+                         : format == 32 ? sizeof (long)
+                         :                1;
+
+            EXTEND (SP, 3);
+            PUSHs (newSVuv ((U32)type));
+            PUSHs (newSViv (format));
+            PUSHs (newSVpvn ((char *)prop, nitems * elemsize));
+            XFree (prop);
+          }
+}
+
+void
+rxvt_term::XChangeWindowProperty (Window window, Atom property, Atom type, int format, SV *data)
+	CODE:
+{
+	STRLEN len;
+        char *data_ = SvPVbyte (data, len);
+
+        int elemsize = format == 16 ? sizeof (short)
+                     : format == 32 ? sizeof (long)
+                     :                1;
+
+	XChangeProperty (THIS->xdisp, window, property,
+                         type, format, PropModeReplace,
+                         (unsigned char *)data_, len / elemsize);
+        XSync (THIS->xdisp, 0);
+}
+
+Atom
+XInternAtom (rxvt_term *term, char *atom_name, int only_if_exists = FALSE)
+	C_ARGS: term->xdisp, atom_name, only_if_exists
+
+char *
+XGetAtomName (rxvt_term *term, Atom atom)
+	C_ARGS: term->xdisp, atom
+        CLEANUP:
+        XFree (RETVAL);
+
+void
+XDeleteProperty (rxvt_term *term, Window window, Atom property)
+  	C_ARGS: term->xdisp, window, property
+
+Window
+rxvt_term::DefaultRootWindow ()
+	CODE:
+        RETVAL = THIS->display->root;
+        OUTPUT:
+        RETVAL
+
+#if 0
+
+Window
+XCreateSimpleWindow (rxvt_term *term, Window parent, int x, int y, unsigned int width, unsigned int height)
+	C_ARGS: term->xdisp, (Window)parent,
+                x, y, width, height, 0,
+                term->pix_colors_focused[Color_border],
+                term->pix_colors_focused[Color_border]
+
+#endif
+
+void
+XReparentWindow (rxvt_term *term, Window window, Window parent, int x = 0, int y = 0)
+	C_ARGS: term->xdisp, window, parent, x, y
+
+void
+XMapWindow (rxvt_term *term, Window window)
+	C_ARGS: term->xdisp, window
+
+void
+XUnmapWindow (rxvt_term *term, Window window)
+	C_ARGS: term->xdisp, window
+
+void
+XMoveResizeWindow (rxvt_term *term, Window window, int x, int y, unsigned int width, unsigned int height)
+	C_ARGS: term->xdisp, window, x, y, width, height
+
+void
+rxvt_term::XChangeInput (Window window, U32 add_events, U32 del_events = 0)
+	CODE:
+{
+	XWindowAttributes attr;
+        XGetWindowAttributes (THIS->xdisp, window, &attr);
+        XSelectInput (THIS->xdisp, window, attr.your_event_mask | add_events & ~del_events);
+}
+
+void
+rxvt_term::XTranslateCoordinates (Window src, Window dst, int x, int y)
+	PPCODE:
+{
+        int dx, dy;
+        Window child;
+
+        if (XTranslateCoordinates (THIS->xdisp, src, dst, x, y, &dx, &dy, &child))
+          {
+            EXTEND (SP, 3);
+            PUSHs (newSViv (dx));
+            PUSHs (newSViv (dy));
+            PUSHs (newSVuv (child));
+          }
+}
+
+#############################################################################
+# urxvt::overlay
+#############################################################################
+
 MODULE = urxvt             PACKAGE = urxvt::overlay
 
 void
@@ -1642,6 +1884,23 @@ overlay::hide ()
 void
 overlay::DESTROY ()
 
+#############################################################################
+# urxvt::watcher
+#############################################################################
+
+MODULE = urxvt             PACKAGE = urxvt::watcher
+
+CHAINED
+perl_watcher::cb (SV *cb)
+	CODE:
+        THIS->cb (cb);
+        OUTPUT:
+        RETVAL
+
+#############################################################################
+# urxvt::timer
+#############################################################################
+
 MODULE = urxvt             PACKAGE = urxvt::timer
 
 SV *
@@ -1649,16 +1908,8 @@ timer::new ()
 	CODE:
         timer *w =  new timer;
         w->start (NOW);
-        RETVAL = newSVptr ((void *)w, "urxvt::timer");
+        RETVAL = newSVptr ((void *)(perl_watcher *)w, "urxvt::timer");
         w->self = (HV *)SvRV (RETVAL);
-        OUTPUT:
-        RETVAL
-
-timer *
-timer::cb (SV *cb)
-	CODE:
-        THIS->cb (cb);
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
@@ -1669,40 +1920,47 @@ timer::at ()
         OUTPUT:
         RETVAL
 
-timer *
+CHAINED
 timer::interval (NV interval)
 	CODE:
         THIS->interval = interval;
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
-timer *
+CHAINED
 timer::set (NV tstamp)
 	CODE:
         THIS->set (tstamp);
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
-timer *
+CHAINED
 timer::start (NV tstamp = THIS->at)
-        CODE:
+	CODE:
         THIS->start (tstamp);
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
-timer *
+CHAINED
+timer::after (NV delay)
+	CODE:
+        THIS->start (NOW + delay);
+        OUTPUT:
+        RETVAL
+
+CHAINED
 timer::stop ()
 	CODE:
         THIS->stop ();
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
 void
 timer::DESTROY ()
+
+#############################################################################
+# urxvt::iow
+#############################################################################
 
 MODULE = urxvt             PACKAGE = urxvt::iow
 
@@ -1710,52 +1968,104 @@ SV *
 iow::new ()
 	CODE:
         iow *w =  new iow;
-        RETVAL = newSVptr ((void *)w, "urxvt::iow");
+        RETVAL = newSVptr ((void *)(perl_watcher *)w, "urxvt::iow");
         w->self = (HV *)SvRV (RETVAL);
         OUTPUT:
         RETVAL
 
-iow *
-iow::cb (SV *cb)
-	CODE:
-        THIS->cb (cb);
-        RETVAL = THIS;
-        OUTPUT:
-        RETVAL
-
-iow *
+CHAINED
 iow::fd (int fd)
 	CODE:
         THIS->fd = fd;
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
-iow *
+CHAINED
 iow::events (short events)
 	CODE:
         THIS->events = events;
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
-iow *
+CHAINED
 iow::start ()
-        CODE:
+	CODE:
         THIS->start ();
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
-iow *
+CHAINED
 iow::stop ()
 	CODE:
         THIS->stop ();
-        RETVAL = THIS;
         OUTPUT:
         RETVAL
 
 void
 iow::DESTROY ()
+
+#############################################################################
+# urxvt::iw
+#############################################################################
+
+MODULE = urxvt             PACKAGE = urxvt::iw
+
+SV *
+iw::new ()
+	CODE:
+        iw *w =  new iw;
+        RETVAL = newSVptr ((void *)(perl_watcher *)w, "urxvt::iw");
+        w->self = (HV *)SvRV (RETVAL);
+        OUTPUT:
+        RETVAL
+
+CHAINED
+iw::start ()
+	CODE:
+        THIS->start ();
+        OUTPUT:
+        RETVAL
+
+CHAINED
+iw::stop ()
+	CODE:
+        THIS->stop ();
+        OUTPUT:
+        RETVAL
+
+void
+iw::DESTROY ()
+
+#############################################################################
+# urxvt::pw
+#############################################################################
+
+MODULE = urxvt             PACKAGE = urxvt::pw
+
+SV *
+pw::new ()
+	CODE:
+        pw *w =  new pw;
+        RETVAL = newSVptr ((void *)(perl_watcher *)w, "urxvt::pw");
+        w->self = (HV *)SvRV (RETVAL);
+        OUTPUT:
+        RETVAL
+
+CHAINED
+pw::start (int pid)
+	CODE:
+        THIS->start (pid);
+        OUTPUT:
+        RETVAL
+
+CHAINED
+pw::stop ()
+	CODE:
+        THIS->stop ();
+        OUTPUT:
+        RETVAL
+
+void
+pw::DESTROY ()
 
 

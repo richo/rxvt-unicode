@@ -1,6 +1,6 @@
 /*
     iom_conf.h -- generic I/O multiplexer config
-    Copyright (C) 2003, 2004 Marc Lehmann <pcg@goof.com>
+    Copyright (C) 2003-2006 Marc Lehmann <pcg@goof.com>
  
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -22,10 +22,12 @@
 
 #include <rxvtutil.h>
 
-#define IOM_IO 1
-#define IOM_TIME 1
+#define IOM_IO    1
+#define IOM_TIME  1
 #define IOM_CHECK 1
-#define IOM_SIG 1
+#define IOM_SIG   1
+#define IOM_IDLE  1
+#define IOM_CHILD 1
 
 #endif
 

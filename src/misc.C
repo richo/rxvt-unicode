@@ -165,13 +165,7 @@ rxvt_utf8towcs (const char *str, int len)
 }
 
 char *
-rxvt_strdup (const char *str)
-{
-  return str ? strdup (str) : 0;
-}
-
-char *
-rxvt_r_basename (const char *str)
+rxvt_r_basename (const char *str) NOTHROW
 {
   char *base = strrchr (str, '/');
 
@@ -182,7 +176,7 @@ rxvt_r_basename (const char *str)
  * Print an error message
  */
 void
-rxvt_vlog (const char *fmt, va_list arg_ptr)
+rxvt_vlog (const char *fmt, va_list arg_ptr) NOTHROW
 {
   char msg[1024];
 
@@ -195,7 +189,7 @@ rxvt_vlog (const char *fmt, va_list arg_ptr)
 }
 
 void
-rxvt_log (const char *fmt,...)
+rxvt_log (const char *fmt,...) NOTHROW
 {
   va_list arg_ptr;
 
@@ -208,7 +202,7 @@ rxvt_log (const char *fmt,...)
  * Print an error message
  */
 void
-rxvt_warn (const char *fmt,...)
+rxvt_warn (const char *fmt,...) NOTHROW
 {
   va_list arg_ptr;
 
@@ -220,7 +214,7 @@ rxvt_warn (const char *fmt,...)
 }
 
 void
-rxvt_fatal (const char *fmt,...)
+rxvt_fatal (const char *fmt,...) THROW ((class rxvt_failure_exception))
 {
   va_list arg_ptr;
 
@@ -233,11 +227,10 @@ rxvt_fatal (const char *fmt,...)
   rxvt_exit_failure ();
 }
 
-class rxvt_failure_exception rxvt_failure_exception;
-
 void
-rxvt_exit_failure ()
+rxvt_exit_failure () THROW ((class rxvt_failure_exception))
 {
+  static class rxvt_failure_exception rxvt_failure_exception;
   throw (rxvt_failure_exception);
 }
 
@@ -250,7 +243,7 @@ rxvt_exit_failure ()
  *      return: strlen (S2)
  */
 int
-rxvt_Str_match (const char *s1, const char *s2)
+rxvt_Str_match (const char *s1, const char *s2) NOTHROW
 {
   int n = strlen (s2);
 
@@ -258,7 +251,7 @@ rxvt_Str_match (const char *s1, const char *s2)
 }
 
 const char *
-rxvt_Str_skip_space (const char *str)
+rxvt_Str_skip_space (const char *str) NOTHROW
 {
   if (str)
     while (*str && isspace (*str))
@@ -272,7 +265,7 @@ rxvt_Str_skip_space (const char *str)
  * in place.
  */
 char           *
-rxvt_Str_trim (char *str)
+rxvt_Str_trim (char *str) NOTHROW
 {
   char *r, *s;
 
@@ -319,7 +312,7 @@ rxvt_Str_trim (char *str)
  * returns the converted string length
  */
 int
-rxvt_Str_escaped (char *str)
+rxvt_Str_escaped (char *str) NOTHROW
 {
   char            ch, *s, *d;
   int             i, num, append = 0;
@@ -395,7 +388,7 @@ rxvt_Str_escaped (char *str)
  * Caller should free each entry and array when done
  */
 char          **
-rxvt_splitcommastring (const char *cs)
+rxvt_splitcommastring (const char *cs) NOTHROW
 {
   int             l, n, p;
   const char     *s, *t;
@@ -426,7 +419,7 @@ rxvt_splitcommastring (const char *cs)
 }
 
 void
-rxvt_freecommastring (char **cs)
+rxvt_freecommastring (char **cs) NOTHROW
 {
   for (int i = 0; cs[i]; ++i)
     free (cs[i]);
@@ -438,17 +431,15 @@ rxvt_freecommastring (char **cs)
  * file searching
  */
 
-/* #define DEBUG_SEARCH_PATH */
-
-#if defined (XPM_BACKGROUND) || (MENUBAR_MAX)
+#ifdef XPM_BACKGROUND
 /*
  * search for FILE in the current working directory, and within the
  * colon-delimited PATHLIST, adding the file extension EXT if required.
  *
  * FILE is either semi-colon or zero terminated
  */
-char           *
-rxvt_File_search_path (const char *pathlist, const char *file, const char *ext)
+char *
+rxvt_File_search_path (const char *pathlist, const char *file, const char *ext) NOTHROW
 {
   int             maxpath, len;
   const char     *p, *path;
@@ -462,12 +453,6 @@ rxvt_File_search_path (const char *pathlist, const char *file, const char *ext)
     len = (p - file);
   else
     len = strlen (file);
-
-#ifdef DEBUG_SEARCH_PATH
-  getcwd (name, sizeof (name));
-  fprintf (stderr, "pwd: \"%s\"\n", name);
-  fprintf (stderr, "find: \"%.*s\"\n", len, file);
-#endif
 
   /* leave room for an extra '/' and trailing '\0' */
   maxpath = sizeof (name) - (len + (ext ? strlen (ext) : 0) + 2);
@@ -519,8 +504,8 @@ rxvt_File_search_path (const char *pathlist, const char *file, const char *ext)
   return NULL;
 }
 
-char           *
-rxvt_File_find (const char *file, const char *ext, const char *path)
+char *
+rxvt_File_find (const char *file, const char *ext, const char *path) NOTHROW
 {
   char           *f;
 
@@ -529,102 +514,8 @@ rxvt_File_find (const char *file, const char *ext, const char *path)
 
   f = rxvt_File_search_path (path, file, ext);
 
-#ifdef DEBUG_SEARCH_PATH
-  if (f)
-    fprintf (stderr, "found: \"%s\"\n", f);
-#endif
-
   return f;
 }
-#endif				/* defined (XPM_BACKGROUND) || (MENUBAR_MAX) */
-
-/*----------------------------------------------------------------------*
- * miscellaneous drawing routines
- */
-
-/*
- * Draw top/left and bottom/right border shadows around windows
- */
-#if defined(RXVT_SCROLLBAR) || defined(MENUBAR)
-void
-rxvt_Draw_Shadow (Display *display, Window win, GC topShadow, GC botShadow, int x, int y, int w, int h)
-{
-  int             shadow;
-
-  shadow = (w == 0 || h == 0) ? 1 : MENU_SHADOW;
-  w += x - 1;
-  h += y - 1;
-  for (; shadow-- > 0; x++, y++, w--, h--)
-    {
-      XDrawLine (display, win, topShadow, x, y, w, y);
-      XDrawLine (display, win, topShadow, x, y, x, h);
-      XDrawLine (display, win, botShadow, w, h, w, y + 1);
-      XDrawLine (display, win, botShadow, w, h, x + 1, h);
-    }
-}
 #endif
 
-/* button shapes */
-#ifdef MENUBAR
-void
-rxvt_Draw_Triangle (Display *display, Window win, GC topShadow, GC botShadow, int x, int y, int w, int type)
-{
-  switch (type)
-    {
-      case 'r':			/* right triangle */
-        XDrawLine (display, win, topShadow, x, y, x, y + w);
-        XDrawLine (display, win, topShadow, x, y, x + w, y + w / 2);
-        XDrawLine (display, win, botShadow, x, y + w, x + w, y + w / 2);
-        break;
-
-      case 'l':			/* left triangle */
-        XDrawLine (display, win, botShadow, x + w, y + w, x + w, y);
-        XDrawLine (display, win, botShadow, x + w, y + w, x, y + w / 2);
-        XDrawLine (display, win, topShadow, x, y + w / 2, x + w, y);
-        break;
-
-      case 'd':			/* down triangle */
-        XDrawLine (display, win, topShadow, x, y, x + w / 2, y + w);
-        XDrawLine (display, win, topShadow, x, y, x + w, y);
-        XDrawLine (display, win, botShadow, x + w, y, x + w / 2, y + w);
-        break;
-
-      case 'u':			/* up triangle */
-        XDrawLine (display, win, botShadow, x + w, y + w, x + w / 2, y);
-        XDrawLine (display, win, botShadow, x + w, y + w, x, y + w);
-        XDrawLine (display, win, topShadow, x, y + w, x + w / 2, y);
-        break;
-#if 0
-      case 's':			/* square */
-        XDrawLine (display, win, topShadow, x + w, y, x, y);
-        XDrawLine (display, win, topShadow, x, y, x, y + w);
-        XDrawLine (display, win, botShadow, x, y + w, x + w, y + w);
-        XDrawLine (display, win, botShadow, x + w, y + w, x + w, y);
-        break;
-#endif
-
-    }
-}
-#endif
-
-// should not be used in interactive programs, for obvious reasons
-void rxvt_usleep (int usecs)
-{
-#if HAVE_NANOSLEEP
-  struct timespec ts;
-
-  ts.tv_sec = 0;
-  ts.tv_nsec = usecs * 1000;
-  nanosleep (&ts, NULL);
-#else                 
-  /* use select for timing */
-  struct timeval  tv;
-
-  tv.tv_sec = 0;
-  tv.tv_usec = usecs;
-  select (0, NULL, NULL, NULL, &tv);
-#endif                
-}
-
-/*----------------------- end-of-file (C source) -----------------------*/
 

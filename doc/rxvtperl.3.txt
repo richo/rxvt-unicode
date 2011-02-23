@@ -1,5 +1,5 @@
 NAME
-    urxvtperl - rxvt-unicode's embedded perl interpreter
+    rxvtperl - rxvt-unicode's embedded perl interpreter
 
 SYNOPSIS
        # create a file grab_test in $HOME:
@@ -9,9 +9,9 @@ SYNOPSIS
           ()
        }
 
-       # start a urxvt using it:
+       # start a rxvt using it:
 
-       urxvt --perl-lib $HOME -pe grab_test
+       rxvt --perl-lib $HOME -pe grab_test
 
 DESCRIPTION
     Everytime a terminal object gets created, extension scripts specified
@@ -20,16 +20,20 @@ DESCRIPTION
     Scripts are compiled in a 'use strict' and 'use utf8' environment, and
     thus must be encoded as UTF-8.
 
-    Each script will only ever be loaded once, even in urxvtd, where scripts
+    Each script will only ever be loaded once, even in rxvtd, where scripts
     will be shared (but not enabled) for all terminals.
 
 PREPACKAGED EXTENSIONS
     This section describes the extensions delivered with this release. You
-    can find them in /usr/local/lib/urxvt/perl/.
+    can find them in /opt/rxvt/lib/urxvt/perl/.
 
     You can activate them like this:
 
-      urxvt -pe <extensionname>
+      rxvt -pe <extensionname>
+
+    Or by adding them to the resource for extensions loaded by default:
+
+      URxvt.perl-ext-common: default,automove-background,selection-autotransform
 
     selection (enabled by default)
         (More) intelligent selection. This extension tries to be more
@@ -56,10 +60,17 @@ PREPACKAGED EXTENSIONS
 
            URxvt.selection.pattern-0: \\|([^|]+)\\|
 
+        Another example: Programs I use often output "absolute path: " at
+        the beginning of a line when they process multiple files. The
+        following pattern matches the filename (note, there is a single
+        space at the very end):
+
+           URxvt.selection.pattern-0: ^(/[^:]+):\ 
+
         You can look at the source of the selection extension to see more
         interesting uses, such as parsing a line from beginning to end.
 
-        This extension also offers the following bindable keyboard command:
+        This extension also offers following bindable keyboard commands:
 
         rot13
             Rot-13 the selection when activated. Used via keyboard trigger:
@@ -73,8 +84,28 @@ PREPACKAGED EXTENSIONS
     selection-popup (enabled by default)
         Binds a popup menu to Ctrl-Button3 that lets you convert the
         selection text into various other formats/action (such as uri
-        unescaping, perl evalution, web-browser starting etc.), depending on
-        content.
+        unescaping, perl evaluation, web-browser starting etc.), depending
+        on content.
+
+        Other extensions can extend this popup menu by pushing a code
+        reference onto "@{ $term-"{selection_popup_hook} }>, that is called
+        whenever the popup is displayed.
+
+        It's sole argument is the popup menu, which can be modified. The
+        selection is in $_, which can be used to decide wether to add
+        something or not. It should either return nothing or a string and a
+        code reference. The string will be used as button text and the code
+        reference will be called when the button gets activated and should
+        transform $_.
+
+        The following will add an entry "a to b" that transforms all "a"s in
+        the selection to "b"s, but only if the selection currently contains
+        any "a"s:
+
+           push @{ $self->{term}{selection_popup_hook} }, sub {
+              /a/ ? ("a to be" => sub { s/a/b/g }
+                  : ()
+           };
 
     searchable-scrollback<hotkey> (enabled by default)
         Adds regex search functionality to the scrollback buffer, triggered
@@ -89,6 +120,24 @@ PREPACKAGED EXTENSIONS
         to the point where search was started, while "Enter" or "Return"
         stay at the current position and additionally stores the first match
         in the current line into the primary selection.
+
+    readline (enabled by default)
+        A support package that tries to make editing with readline easier.
+        At the moment, it reacts to clicking with the left mouse button by
+        trying to move the text cursor to this position. It does so by
+        generating as many cursor-left or cursor-right keypresses as
+        required (the this only works for programs that correctly support
+        wide characters).
+
+        To avoid too many false positives, this is only done when:
+
+        - the tty is in ICANON state.
+        - the text cursor is visible.
+        - the primary screen is currently being displayed.
+        - the mouse is on the same (multi-row-) line as the text cursor.
+
+        The normal selection mechanism isn't disabled, so quick successive
+        clicks might interfere with selection creation in harmless ways.
 
     selection-autotransform
         This selection allows you to do automatic transforms on a selection
@@ -110,7 +159,7 @@ PREPACKAGED EXTENSIONS
         And this example matches the same,but replaces it with vi-commands
         you can paste directly into your (vi :) editor:
 
-           URxvt.selection-autotransform.0: s/^([^:[:space:]]+(\\d+):?$/\\x1b:e \\Q$1\\E\\x0d:$2\\x0d/
+           URxvt.selection-autotransform.0: s/^([^:[:space:]]+(\\d+):?$/:e \\Q$1\\E\\x0d:$2\\x0d/
 
         Of course, this can be modified to suit your needs and your editor
         :)
@@ -118,18 +167,48 @@ PREPACKAGED EXTENSIONS
         To expand the example above to typical perl error messages ("XXX at
         FILENAME line YYY."), you need a slightly more elaborate solution:
 
-           URxvt.selection.pattern-0: ( at .*? line \\d+\\.)
-           URxvt.selection-autotransform.0: s/^ at (.*?) line (\\d+)\\.$/\x1b:e \\Q$1\E\\x0d:$2\\x0d/
+           URxvt.selection.pattern-0: ( at .*? line \\d+[,.])
+           URxvt.selection-autotransform.0: s/^ at (.*?) line (\\d+)[,.]$/:e \\Q$1\E\\x0d:$2\\x0d/
 
         The first line tells the selection code to treat the unchanging part
         of every error message as a selection pattern, and the second line
         transforms the message into vi commands to load the file.
+
+    tabbed
+        This transforms the terminal into a tabbar with additional
+        terminals, that is, it implements what is commonly refered to as
+        "tabbed terminal". The topmost line displays a "[NEW]" button,
+        which, when clicked, will add a new tab, followed by one button per
+        tab.
+
+        Clicking a button will activate that tab. Pressing Shift-Left and
+        Shift-Right will switch to the tab left or right of the current one,
+        while Shift-Down creates a new tab.
 
     mark-urls
         Uses per-line display filtering ("on_line_update") to underline urls
         and make them clickable. When middle-clicked, the program specified
         in the resource "urlLauncher" (default "x-www-browser") will be
         started with the URL as first argument.
+
+    xim-onthespot
+        This (experimental) perl extension implements OnTheSpot editing. It
+        does not work perfectly, and some input methods don't seem to work
+        well with OnTheSpot editing in general, but it seems to work at
+        leats for SCIM and kinput2.
+
+        You enable it by specifying this extension and a preedit style of
+        "OnTheSpot", i.e.:
+
+           rxvt -pt OnTheSpot -pe xim-onthespot
+
+    automove-background
+        This is basically a one-line extension that dynamically changes the
+        background pixmap offset to the window position, in effect creating
+        the same effect as pseudo transparency with a custom pixmap. No
+        scaling is supported in this mode. Exmaple:
+
+           rxvt -pixmap background.xpm -pe automove-background
 
     block-graphics-to-ascii
         A not very useful example of filtering all text output to the
@@ -138,6 +217,53 @@ PREPACKAGED EXTENSIONS
 
     digital-clock
         Displays a digital clock using the built-in overlay.
+
+    remote-clipboard
+        Somewhat of a misnomer, this extension adds two menu entries to the
+        selection popup that allows one ti run external commands to store
+        the selection somewhere and fetch it again.
+
+        We use it to implement a "distributed selection mechanism", which
+        just means that one command uploads the file to a remote server, and
+        another reads it.
+
+        The commands can be set using the "URxvt.remote-selection.store" and
+        "URxvt.remote-selection.fetch" resources. The first should read the
+        selection to store from STDIN (always in UTF-8), the second should
+        provide the selection data on STDOUT (also in UTF-8).
+
+        The defaults (which are likely useless to you) use rsh and cat:
+
+           URxvt.remote-selection.store: rsh ruth 'cat >/tmp/distributed-selection'
+           URxvt.remote-selection.fetch: rsh ruth 'cat /tmp/distributed-selection'
+
+    selection-pastebin
+        This is a little rarely useful extension that Uploads the selection
+        as textfile to a remote site (or does other things). (The
+        implementation is not currently secure for use in a multiuser
+        environment as it writes to /tmp directly.).
+
+        It listens to the "selection-pastebin:remote-pastebin" keyboard
+        command, i.e.
+
+           URxvt.keysym.C-M-e: perl:selection-pastebin:remote-pastebin
+
+        Pressing this combination runs a command with "%" replaced by the
+        name of the textfile. This command can be set via a resource:
+
+           URxvt.selection-pastebin.cmd: rsync -apP % ruth:/var/www/www.ta-sa.org/files/txt/.
+
+        And the default is likely not useful to anybody but the few people
+        around here :)
+
+        The name of the textfile is the hex encoded md5 sum of the
+        selection, so the same content should lead to the same filename.
+
+        After a successful upload the selection will be replaced by the text
+        given in the "selection-pastebin-url" resource (again, the % is the
+        placeholder for the filename):
+
+           URxvt.selection-pastebin.url: http://www.ta-sa.org/files/txt/%
 
     example-refresh-hooks
         Displays a very simple digital clock in the upper right corner of
@@ -206,10 +332,9 @@ API DOCUMENTATION
     The first argument passed to them is an extension oject as described in
     the in the "Extension Objects" section.
 
-    All of these hooks must return a boolean value. If it is true, then the
-    event counts as being *consumed*, and the invocation of other hooks is
-    skipped, and the relevant action might not be carried out by the C++
-    code.
+    All of these hooks must return a boolean value. If any of the called
+    hooks returns true, then the event counts as being *consumed*, and the
+    relevant action might not be carried out by the C++ code.
 
     *When in doubt, return a false value (preferably "()").*
 
@@ -218,16 +343,29 @@ API DOCUMENTATION
         windows are created or the command gets run. Most methods are unsafe
         to call or deliver senseless data, as terminal size and other
         characteristics have not yet been determined. You can safely query
-        and change resources, though.
+        and change resources and options, though. For many purposes the
+        "on_start" hook is a better place.
+
+    on_start $term
+        Called at the very end of initialisation of a new terminal, just
+        before trying to map (display) the toplevel and returning to the
+        mainloop.
+
+    on_destroy $term
+        Called whenever something tries to destroy terminal, when the
+        terminal is still fully functional (not for long, though).
 
     on_reset $term
         Called after the screen is "reset" for any reason, such as resizing
         or control sequences. Here is where you can react on changes to
         size-related variables.
 
-    on_start $term
-        Called at the very end of initialisation of a new terminal, just
-        before returning to the mainloop.
+    on_child_start $term, $pid
+        Called just after the child process has been "fork"ed.
+
+    on_child_exit $term, $status
+        Called just after the child process has exited. $status is the
+        status from "waitpid".
 
     on_sel_make $term, $eventtime
         Called whenever a selection has been made by the user, but before
@@ -317,10 +455,13 @@ API DOCUMENTATION
     on_refresh_end $term
         Called just after the screen gets redrawn. See "on_refresh_begin".
 
-    on_keyboard_command $term, $string
-        Called whenever the user presses a key combination that has a
-        "perl:string" action bound to it (see description of the keysym
-        resource in the urxvt(1) manpage).
+    on_user_command $term, $string
+        Called whenever the a user-configured event is being activated (e.g.
+        via a "perl:string" action bound to a key, see description of the
+        keysym resource in the rxvt(1) manpage).
+
+        The event is simply the action string. This interface is assumed to
+        change slightly in the future.
 
     on_x_event $term, $event
         Called on every X event received on the vt window (and possibly
@@ -335,6 +476,8 @@ API DOCUMENTATION
         Called wheneever the window loses keyboard focus, before
         rxvt-unicode does focus out processing.
 
+    on_configure_notify $term, $event
+    on_property_notify $term, $event
     on_key_press $term, $event, $keysym, $octets
     on_key_release $term, $event, $keysym
     on_button_press $term, $event
@@ -348,12 +491,19 @@ API DOCUMENTATION
 
         The event is a hash with most values as named by Xlib (see the
         XEvent manpage), with the additional members "row" and "col", which
-        are the row and column under the mouse cursor.
+        are the (real, not screen-based) row and column under the mouse
+        cursor.
 
         "on_key_press" additionally receives the string rxvt-unicode would
         output, if any, in locale-specific encoding.
 
         subwindow.
+
+    on_client_message $term, $event
+    on_wm_protocols $term, $event
+    on_wm_delete_window $term, $event
+        Called when various types of ClientMessage events are received (all
+        with format=32, WM_PROTOCOLS or WM_PROTOCOLS:WM_DELETE_WINDOW).
 
   Variables in the "urxvt" Package
     $urxvt::LIBDIR
@@ -371,6 +521,22 @@ API DOCUMENTATION
         The current terminal. This variable stores the current "urxvt::term"
         object, whenever a callback/hook is executing.
 
+    @urxvt::TERM_INIT
+        All coderefs in this array will be called as methods of the next
+        newly created "urxvt::term" object (during the "on_init" phase). The
+        array gets cleared before the codereferences that were in it are
+        being executed, so coderefs can push themselves onto it again if
+        they so desire.
+
+        This complements to the perl-eval commandline option, but gets
+        executed first.
+
+    @urxvt::TERM_EXT
+        Works similar to @TERM_INIT, but contains perl package/class names,
+        which get registered as normal extensions after calling the hooks in
+        @TERM_INIT but before other extensions. Gets cleared just like
+        @TERM_INIT.
+
   Functions in the "urxvt" Package
     urxvt::fatal $errormessage
         Fatally aborts execution with the given error message. Avoid at all
@@ -387,10 +553,12 @@ API DOCUMENTATION
 
         Messages have a size limit of 1023 bytes currently.
 
-    $is_safe = urxvt::safe
-        Returns true when it is safe to do potentially unsafe things, such
-        as evaluating perl code specified by the user. This is true when
-        urxvt was started setuid or setgid.
+    @terms = urxvt::termlist
+        Returns all urxvt::term objects that exist in this process,
+        regardless of wether they are started, being destroyed etc., so be
+        careful. Only term objects that have perl extensions attached will
+        be returned (because there is no urxvt::term objet associated with
+        others).
 
     $time = urxvt::NOW
         Returns the "current time" (as per the event loop).
@@ -472,12 +640,22 @@ API DOCUMENTATION
         Croaks (and probably outputs an error message) if the new instance
         couldn't be created. Returns "undef" if the new instance didn't
         initialise perl, and the terminal object otherwise. The "init" and
-        "start" hooks will be called during this call.
+        "start" hooks will be called before this call returns, and are free
+        to refer to global data (which is race free).
 
     $term->destroy
         Destroy the terminal object (close the window, free resources etc.).
-        Please note that urxvt will not exit as long as any event watchers
+        Please note that rxvt will not exit as long as any event watchers
         (timers, io watchers) are still active.
+
+    $term->exec_async ($cmd[, @args])
+        Works like the combination of the "fork"/"exec" builtins, which
+        executes ("starts") programs in the background. This function takes
+        care of setting the user environment before exec'ing the command
+        (e.g. "PATH") and should be preferred over explicit calls to "exec"
+        or "system".
+
+        Returns the pid of the subprocess or "undef" on error.
 
     $isset = $term->option ($optval[, $set])
         Returns true if the option specified by $optval is enabled, and
@@ -490,10 +668,10 @@ API DOCUMENTATION
 
          borderLess console cursorBlink cursorUnderline hold iconic insecure
          intensityStyles jumpScroll loginShell mapAlert meta8 mouseWheelScrollPage
-         pastableTabs pointerBlank reverseVideo scrollBar scrollBar_floating
-         scrollBar_right scrollTtyKeypress scrollTtyOutput scrollWithBuffer
-         secondaryScreen secondaryScroll skipBuiltinGlyphs transparent
-         tripleclickwords utmpInhibit visualBell
+         override-redirect pastableTabs pointerBlank reverseVideo scrollBar
+         scrollBar_floating scrollBar_right scrollTtyKeypress scrollTtyOutput
+         scrollWithBuffer secondaryScreen secondaryScroll skipBuiltinGlyphs
+         transparent tripleclickwords utmpInhibit visualBell
 
     $value = $term->resource ($name[, $newval])
         Returns the current resource value associated with a given name and
@@ -520,14 +698,15 @@ API DOCUMENTATION
           borderLess color cursorBlink cursorUnderline cutchars delete_key
           display_name embed ext_bwidth fade font geometry hold iconName
           imFont imLocale inputMethod insecure int_bwidth intensityStyles
-          italicFont jumpScroll lineSpace loginShell mapAlert menu meta8 modifier
-          mouseWheelScrollPage name pastableTabs path perl_eval perl_ext_1 perl_ext_2
-          perl_lib pointerBlank pointerBlankDelay preeditType print_pipe pty_fd
-          reverseVideo saveLines scrollBar scrollBar_align scrollBar_floating
-          scrollBar_right scrollBar_thickness scrollTtyKeypress scrollTtyOutput
-          scrollWithBuffer scrollstyle secondaryScreen secondaryScroll selectstyle
-          shade term_name title transparent transparent_all tripleclickwords
-          utmpInhibit visualBell
+          italicFont jumpScroll lineSpace loginShell mapAlert meta8 modifier
+          mouseWheelScrollPage name override_redirect pastableTabs path perl_eval
+          perl_ext_1 perl_ext_2 perl_lib pointerBlank pointerBlankDelay
+          preeditType print_pipe pty_fd reverseVideo saveLines scrollBar
+          scrollBar_align scrollBar_floating scrollBar_right scrollBar_thickness
+          scrollTtyKeypress scrollTtyOutput scrollWithBuffer scrollstyle
+          secondaryScreen secondaryScroll selectstyle shade term_name title
+          transient_for transparent transparent_all tripleclickwords utmpInhibit
+          visualBell
 
     $value = $term->x_resource ($pattern)
         Returns the X-Resource for the given pattern, excluding the program
@@ -541,7 +720,7 @@ API DOCUMENTATION
 
     $success = $term->parse_keysym ($keysym_spec, $command_string)
         Adds a keymap translation exactly as specified via a resource. See
-        the "keysym" resource in the urxvt(1) manpage.
+        the "keysym" resource in the rxvt(1) manpage.
 
     $rend = $term->rstyle ([$new_rstyle])
         Return and optionally change the current rendition. Text that is
@@ -648,6 +827,9 @@ API DOCUMENTATION
         be confused by changes in cursor position or scrolling. Its useful
         inside a "on_add_lines" hook, though.
 
+    $term->scr_change_screen ($screen)
+        Switch to given screen - 0 primary, 1 secondary.
+
     $term->cmd_parse ($octets)
         Similar to "scr_add_lines", but the argument must be in the
         locale-specific encoding of the terminal and can contain command
@@ -664,6 +846,10 @@ API DOCUMENTATION
         Can be used to suppress input and output handling to the pty/tty.
         See the description of "urxvt::timer->events". Make sure to always
         restore the previous value.
+
+    $fd = $term->pty_fd
+        Returns the master file descriptor for the pty in use, or -1 if no
+        pty is used.
 
     $windowid = $term->parent
         Return the window id of the toplevel window.
@@ -688,7 +874,7 @@ API DOCUMENTATION
     $is_mapped = $term->mapped
     $max_scrollback = $term->saveLines
     $nrow_plus_saveLines = $term->total_rows
-    $lines_in_scrollback = $term->nsaved
+    $topmost_scrollback_row = $term->top_row
         Return various integers describing terminal characteristics.
 
     $x_display = $term->display_id
@@ -708,9 +894,15 @@ API DOCUMENTATION
         (often AltGr), the meta key (often Alt) and the num lock key, if
         applicable.
 
+    $screen = $term->current_screen
+        Returns the currently displayed screen (0 primary, 1 secondary).
+
+    $cursor_is_hidden = $term->hidden_cursor
+        Returns wether the cursor is currently hidden or not.
+
     $view_start = $term->view_start ([$newvalue])
-        Returns the negative row number of the topmost line. Minimum value
-        is 0, which displays the normal terminal contents. Larger values
+        Returns the row number of the topmost displayed line. Maximum value
+        is 0, which displays the normal terminal contents. Lower values
         scroll this many lines into the scrollback buffer.
 
     $term->want_refresh
@@ -733,8 +925,8 @@ API DOCUMENTATION
         automatically be updated.
 
         $text is in a special encoding: tabs and wide characters that use
-        more than one cell when displayed are padded with urxvt::NOCHAR
-        characters ("chr 65535"). Characters with combining characters and
+        more than one cell when displayed are padded with $urxvt::NOCHAR
+        (chr 65535) characters. Characters with combining characters and
         other characters that do not fit into the normal tetx encoding will
         be replaced with characters in the private use area.
 
@@ -803,8 +995,11 @@ API DOCUMENTATION
         Converts rxvt-unicodes text reprsentation into a perl string. See
         "$term->ROW_t" for details.
 
-    $success = $term->grab_button ($button, $modifiermask)
-        Registers a synchronous button grab. See the XGrabButton manpage.
+    $success = $term->grab_button ($button, $modifiermask[, $window =
+    $term->vt])
+    $term->ungrab_button ($button, $modifiermask[, $window = $term->vt])
+        Register/unregister a synchronous button grab. See the XGrabButton
+        manpage.
 
     $success = $term->grab ($eventtime[, $sync])
         Calls XGrabPointer and XGrabKeyboard in asynchronous (default) or
@@ -824,6 +1019,25 @@ API DOCUMENTATION
         Calls XUngrab for the most recent grab. Is called automatically on
         evaluation errors, as it is better to lose the grab in the error
         case as the session.
+
+    $atom = $term->XInternAtom ($atom_name[, $only_if_exists])
+    $atom_name = $term->XGetAtomName ($atom)
+    @atoms = $term->XListProperties ($window)
+    ($type,$format,$octets) = $term->XGetWindowProperty ($window, $property)
+    $term->XChangeWindowProperty ($window, $property, $type, $format,
+    $octets)
+    $term->XDeleteProperty ($window, $property)
+    $window = $term->DefaultRootWindow
+    $term->XReparentWindow ($window, $parent, [$x, $y])
+    $term->XMapWindow ($window)
+    $term->XUnmapWindow ($window)
+    $term->XMoveResizeWindow ($window, $x, $y, $width, $height)
+    ($x, $y, $child_window) = $term->XTranslateCoordinates ($src, $dst, $x,
+    $y)
+    $term->XChangeInput ($window, $add_events[, $del_events])
+        Various X or X-related functions. The $term object only serves as
+        the source of the display, otherwise those functions map
+        more-or-less directory onto the X functions of the same name.
 
   The "urxvt::popup" Class
     $popup->add_title ($title)
@@ -882,6 +1096,9 @@ API DOCUMENTATION
     $timer = $timer->start ($tstamp)
         Set the event trigger time to $tstamp and start the timer.
 
+    $timer = $timer->after ($delay)
+        Like "start", but sets the expiry timer to c<urxvt::NOW + $delay>.
+
     $timer = $timer->stop
         Stop the timer.
 
@@ -921,6 +1138,49 @@ API DOCUMENTATION
 
     $iow = $iow->stop
         Stop watching for events on the given filehandle.
+
+  The "urxvt::iw" Class
+    This class implements idle watchers, that get called automatically when
+    the process is idle. They should return as fast as possible, after doing
+    some useful work.
+
+    $iw = new urxvt::iw
+        Create a new idle watcher object in stopped state.
+
+    $iw = $iw->cb (sub { my ($iw) = @_; ... })
+        Set the callback to be called when the watcher triggers.
+
+    $timer = $timer->start
+        Start the watcher.
+
+    $timer = $timer->stop
+        Stop the watcher.
+
+  The "urxvt::pw" Class
+    This class implements process watchers. They create an event whenever a
+    process exits, after which they stop automatically.
+
+       my $pid = fork;
+       ...
+       $term->{pw} = urxvt::pw
+                        ->new
+                        ->start ($pid)
+                        ->cb (sub {
+                           my ($pw, $exit_status) = @_;
+                           ...
+                        });                                                                                                                                      
+
+    $pw = new urxvt::pw
+        Create a new process watcher in stopped state.
+
+    $pw = $pw->cb (sub { my ($pw, $exit_status) = @_; ... })
+        Set the callback to be called when the timer triggers.
+
+    $pw = $timer->start ($pid)
+        Tells the wqtcher to start watching for process $pid.
+
+    $pw = $pw->stop
+        Stop the watcher.
 
 ENVIRONMENT
   URXVT_PERL_VERBOSITY

@@ -21,11 +21,6 @@
  *----------------------------------------------------------------------*/
 
 #include "../config.h"
-#include "rxvt.h"
-#include "rxvtdaemon.h"
-#include "fdpass.h"
-#include "iom.h"
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstdarg>
@@ -40,7 +35,10 @@
 
 #include <cerrno>
 
-extern char **environ;
+#include "rxvt.h"
+#include "rxvtdaemon.h"
+#include "libptytty.h"
+#include "iom.h"
 
 struct server : rxvt_connection {
   log_callback log_cb;
@@ -73,7 +71,7 @@ struct unix_listener {
 unix_listener::unix_listener (const char *sockname)
 : accept_ev (this, &unix_listener::accept_cb)
 {
-  if ((fd = socket (PF_UNIX, SOCK_STREAM, 0)) < 0)
+  if ((fd = socket (AF_UNIX, SOCK_STREAM, 0)) < 0)
     {
       perror ("unable to create listening socket");
       exit (EXIT_FAILURE);
@@ -120,13 +118,9 @@ void unix_listener::accept_cb (io_watcher &w, short revents)
 
 int server::getfd (int remote_fd)
 {
-#if ENABLE_FRILLS && HAVE_UNIX_FDPASS
   send ("GETFD");
   send (remote_fd);
-  return rxvt_recv_fd (fd);
-#else
-  return -1;
-#endif
+  return ptytty::recv_fd (fd);
 }
 
 void server::log_msg (const char *msg)
@@ -172,7 +166,7 @@ void server::read_cb (io_watcher &w, short revents)
               if (!strcmp (tok, "END"))
                 break;
               else if (!strcmp (tok, "ENV") && recv (tok))
-                envv->push_back (tok.get ());
+                envv->push_back (strdup (tok));
               else if (!strcmp (tok, "CWD") && recv (tok))
                 {
                   if (chdir (tok))
@@ -180,7 +174,7 @@ void server::read_cb (io_watcher &w, short revents)
                          (char *)tok, strerror (errno));
                 }
               else if (!strcmp (tok, "ARG") && recv (tok))
-                argv->push_back (tok.get ());
+                argv->push_back (strdup (tok));
               else
                 return err ("protocol error: unexpected NEW token");
             }
@@ -192,14 +186,12 @@ void server::read_cb (io_watcher &w, short revents)
             
             term->log_hook = &log_cb;
             term->getfd_hook = &getfd_cb;
-            term->argv = argv;
-            term->envv = envv;
 
             bool success;
             
             try
               {
-                success = term->init (argv->size (), argv->begin ());
+                success = term->init (argv, envv);
               }
             catch (const class rxvt_failure_exception &e)
               {
@@ -228,6 +220,8 @@ int opt_fork, opt_opendisplay, opt_quiet;
 int
 main (int argc, const char *const *argv)
 {
+  rxvt_init ();
+
   for (int i = 1; i < argc; i++)
     {
       if (!strcmp (argv [i], "-f") || !strcmp (argv [i], "--fork"))
@@ -243,8 +237,6 @@ main (int argc, const char *const *argv)
         }
     }
   
-  rxvt_init ();
-
   chdir ("/");
 
   if (opt_opendisplay)
