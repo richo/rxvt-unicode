@@ -34,7 +34,7 @@ struct rxvt_font
 
   char *name;
   codeset cs;
-  bool loaded; // wether we tried loading it before (not wether it's loaded)
+  bool loaded; // whether we tried loading it before (not whether it's loaded)
 
   // managed by the font object
   int ascent, descent,
@@ -58,9 +58,13 @@ struct rxvt_font
                      int x, int y,
                      const text_t *text, int len,
                      int fg, int bg) = 0;
-};
 
-#define FONT_UNREF(f) do { (f)->clear (); delete (f); } while (0)
+  void unref ()
+  {
+    clear ();
+    delete this;
+  }
+};
 
 struct rxvt_fallback_font;
 
@@ -68,19 +72,34 @@ struct rxvt_fontset
 {
   char *fontdesc;
 
+  // must be power-of-two - 1, also has to match RS_fontMask in rxvt.h
+#if USE_256_COLORS
+  enum { fontCount =   7 }; // 4 extra colors bits, 4 fewer fontcount bits
+#else
+  enum { fontCount = 127 };
+#endif
+
+  // index of first font in set
+  enum { firstFont = 2 };
+
   rxvt_fontset (rxvt_term *term);
   ~rxvt_fontset ();
 
   bool populate (const char *desc);
   void set_prop (const rxvt_fontprop &prop, bool force_prop) { this->prop = prop; this->force_prop = force_prop; }
-  int find_font (uint32_t unicode);
+  int find_font_idx (uint32_t unicode);
   int find_font (const char *name) const;
   bool realize_font (int i);
 
-  // font-id's MUST fit into a signed 16 bit integer, and within 0..255
   rxvt_font *operator [] (int id) const
   {
-    return fonts[id & 0x7f];
+    return fonts[id >> 1];
+  }
+
+  int
+  find_font (unicode_t unicode)
+  {
+    return min<int> ((fontCount << 1) | 1, find_font_idx (unicode));
   }
 
 private:
@@ -95,7 +114,9 @@ private:
 
   void clear ();
   rxvt_font *new_font (const char *name, codeset cs);
+  void prepare_font (rxvt_font *font, codeset cs);
   void add_fonts (const char *desc);
+  void push_font (rxvt_font *font);
 };
 
 #endif /* _DEFAULTFONT_H_ */

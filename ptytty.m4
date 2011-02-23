@@ -26,20 +26,9 @@ AC_CHECK_FUNCS( \
 
 have_clone=no
 
-AC_MSG_CHECKING(for /dev/ptym/clone)
-if test -e /dev/ptym/clone; then
-  AC_MSG_RESULT(yes)
-  AC_DEFINE(HAVE_DEV_CLONE, 1, [Define to 1 if you have /dev/ptym/clone])
-  AC_DEFINE(CLONE_DEVICE, "/dev/ptym/clone", [clone device filename])
-  have_clone=yes
-else
-  AC_MSG_RESULT(no)
-fi
-
 AC_MSG_CHECKING(for /dev/ptc)
 if test -e /dev/ptc; then
   AC_MSG_RESULT(yes)
-  AC_DEFINE(HAVE_DEV_PTC, 1, [Define to 1 if you have /dev/ptc])
   AC_DEFINE(CLONE_DEVICE, "/dev/ptc", [clone device filename])
   have_clone=yes
 else
@@ -75,7 +64,7 @@ if test x$ac_cv_func_getpt = xyes -o x$ac_cv_func_posix_openpt = xyes -o x$have_
 fi
 
 if test -z "$unix98_pty"; then
-  AC_CHECK_FUNCS(openpty, [], [AC_CHECK_LIB(util, openpty, [AC_DEFINE(HAVE_OPENPTY) LIBS="$LIBS -lutil"])])
+  AC_SEARCH_LIBS(openpty, util, AC_DEFINE(HAVE_OPENPTY, 1, ""))
 fi
 ])
 
@@ -128,25 +117,25 @@ dnl# check for host field in utmp structure
 
 dnl# --------------------------------------------
 AC_CHECK_HEADERS(utmp.h,
-[AC_CACHE_CHECK([for struct utmp], struct_utmp,
+[AC_CACHE_CHECK([for struct utmp], pt_cv_struct_utmp,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
-#include <utmp.h>]], [[struct utmp ut;]])],[struct_utmp=yes],[struct_utmp=no])])
-if test x$struct_utmp = xyes; then
+#include <utmp.h>]], [[struct utmp ut;]])],[pt_cv_struct_utmp=yes],[pt_cv_struct_utmp=no])])
+if test x$pt_cv_struct_utmp = xyes; then
   AC_DEFINE(HAVE_STRUCT_UTMP, 1, Define if utmp.h has struct utmp)
 fi
 ]
 
-AC_CACHE_CHECK(for ut_host in utmp struct, struct_utmp_host,
+AC_CACHE_CHECK(for ut_host in utmp struct, pt_cv_struct_utmp_host,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
-#include <utmp.h>]], [[struct utmp ut; ut.ut_host;]])],[struct_utmp_host=yes],[struct_utmp_host=no])])
-if test x$struct_utmp_host = xyes; then
+#include <utmp.h>]], [[struct utmp ut; ut.ut_host;]])],[pt_cv_struct_utmp_host=yes],[pt_cv_struct_utmp_host=no])])
+if test x$pt_cv_struct_utmp_host = xyes; then
   AC_DEFINE(HAVE_UTMP_HOST, 1, Define if struct utmp contains ut_host)
 fi
 
-AC_CACHE_CHECK(for ut_pid in utmp struct, struct_utmp_pid,
+AC_CACHE_CHECK(for ut_pid in utmp struct, pt_cv_struct_utmp_pid,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
-#include <utmp.h>]], [[struct utmp ut; ut.ut_pid;]])],[struct_utmp_pid=yes],[struct_utmp_pid=no])])
-if test x$struct_utmp_pid = xyes; then
+#include <utmp.h>]], [[struct utmp ut; ut.ut_pid;]])],[pt_cv_struct_utmp_pid=yes],[pt_cv_struct_utmp_pid=no])])
+if test x$pt_cv_struct_utmp_pid = xyes; then
   AC_DEFINE(HAVE_UTMP_PID, 1, Define if struct utmp contains ut_pid)
 fi
 ) dnl# AC_CHECK_HEADERS(utmp.h
@@ -154,51 +143,51 @@ fi
 dnl# --------------------------------------------
 
 AC_CHECK_HEADERS(utmpx.h,
-[AC_CACHE_CHECK([for struct utmpx], struct_utmpx,
+[AC_CACHE_CHECK([for struct utmpx], pt_cv_struct_utmpx,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
-#include <utmpx.h>]], [[struct utmpx ut;]])],[struct_utmpx=yes],[struct_utmpx=no])])
-if test x$struct_utmpx = xyes; then
+#include <utmpx.h>]], [[struct utmpx ut;]])],[pt_cv_struct_utmpx=yes],[pt_cv_struct_utmpx=no])])
+if test x$pt_cv_struct_utmpx = xyes; then
   AC_DEFINE(HAVE_STRUCT_UTMPX, 1, Define if utmpx.h has struct utmpx)
 fi
 ]
 
-AC_CACHE_CHECK(for host in utmpx struct, struct_utmpx_host,
+AC_CACHE_CHECK(for host in utmpx struct, pt_cv_struct_utmpx_host,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
-#include <utmpx.h>]], [[struct utmpx utx; utx.ut_host;]])],[struct_utmpx_host=yes],[struct_utmpx_host=no])])
-if test x$struct_utmpx_host = xyes; then
+#include <utmpx.h>]], [[struct utmpx utx; utx.ut_host;]])],[pt_cv_struct_utmpx_host=yes],[pt_cv_struct_utmpx_host=no])])
+if test x$pt_cv_struct_utmpx_host = xyes; then
   AC_DEFINE(HAVE_UTMPX_HOST, 1, Define if struct utmpx contains ut_host)
 fi
 
-AC_CACHE_CHECK(for session in utmpx struct, struct_utmpx_session,
+AC_CACHE_CHECK(for session in utmpx struct, pt_cv_struct_utmpx_session,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
-#include <utmpx.h>]], [[struct utmpx utx; utx.ut_session;]])],[struct_utmpx_session=yes],[struct_utmpx_session=no])])
-if test x$struct_utmpx_session = xyes; then
+#include <utmpx.h>]], [[struct utmpx utx; utx.ut_session;]])],[pt_cv_struct_utmpx_session=yes],[pt_cv_struct_utmpx_session=no])])
+if test x$pt_cv_struct_utmpx_session = xyes; then
   AC_DEFINE(HAVE_UTMPX_SESSION, 1, Define if struct utmpx contains ut_session)
 fi
 ) dnl# AC_CHECK_HEADERS(utmpx.h
 
 dnl# --------------------------------------------------------------------------
 dnl# check for struct lastlog
-AC_CACHE_CHECK(for struct lastlog, struct_lastlog,
+AC_CACHE_CHECK(for struct lastlog, pt_cv_struct_lastlog,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
 #include <utmp.h>
 #ifdef HAVE_LASTLOG_H
 #include <lastlog.h>
 #endif
-]], [[struct lastlog ll;]])],[struct_lastlog=yes],[struct_lastlog=no])])
-if test x$struct_lastlog = xyes; then
+]], [[struct lastlog ll;]])],[pt_cv_struct_lastlog=yes],[pt_cv_struct_lastlog=no])])
+if test x$pt_cv_struct_lastlog = xyes; then
   AC_DEFINE(HAVE_STRUCT_LASTLOG, 1, Define if utmp.h or lastlog.h has struct lastlog)
 fi
 
 dnl# check for struct lastlogx
-AC_CACHE_CHECK(for struct lastlogx, struct_lastlogx,
+AC_CACHE_CHECK(for struct lastlogx, pt_cv_struct_lastlogx,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <sys/types.h>
 #include <utmpx.h>
 #ifdef HAVE_LASTLOG_H
 #include <lastlog.h>
 #endif
-]], [[struct lastlogx ll;]])],[struct_lastlogx=yes],[struct_lastlogx=no])])
-if test x$struct_lastlogx = xyes; then
+]], [[struct lastlogx ll;]])],[pt_cv_struct_lastlogx=yes],[pt_cv_struct_lastlogx=no])])
+if test x$pt_cv_struct_lastlogx = xyes; then
   AC_DEFINE(HAVE_STRUCT_LASTLOGX, 1, Define if utmpx.h or lastlog.h has struct lastlogx)
 fi
 
@@ -207,7 +196,7 @@ dnl# FIND FILES
 dnl# --------------------------------------------------------------------------
 
 dnl# find utmp
-AC_CACHE_CHECK(where utmp is located, path_utmp,
+AC_CACHE_CHECK(where utmp is located, pt_cv_path_utmp,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -234,63 +223,16 @@ main()
 	}
     }
     exit(0);
-}]])],[path_utmp=`cat conftestval`],[path_utmp=],[dnl
+}]])],[pt_cv_path_utmp=`cat conftestval`],[pt_cv_path_utmp=],[dnl
   AC_MSG_WARN(Define UTMP_FILE in config.h manually)])])
-if test x$path_utmp != x; then
-  AC_DEFINE_UNQUOTED(UTMP_FILE, "$path_utmp", Define location of utmp)
-fi
-
-dnl# --------------------------------------------------------------------------
-
-dnl# find utmpx - if a utmp file exists at the same location and is more than
-dnl# a day newer, then dump the utmpx.  People leave lots of junk around.
-AC_CACHE_CHECK(where utmpx is located, path_utmpx,
-[AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <utmpx.h>
-#include <errno.h>
-#include <sys/stat.h>
-#ifdef HAVE_STRING_H
-#include <string.h>
-#endif
-main()
-{
-    char **u, *p, *utmplist[] = {
-#ifdef UTMPX_FILE
-	UTMPX_FILE,
-#endif
-#ifdef _PATH_UTMPX
-	_PATH_UTMPX,
-#endif
-    "/var/adm/utmpx", "/etc/utmpx", NULL };
-    FILE *a, *f=fopen("conftestval", "w");
-    struct stat statu, statux;
-    if (!f) exit(1);
-    for (u = utmplist; *u; u++) {
-	if ((a = fopen(*u, "r")) != NULL || errno == EACCES) {
-	    if (stat(*u, &statux) < 0)
-		continue;
-	    p = strdup(*u);
-	    p[strlen(p) - 1] = '\0';
-	    if (stat(p, &statu) >= 0
-		&& (statu.st_mtime - statux.st_mtime > 86400))
-		continue;
-	    fprintf(f, "%s\n", *u);
-	    exit(0);
-	}
-    }
-    exit(0);
-}]])],[path_utmpx=`cat conftestval`],[path_utmpx=],[dnl
-  AC_MSG_WARN(Define UTMPX_FILE in config.h manually)])])
-if test x$path_utmpx != x; then
-  AC_DEFINE_UNQUOTED(UTMPX_FILE, "$path_utmpx", Define location of utmpx)
+if test x$pt_cv_path_utmp != x; then
+  AC_DEFINE_UNQUOTED(UTMP_FILE, "$pt_cv_path_utmp", Define location of utmp)
 fi
 
 dnl# --------------------------------------------------------------------------
 
 dnl# find wtmp
-AC_CACHE_CHECK(where wtmp is located, path_wtmp,
+AC_CACHE_CHECK(where wtmp is located, pt_cv_path_wtmp,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -319,15 +261,15 @@ main()
 	}
     }
     exit(0);
-}]])],[path_wtmp=`cat conftestval`],[path_wtmp=],[dnl
+}]])],[pt_cv_path_wtmp=`cat conftestval`],[pt_cv_path_wtmp=],[dnl
   AC_MSG_WARN(Define WTMP_FILE in config.h manually)])])
-if test x$path_wtmp != x; then
-  AC_DEFINE_UNQUOTED(WTMP_FILE, "$path_wtmp", Define location of wtmp)
+if test x$pt_cv_path_wtmp != x; then
+  AC_DEFINE_UNQUOTED(WTMP_FILE, "$pt_cv_path_wtmp", Define location of wtmp)
 fi
 dnl# --------------------------------------------------------------------------
 
 dnl# find wtmpx
-AC_CACHE_CHECK(where wtmpx is located, path_wtmpx,
+AC_CACHE_CHECK(where wtmpx is located, pt_cv_path_wtmpx,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UTMPX_H
@@ -355,15 +297,15 @@ main()
 	}
     }
     exit(0);
-}]])],[path_wtmpx=`cat conftestval`],[path_wtmpx=],[dnl
+}]])],[pt_cv_path_wtmpx=`cat conftestval`],[pt_cv_path_wtmpx=],[dnl
   AC_MSG_WARN(Define WTMPX_FILE in config.h manually)])])
-if test x$path_wtmpx != x; then
-  AC_DEFINE_UNQUOTED(WTMPX_FILE, "$path_wtmpx", Define location of wtmpx)
+if test x$pt_cv_path_wtmpx != x; then
+  AC_DEFINE_UNQUOTED(WTMPX_FILE, "$pt_cv_path_wtmpx", Define location of wtmpx)
 fi
 dnl# --------------------------------------------------------------------------
 
 dnl# find lastlog
-AC_CACHE_CHECK(where lastlog is located, path_lastlog,
+AC_CACHE_CHECK(where lastlog is located, pt_cv_path_lastlog,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -396,15 +338,15 @@ main()
 	}
     }
     exit(0);
-}]])],[path_lastlog=`cat conftestval`],[path_lastlog=],[dnl
+}]])],[pt_cv_path_lastlog=`cat conftestval`],[pt_cv_path_lastlog=],[dnl
   AC_MSG_WARN(Define LASTLOG_FILE in config.h manually)])])
-if test x$path_lastlog != x; then
-  AC_DEFINE_UNQUOTED(LASTLOG_FILE, "$path_lastlog", Define location of lastlog)
+if test x$pt_cv_path_lastlog != x; then
+  AC_DEFINE_UNQUOTED(LASTLOG_FILE, "$pt_cv_path_lastlog", Define location of lastlog)
 fi
 dnl# --------------------------------------------------------------------------
 
 dnl# find lastlogx
-AC_CACHE_CHECK(where lastlogx is located, path_lastlogx,
+AC_CACHE_CHECK(where lastlogx is located, pt_cv_path_lastlogx,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <stdio.h>
 #include <stdlib.h>
 #ifdef HAVE_UTMPX_H
@@ -431,16 +373,16 @@ main()
 	}
     }
     exit(0);
-}]])],[path_lastlogx=`cat conftestval`],[path_lastlogx=],[dnl
+}]])],[pt_cv_path_lastlogx=`cat conftestval`],[pt_cv_path_lastlogx=],[dnl
   AC_MSG_WARN(Define LASTLOGX_FILE in config.h manually)])])
-if test x$path_lastlogx != x; then
-  AC_DEFINE_UNQUOTED(LASTLOGX_FILE, "$path_lastlogx", Define location of lastlogx)
+if test x$pt_cv_path_lastlogx != x; then
+  AC_DEFINE_UNQUOTED(LASTLOGX_FILE, "$pt_cv_path_lastlogx", Define location of lastlogx)
 fi
 ])
 
 AC_DEFUN([SCM_RIGHTS_CHECK],
 [
-AC_CACHE_CHECK(for unix-compliant filehandle passing ability, can_pass_fds,
+AC_CACHE_CHECK(for unix-compliant filehandle passing ability, pt_cv_can_pass_fds,
 [AC_LINK_IFELSE([AC_LANG_PROGRAM([[
 #include <cstddef> // broken bsds (is that redundant?) need this
 #include <sys/types.h>
@@ -470,8 +412,8 @@ AC_CACHE_CHECK(for unix-compliant filehandle passing ability, can_pass_fds,
 
   return sendmsg (3, &msg, 0);
 }
-]])],[can_pass_fds=yes],[can_pass_fds=no])])
-if test x$can_pass_fds = xyes; then
+]])],[pt_cv_can_pass_fds=yes],[pt_cv_can_pass_fds=no])])
+if test x$pt_cv_can_pass_fds = xyes; then
    AC_DEFINE(HAVE_UNIX_FDPASS, 1, Define if sys/socket.h defines the necessary macros/functions for file handle passing)
 else
    AC_MSG_ERROR([libptytty requires unix-compliant filehandle passing ability])
@@ -480,7 +422,7 @@ fi
 
 AC_DEFUN([TTY_GROUP_CHECK],
 [
-AC_CACHE_CHECK([for tty group], tty_group,
+AC_CACHE_CHECK([for tty group], pt_cv_tty_group,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -501,8 +443,8 @@ main()
     return 0;
   else
     return 1;
-}]])],[tty_group=yes],[tty_group=no],[tty_group=no])])
-if test x$tty_group = xyes; then
+}]])],[pt_cv_tty_group=yes],[pt_cv_tty_group=no],[pt_cv_tty_group=no])])
+if test x$pt_cv_tty_group = xyes; then
   AC_DEFINE(TTY_GID_SUPPORT, 1, "")
 fi])
 

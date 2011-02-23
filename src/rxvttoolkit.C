@@ -299,6 +299,7 @@ rxvt_screen::clear ()
 rxvt_display::rxvt_display (const char *id)
 : refcounted (id)
 , selection_owner (0)
+, clipboard_owner (0)
 {
   x_ev    .set<rxvt_display, &rxvt_display::x_cb    > (this);
   flush_ev.set<rxvt_display, &rxvt_display::flush_cb> (this);
@@ -428,11 +429,11 @@ bool rxvt_display::ref_init ()
 #ifdef LOCAL_X_IS_UNIX
   if (id[0] == ':')
     {
-      val = rxvt_malloc (5 + strlen (id) + 1);
+      if (!(val = rxvt_temp_buf<char> (5 + strlen (id) + 1)))
+        return false;
       strcpy (val, "unix/");
       strcat (val, id);
       dpy = XOpenDisplay (val);
-      free (val);
     }
   else
 #endif
@@ -465,7 +466,7 @@ bool rxvt_display::ref_init ()
 
   int fd = XConnectionNumber (dpy);
 
-  // try to detect wether we have a local connection.
+  // try to detect whether we have a local connection.
   // assume unix domain socket == local, everything else not
   // TODO: might want to check for inet/127.0.0.1
   is_local = 0;
@@ -489,7 +490,7 @@ bool rxvt_display::ref_init ()
 void
 rxvt_display::ref_next ()
 {
-  // TODO: somehow check wether the database files/resources changed
+  // TODO: somehow check whether the database files/resources changed
   // before affording re-loading/parsing
   XrmDestroyDatabase (XrmGetDatabase (dpy));
   XrmSetDatabase (dpy, get_resources (true));
@@ -602,17 +603,18 @@ void rxvt_display::unreg (xevent_watcher *w)
     }
 }
 
-void rxvt_display::set_selection_owner (rxvt_term *owner)
+void rxvt_display::set_selection_owner (rxvt_term *owner, bool clipboard)
 {
-  if (selection_owner && selection_owner != owner)
-    {
-      rxvt_term *owner = selection_owner;
+  rxvt_term * &cur_owner = !clipboard ? selection_owner : clipboard_owner;
 
-      owner->selection_clear ();
-      owner->flush ();
+  if (cur_owner && cur_owner != owner)
+    {
+      rxvt_term *term = cur_owner;
+      term->selection_clear (clipboard);
+      term->flush ();
     }
 
-  selection_owner = owner;
+  cur_owner = owner;
 }
 
 #ifdef USE_XIM
@@ -635,15 +637,13 @@ rxvt_xim *rxvt_display::get_xim (const char *locale, const char *modifiers)
   l = strlen (locale);
   m = strlen (modifiers);
 
-  if (!(id = (char *)malloc (l + m + 2)))
+  if (!(id = rxvt_temp_buf<char> (l + m + 2)))
     return 0;
 
   memcpy (id, locale, l); id[l] = '\n';
   memcpy (id + l + 1, modifiers, m); id[l + m + 1] = 0;
 
   rxvt_xim *xim = xims.get (id);
-
-  free (id);
 
   return xim;
 }
@@ -886,19 +886,3 @@ rxvt_color::fade (rxvt_screen *screen, int percent, rxvt_color &result, const rg
   );
 }
 
-#if TRACE_PIXMAPS
-# undef XCreatePixmap
-# undef XFreePixmap
-Pixmap trace_XCreatePixmap (const char *file, int line, Display *dpy, Window r, unsigned int w, unsigned int h, unsigned int d)
-{
-  Pixmap res = XCreatePixmap (dpy, r, w, h, d);
-  fprintf (stderr, "%s:%d: XCreatePixmap (%p,%lX,%u,%u,%u) returned %lX\n", file, line, dpy, r, w, h, d, res);
-  return res;
-}
-
-void trace_XFreePixmap (const char *file, int line, Display *dpy, Pixmap p)
-{
-  fprintf (stderr, "%s:%d: XFreePixmap (%p,%lX)\n", file, line, dpy, p);
-  XFreePixmap (dpy,p);
-}
-#endif

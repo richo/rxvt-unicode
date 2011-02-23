@@ -450,7 +450,7 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
           chrs [1] = NOCHAR;
 
           *chrs = cc->c1;
-          rxvt_font *f1 = (*fs)[fs->find_font (cc->c1)];
+          rxvt_font *f1 = (*fs)[fs->find_font_idx (cc->c1)];
           f1->draw (d, x, y, chrs, width, fg, bg);
 
           if (cc->c2 != NOCHAR)
@@ -461,7 +461,7 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
               *chrs = cc->c2;
               rxvt_font *f2 = (f1->has_char (cc->c2, 0, careful) && !careful)
                                 ? f1
-                                : (*fs)[fs->find_font (cc->c2)];
+                                : (*fs)[fs->find_font_idx (cc->c2)];
 
               f2->draw (d, x, y, chrs, width, fg, Color_none);
             }
@@ -484,6 +484,56 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
     }
 }
 
+struct rxvt_font_overflow : rxvt_font {
+  struct rxvt_fontset *fs;
+
+  rxvt_font_overflow (rxvt_fontset *fs)
+  : rxvt_font ()
+  {
+    this->fs = fs;
+  }
+
+  rxvt_fontprop properties ()
+  {
+    rxvt_fontprop p;
+
+    p.width = p.height = 1;
+    p.ascent = rxvt_fontprop::unset;
+    p.weight = rxvt_fontprop::medium;
+    p.slant = rxvt_fontprop::roman;
+
+    return p;
+  }
+
+  bool load (const rxvt_fontprop &prop, bool force_prop)
+  {
+    width = 1; height = 1;
+    ascent = 1; descent = 0;
+
+    set_name (strdup ("built-in rendition overflow font"));
+
+    return true;
+  }
+
+  bool has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &careful) const
+  {
+    return false;
+  }
+
+  void draw (rxvt_drawable &d, int x, int y,
+             const text_t *text, int len,
+             int fg, int bg)
+  {
+    while (len--)
+      {
+        int fid = fs->find_font_idx (*text);
+        (*fs)[fid]->draw (d, x, y, text, 1, fg, bg);
+        ++text;
+        x += term->fwidth;
+      }
+  }
+};
+
 /////////////////////////////////////////////////////////////////////////////
 
 struct rxvt_font_x11 : rxvt_font {
@@ -501,7 +551,7 @@ struct rxvt_font_x11 : rxvt_font {
              const text_t *text, int len,
              int fg, int bg);
 
-  bool slow; // wether this is a proportional font or has other funny characteristics
+  bool slow; // whether this is a proportional font or has other funny characteristics
   XFontStruct *f;
   bool enc2b, encm;
 
@@ -917,7 +967,7 @@ rxvt_font_x11::has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &car
   if (ch == NOCHAR)
     return false;
 
-  /* check wether the character exists in _this_ font. horrible. */
+  /* check whether the character exists in _this_ font. horrible. */
   XCharStruct *xcs;
 
   if (encm)
@@ -957,7 +1007,7 @@ rxvt_font_x11::has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &car
   if (!prop || prop->width == rxvt_fontprop::unset)
     return true;
 
-  // check wether character overlaps previous/next character
+  // check whether character overlaps previous/next character
   int w = xcs->rbearing - xcs->lbearing;
   int wcw = max (WCWIDTH (unicode), 1);
 
@@ -1295,7 +1345,7 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
                      int fg, int bg)
 {
   XGlyphInfo extents;
-  XftGlyphSpec *enc = (XftGlyphSpec *)rxvt_temp_buf (len * sizeof (XftGlyphSpec));
+  XftGlyphSpec *enc = rxvt_temp_buf<XftGlyphSpec> (len);
   XftGlyphSpec *ep = enc;
 
   dTermDisplay;
@@ -1355,7 +1405,7 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
             {
               int src_x = x, src_y = y;
 
-              if (term->bgPixmap.is_parentOrigin ())
+              if (term->bgPixmap.flags & bgPixmap_t::isTransparent)
                 {
                   src_x += term->window_vt_x;
                   src_y += term->window_vt_y;
@@ -1434,7 +1484,7 @@ rxvt_fontset::clear ()
   force_prop = false;
 
   for (rxvt_font **i = fonts.begin (); i != fonts.end (); i++)
-    FONT_UNREF (*i);
+    (*i)->unref ();
 
   for (pagemap **p = fmap.begin (); p != fmap.end (); p++)
     delete *p;
@@ -1444,6 +1494,15 @@ rxvt_fontset::clear ()
   fonts.clear ();
 
   fallback = fallback_fonts;
+}
+
+void
+rxvt_fontset::prepare_font (rxvt_font *font, codeset cs)
+{
+  font->set_term (term);
+
+  font->cs = cs;
+  font->loaded = false;
 }
 
 rxvt_font *
@@ -1471,16 +1530,30 @@ rxvt_fontset::new_font (const char *name, codeset cs)
   else
     f = new rxvt_font_x11;
 
-  f->set_term (term);
   f->set_name (strdup (name));
-
-  f->cs = cs;
-  f->loaded = false;
+  prepare_font (f, cs);
 
   return f;
 }
 
 /////////////////////////////////////////////////////////////////////////////
+
+void
+rxvt_fontset::push_font (rxvt_font *font)
+{
+  // the fontCount index is reserved for the overflow font, it is only
+  // necessary when we get fontCount or more fonts, as they cannot be
+  // represented in the rendition.
+  if (fonts.size () == fontCount)
+    {
+      rxvt_font *f = new rxvt_font_overflow (this);
+
+      prepare_font (f, CS_UNICODE);
+      fonts.push_back (f);
+    }
+
+  fonts.push_back (font);
+}
 
 void
 rxvt_fontset::add_fonts (const char *desc)
@@ -1531,7 +1604,7 @@ rxvt_fontset::add_fonts (const char *desc)
               memcpy (buf, desc, end - desc);
               buf[end - desc] = 0;
 
-              fonts.push_back (new_font (buf, cs));
+              push_font (new_font (buf, cs));
             }
           else
             rxvt_warn ("fontset element too long (>511 bytes), ignored.");
@@ -1569,7 +1642,7 @@ rxvt_fontset::populate (const char *desc)
 
   fontdesc = strdup (desc);
 
-  fonts.push_back (new_font (0, CS_UNICODE));
+  push_font (new_font (0, CS_UNICODE));
   realize_font (0);
 
   add_fonts (desc);
@@ -1588,7 +1661,7 @@ rxvt_fontset::find_font (const char *name) const
 }
 
 int
-rxvt_fontset::find_font (unicode_t unicode)
+rxvt_fontset::find_font_idx (unicode_t unicode)
 {
   if (unicode >= 1<<20)
     return 0;
@@ -1624,8 +1697,7 @@ rxvt_fontset::find_font (unicode_t unicode)
       bool careful;
       if (f->has_char (unicode, &prop, careful))
         {
-          if (careful)
-            i |= 128;
+          i = (i << 1) | careful;
 
           goto found;
         }
@@ -1636,7 +1708,7 @@ rxvt_fontset::find_font (unicode_t unicode)
           if (fallback->name)
             {
               // search through the fallback list
-              fonts.push_back (new_font (fallback->name, fallback->cs));
+              push_font (new_font (fallback->name, fallback->cs));
               fallback++;
             }
           else
@@ -1677,9 +1749,9 @@ rxvt_fontset::find_font (unicode_t unicode)
                   if (find_font (font) < 0)
                     {
                       char fontname[4096];
-                      sprintf (fontname, "xft:%-.4090s", font);
+                      snprintf (fontname, sizeof (fontname), "xft:%s", font);
 
-                      fonts.push_back (new_font (fontname, CS_UNICODE));
+                      push_font (new_font (fontname, CS_UNICODE));
                     }
 
                   free (font);
@@ -1710,6 +1782,4 @@ found:
 
   return i;
 }
-
-
 

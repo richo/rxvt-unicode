@@ -126,13 +126,10 @@ Turn on/off skip scrolling (allow multiple screens per refresh); resource B<skip
 
 =item B<-tr>|B<+tr>
 
-Turn on/off illusion of a transparent window background; resource B<transparent>.
+Turn on/off pseudo-transparency by using the root pixmap as background; resource B<transparent>.
 
 B<-ip> is still accepted as an obsolete alias but will be removed in
 future versions.
-
-I<Please address all transparency related issues to Sasha Vasko at
-sasha@aftercode.net. Read the FAQ (man 7 @@RXVT_NAME@@)!>
 
 =item B<-fade> I<number>
 
@@ -147,30 +144,20 @@ is opaque black. resource B<fadeColor>.
 
 =item B<-tint> I<colour>
 
-Tint the transparent background pixmap with the given colour when
-transparency is enabled with B<-tr>. This only works for
-non-tiled backgrounds, currently. See also the B<-sh> option that can be
-used to brighten or darken the image in addition to tinting it.
-Please note that certain tint colours can be applied on the server-side,
-thus yielding performance gain of two orders of magnitude. These colours are:
-blue, red, green, cyan, magenta, yellow, and those close to them. Also
-pure black and pure white colors essentially mean no tinting; resource
-I<tintColor>. Example:
-
-   @@RXVT_NAME@@ -tr -tint blue -sh 40
+Tint the transparent background with the given colour;
+resource I<tintColor>.
 
 =item B<-sh> I<number>
 
-Darken (0 .. 100) or lighten (100 .. 200) the transparent
-background image in addition to (or instead of) tinting it;
+Darken (0 .. 100) or lighten (100 .. 200) the transparent background;
 resource I<shading>.
 
 =item B<-blt> I<string>
 
 Specify background blending type. If background pixmap is specified
 at the same time as transparency - such pixmap will be blended over
-transparency image, using method specified. Supported values are :
-B<add>, B<alphablend>, B<allanon> - color values averaging, B<colorize>,
+the transparent background, using the method specified. Supported values are:
+B<add>, B<alphablend>, B<allanon> - colour values averaging, B<colorize>,
 B<darken>, B<diff>, B<dissipate>, B<hue>, B<lighten>, B<overlay>,
 B<saturate>, B<screen>, B<sub>, B<tint>, B<value>. The default is
 alpha-blending. Compile I<afterimage>; resource I<blendType>.
@@ -178,15 +165,15 @@ alpha-blending. Compile I<afterimage>; resource I<blendType>.
 =item B<-blr> I<HxV>
 
 Apply Gaussian Blur with the specified radii to the transparent
-background image. If single number is specified - both vertical and
+background. If a single number is specified - both vertical and
 horizontal radii are considered to be the same. Setting one of the
 radii to 1 and another to a large number creates interesting effects
-on some backgrounds. Maximum radius value is 128. Compile I<afterimage>;
+on some backgrounds. Maximum radius value is 128;
 resource I<blurRadius>.
 
 =item B<-icon> I<file>
 
-Compile I<afterimage>: Use the specified image as application icon. This
+Compile I<afterimage> or I<pixbuf>: Use the specified image as application icon. This
 is used by many window managers, taskbars and pagers to represent the
 application window; resource I<iconFile>.
 
@@ -200,7 +187,7 @@ Window foreground colour; resource B<foreground>.
 
 =item B<-pixmap> I<file[;geom[:op1][:op2][...]]>
 
-Compile I<afterimage>: Specify image file for the background and also
+Compile I<afterimage> or I<pixbuf>: Specify image file for the background and also
 optionally specify its scaling with a geometry string. Note you may need to
 add quotes to avoid special shell interpretation of the C<;> in the
 command-line; for more details see resource B<backgroundPixmap>.
@@ -627,7 +614,7 @@ corresponds to low-intensity (normal) colours and 8-15 corresponds to
 high-intensity (bold = bright foreground, blink = bright background)
 colours. The canonical names are as follows: 0=black, 1=red, 2=green,
 3=yellow, 4=blue, 5=magenta, 6=cyan, 7=white, but the actual colour
-names used are listed in the B<COLORS AND GRAPHICS> section.
+names used are listed in the B<COLOURS AND GRAPHICS> section.
 
 Colours higher than 15 cannot be set using resources (yet), but can be
 changed using an escape command (see @@RXVT_NAME@@(7)).
@@ -648,15 +635,20 @@ foreground colour is the default. If font styles are not available
 Use the specified colour to display underlined characters when the
 foreground colour is the default.
 
-=item B<colorRV:> I<colour>
-
-Use the specified colour as the background for reverse video characters
-when OPTION_HC is disabled (--disable-frills).
-
 =item B<underlineColor:> I<colour>
 
 If set, use the specified colour as the colour for the underline
 itself. If unset, use the foreground colour.
+
+=item B<highlightColor:> I<colour>
+
+If set, use the specified colour as the background for highlighted
+characters. If unset, use reverse video.
+
+=item B<highlightTextColor:> I<colour>
+
+If set and highlightColor is set, use the specified colour as the
+foreground for highlighted characters.
 
 =item B<cursorColor:> I<colour>
 
@@ -673,7 +665,7 @@ use the background colour.
 
 B<True>: simulate reverse video by foreground and background colours;
 option B<-rv>. B<False>: regular screen colours [default]; option
-B<+rv>. See note in B<COLORS AND GRAPHICS> section.
+B<+rv>. See note in B<COLOURS AND GRAPHICS> section.
 
 =item B<jumpScroll:> I<boolean>
 
@@ -699,13 +691,10 @@ monitor to display anything); option B<+ss>.
 
 =item B<transparent:> I<boolean>
 
-Turn on/off illusion of a transparent window background.
+Turn on/off pseudo-transparency by using the root pixmap as background.
 
 B<inheritPixmap> is still accepted as an obsolete alias but will be removed in
 future versions.
-
-I<Please address all transparency related issues to Sasha Vasko at
-sasha@aftercode.net. Read the FAQ (man 7 @@RXVT_NAME@@)!>
 
 =item B<fading:> I<number>
 
@@ -718,13 +707,13 @@ colour is black; option B<-fadecolor>.
 
 =item B<tintColor:> I<colour>
 
-Tint the transparent background pixmap with the given colour; option
+Tint the transparent background with the given colour; option
 B<-tint>.
 
 =item B<shading:> I<number>
 
-Darken (0 .. 100) or lighten (-1 .. -100) the transparent background image
-in addition to tinting it; option B<-sh>.
+Darken (0 .. 100) or lighten (100 .. 200) the transparent background;
+option B<-sh>.
 
 =item B<blendType:> I<string>
 
@@ -733,7 +722,7 @@ Specify background blending type; option B<-blt>.
 =item B<blurRadius:> I<number>
 
 Apply gaussian blur with the specified radius to the transparent
-background image; option B<-blr>.
+background; option B<-blr>.
 
 =item B<iconFile:> I<file>
 
@@ -757,12 +746,10 @@ and the text.
 
 Use the specified image file for the background and also
 optionally specify its scaling with a geometry string B<WxH+X+Y>,
-(default C<0x0+50+50>) in which B<"W" / "H"> specify the
+(default C<100x100+50+50>) in which B<"W" / "H"> specify the
 horizontal/vertical scale (percent), and B<"X" / "Y"> locate the image
-centre (percent).  A scale of 0 displays the image with tiling. A scale
-of 1 displays the image without any scaling. A scale of 2 to 9 specifies
-an integer number of images in that direction. No image will be magnified
-beyond 10 times its original size. The maximum permitted scale is 1000.
+centre (percent).  A scale of 0 displays the image with tiling.
+The maximum permitted scale is 1000.
 Additional operations can be specified after colon B<:op1:op2...>.
 Supported operations are:
 
@@ -776,8 +763,9 @@ Supported operations are:
               whenever terminal window moves
 
 If used in conjunction with B<-tr> option, the specified pixmap will be
-blended over transparency image using either alpha-blending, or any
-other blending type, specified with B<-blt "type"> option.
+blended over the transparent background using alpha-blending. If I<afterimage>
+support has been compiled in it is possible to choose other blending
+types with B<-blt "type"> option.
 
 =item B<path:> I<path>
 
@@ -814,7 +802,7 @@ wide and 15 pixels high.
 
 The second font is just used to add additional unicode characters not in
 the base font, likewise the third, which is unfortunately non-bold, but
-the bold version of the font does contain less characters, so this is a
+the bold version of the font does contain fewer characters, so this is a
 useful supplement.
 
 The third font is an Xft font with aliasing turned off, and the characters
@@ -1037,7 +1025,7 @@ large number (e.g. C<987654321>) to effectively disable the timeout.
 =item B<backspacekey:> I<string>
 
 The string to send when the backspace key is pressed. If set to B<DEC>
-or unset it will send B<Delete> (code 127) or, if shifted, B<Backspace>
+or unset it will send B<Delete> (code 127) or, with control, B<Backspace>
 (code 8) - which can be reversed with the appropriate DEC private mode
 escape sequence.
 
@@ -1166,7 +1154,7 @@ keysym value (B<0x0000 - 0xFFFF>). Note that the lookup of I<sym>s is not
 performed in an exact manner; however, the closest match is assured.
 
 I<string> may contain escape values (C<\n>: newline, C<\000>: octal
-number), see RESOURCES in C<man 7 X> for futher details.
+number), see RESOURCES in C<man 7 X> for further details.
 
 You can define a range of keysyms in one shot by providing a I<string>
 with pattern B<list/PREFIX/MIDDLE/SUFFIX>, where the delimiter `/'
@@ -1197,7 +1185,7 @@ C<@@RXVT_NAME@@ -pe selection>) listens for C<selection:rot13> events:
   URxvt.keysym.M-C-c: perl:selection:rot13
 
 Due the the large number of modifier combinations, a defined key mapping
-will match if at I<at least> the specified identifiers are being set, and
+will match if I<at least> the specified identifiers are being set, and
 no other key mappings with those and more bits are being defined. That
 means that defining a key map for C<a> will automatically provide
 definitions for C<Meta-a>, C<Shift-a> and so on, unless some of those are defined
@@ -1297,6 +1285,10 @@ Compile I<frills>: Sets the WM_TRANSIENT_FOR property to the given window id.
 
 Compile I<frills>: Sets override-redirect for the terminal window, making
 it almost invisible to window managers; option B<-override-redirect>.
+
+=item B<iso14755:> I<boolean>
+
+Turn on/off ISO 14755 (default enabled).
 
 =item B<iso14755_52:> I<boolean>
 
@@ -1449,12 +1441,15 @@ it can be seen via the I<who(1)> command, and can accept messages.  To
 allow this feature, B<@@RXVT_NAME@@> may need to be installed setuid root
 on some systems or setgid to root or to some other group on others.
 
-=head1 COLORS AND GRAPHICS
+=head1 COLOURS AND GRAPHICS
 
 In addition to the default foreground and background colours,
-B<@@RXVT_NAME@@> can display up to 16 colours (8 ANSI colours plus
-high-intensity bold/blink versions of the same). Here is a list of the
-colours with their names.
+B<@@RXVT_NAME@@> can display up to 88/256 colours: 8 ANSI colours plus
+high-intensity (potentially bold/blink) versions of the same, and 72 (or
+240 in 256 colour mode) colours arranged in an 4x4x4 (or 6x6x6) colour RGB
+cube plus a 8 (24) colour greyscale ramp.
+
+Here is a list of the ANSI colours with their names.
 
 =begin table
 
@@ -1484,14 +1479,24 @@ B<background>, B<cursorColor>, B<cursorColor2>, B<colorBD>, B<colorUL> as
 a number 0-15, as a convenient shorthand to reference the colour name of
 color0-color15.
 
-In addition to the colours defined above, @@RXVT_NAME@@ offers an
-additional 72 colours. The first 64 of those (with indices 16 to 79)
-consist of a 4*4*4 RGB colour cube (i.e. I<index = r * 16 + g * 4 + b +
-16>), followed by 8 additional shades of gray (with indices 80 to 87).
+The following text gives values for the standard 88 colour mode (and
+values for the 256 colour mode in parentheses).
 
-Together, all those colours implement the 88 colour xterm colours. Only
-the first 16 can be changed using resources currently, the rest can only
-be changed via command sequences ("escape codes").
+The RGB cube uses indices 16..79 (16..231) using the following formulas:
+
+   index_88  = (r *  4 + g) *  4 + b + 16   # r, g, b = 0..3
+   index_256 = (r * 16 + g) * 16 + b + 16   # r, g, b = 0..15
+
+The grayscale ramp uses indices 80..87 (232..239), from 10% to 90% in 10%
+steps (1/26 to 25/26 in 1/26 steps) - black and white are already part of
+the RGB cube.
+
+Together, all those colours implement the 88 (256) colour xterm
+colours. Only the first 16 can be changed using resources currently, the
+rest can only be changed via command sequences ("escape codes").
+
+Applications are advised to use terminfo or command sequences to discover
+number and RGB values of all colours (yes, you can query this...).
 
 Note that B<-rv> (B<"reverseVideo: True">) simulates reverse video by
 always swapping the foreground/background colours. This is in contrast to
@@ -1508,9 +1513,9 @@ White.
 If Xft support has been compiled in and as long as Xft/Xrender/X don't get
 their act together, rxvt-unicode will do it's own alpha channel management:
 
-You can prefix any color with an opaquenes percentage enclosed in
+You can prefix any colour with an opaqueness percentage enclosed in
 brackets, i.e. C<[percent]>, where C<percent> is a decimal percentage
-(0-100) that specifies the opacity of the color, where C<0> is completely
+(0-100) that specifies the opacity of the colour, where C<0> is completely
 transparent and C<100> is completely opaque. For example, C<[50]red> is a
 half-transparent red, while C<[95]#00ff00> is an almost opaque green. This
 is the recommended format to specify transparency values, and works with
@@ -1628,7 +1633,7 @@ If set and accessible, gives the name of a X resource file to be loaded by
 
 =item B</usr/lib/X11/rgb.txt>
 
-Color names.
+Colour names.
 
 =back
 

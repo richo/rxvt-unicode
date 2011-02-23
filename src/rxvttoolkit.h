@@ -237,6 +237,7 @@ struct rxvt_display : refcounted
   int       screen;
   Window    root;
   rxvt_term *selection_owner;
+  rxvt_term *clipboard_owner;
   Atom      xa[NUM_XA];
   bool      is_local;
 #ifdef POINTER_BLANK
@@ -255,7 +256,7 @@ struct rxvt_display : refcounted
   }
 
   Atom atom (const char *name);
-  void set_selection_owner (rxvt_term *owner);
+  void set_selection_owner (rxvt_term *owner, bool clipboard);
 
   void reg (xevent_watcher *w);
   void unreg (xevent_watcher *w);
@@ -353,14 +354,6 @@ struct rxvt_color
 
   void fade (rxvt_screen *screen, int percent, rxvt_color &result, const rgba &to = rgba (0, 0, 0));
 };
-
-#if TRACE_PIXMAPS
-Pixmap trace_XCreatePixmap (const char *file, int line, Display *dpy, Window r, unsigned int w, unsigned int h, unsigned int d);
-void trace_XFreePixmap (const char *file, int line, Display *dpy, Pixmap p);
-
-# define XCreatePixmap(dpy,r,w,h,d) trace_XCreatePixmap (__FILE__,__LINE__,dpy,r,w,h,d)
-# define XFreePixmap(dpy,p) trace_XFreePixmap (__FILE__,__LINE__,dpy,p)
-#endif
 
 #endif
 

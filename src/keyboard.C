@@ -51,47 +51,18 @@
  * where
  * A1 = 0;
  * Ai+1 = N1 + N2 + ... + Ni.
- * it is computed from hash_budget_size[]:
+ * it is computed from hash_bucket_size[]:
  * index: 0      I1         I2         I3             In
  * value: 0...0, N1, 0...0, N2, 0...0, N3,    ...,    Nn, 0...0
- *        0...0, 0.......0, N1.....N1, N1+N2...N1+N2, ... (the compution of hash[])
+ *        0...0, 0.......0, N1.....N1, N1+N2...N1+N2, ... (the computation of hash[])
  * or we can say
- * hash_budget_size[Ii] = Ni; hash_budget_size[elsewhere] = 0,
+ * hash_bucket_size[Ii] = Ni; hash_bucket_size[elsewhere] = 0,
  * where
  * set {I1, I2, ..., In} = { hashkey of keymap[0]->keysym, ..., keymap[keymap.size-1]->keysym }
  * where hashkey of keymap[i]->keysym = keymap[i]->keysym & KEYSYM_HASH_MASK
- *       n(the number of groups) = the number of non-zero member of hash_budget_size[];
- *       Ni(the size of group i) = hash_budget_size[Ii].
+ *       n(the number of groups) = the number of non-zero member of hash_bucket_size[];
+ *       Ni(the size of group i) = hash_bucket_size[Ii].
  */
-
-#if STOCK_KEYMAP
-////////////////////////////////////////////////////////////////////////////////
-// default keycode translation map and keyevent handlers
-
-keysym_t keyboard_manager::stock_keymap[] = {
-  /* examples */
-  /*        keysym,                state, range,                  type,              str */
-//{XK_ISO_Left_Tab,                    0,     1,      keysym_t::STRING,           "\033[Z"},
-//{            'a',                    0,    26, keysym_t::RANGE_META8,           "a" "%c"},
-//{            'a',          ControlMask,    26, keysym_t::RANGE_META8,          "" "%c"},
-//{        XK_Left,                    0,     4,        keysym_t::LIST,     ".\033[.DACB."},
-//{        XK_Left,            ShiftMask,     4,        keysym_t::LIST,     ".\033[.dacb."},
-//{        XK_Left,          ControlMask,     4,        keysym_t::LIST,     ".\033O.dacb."},
-//{         XK_Tab,          ControlMask,     1,      keysym_t::STRING,      "\033<C-Tab>"},
-//{  XK_apostrophe,          ControlMask,     1,      keysym_t::STRING,        "\033<C-'>"},
-//{       XK_slash,          ControlMask,     1,      keysym_t::STRING,        "\033<C-/>"},
-//{   XK_semicolon,          ControlMask,     1,      keysym_t::STRING,        "\033<C-;>"},
-//{       XK_grave,          ControlMask,     1,      keysym_t::STRING,        "\033<C-`>"},
-//{       XK_comma,          ControlMask,     1,      keysym_t::STRING,     "\033<C-\054>"},
-//{      XK_Return,          ControlMask,     1,      keysym_t::STRING,   "\033<C-Return>"},
-//{      XK_Return,            ShiftMask,     1,      keysym_t::STRING,   "\033<S-Return>"},
-//{            ' ',            ShiftMask,     1,      keysym_t::STRING,    "\033<S-Space>"},
-//{            '.',          ControlMask,     1,      keysym_t::STRING,        "\033<C-.>"},
-//{            '0',          ControlMask,    10,       keysym_t::RANGE,   "0" "\033<C-%c>"},
-//{            '0', MetaMask|ControlMask,    10,       keysym_t::RANGE, "0" "\033<M-C-%c>"},
-//{            'a', MetaMask|ControlMask,    26,       keysym_t::RANGE, "a" "\033<M-C-%c>"},
-};
-#endif
 
 static void
 output_string (rxvt_term *rt, const char *str)
@@ -104,42 +75,6 @@ output_string (rxvt_term *rt, const char *str)
     rt->tt_write (str, strlen (str));
 }
 
-static void
-output_string_meta8 (rxvt_term *rt, unsigned int state, char *buf, int buflen)
-{
-  if (state & rt->ModMetaMask)
-    {
-#ifdef META8_OPTION
-      if (rt->meta_char == 0x80)	/* set 8-bit on */
-        {
-          for (char *ch = buf; ch < buf + buflen; ch++)
-            *ch |= 0x80;
-        }
-      else if (rt->meta_char == C0_ESC)	/* escape prefix */
-#endif
-        {
-          const char ch = C0_ESC;
-          rt->tt_write (&ch, 1);
-        }
-    }
-
-  rt->tt_write (buf, buflen);
-}
-
-static int
-format_keyrange_string (const char *str, int keysym_offset, char *buf, int bufsize)
-{
-  size_t len = snprintf (buf, bufsize, str + 1, keysym_offset + str [0]);
-
-  if (len >= (size_t)bufsize)
-    {
-      rxvt_warn ("format_keyrange_string: formatting failed, ignoring key.\n");
-      *buf = 0;
-    }
-
-  return len;
-}
-
 // return: priority_of_a - priority_of_b
 static int
 compare_priority (keysym_t *a, keysym_t *b)
@@ -150,7 +85,7 @@ compare_priority (keysym_t *a, keysym_t *b)
 
   if (ca != cb)
     return ca - cb;
-//else if (a->state != b->state) // this behavior is to be disscussed
+//else if (a->state != b->state) // this behavior is to be discussed
 //  return b->state - a->state;
   else
     return b->range - a->range;
@@ -171,23 +106,16 @@ keyboard_manager::~keyboard_manager ()
 void
 keyboard_manager::clear ()
 {
-  keymap.clear ();
   hash [0] = 2;
 
-  for (unsigned int i = 0; i < user_translations.size (); ++i)
+  for (unsigned int i = 0; i < keymap.size (); ++i)
     {
-      free ((void *)user_translations [i]);
-      user_translations [i] = 0;
+      free ((void *)keymap [i]->str);
+      delete keymap [i];
+      keymap [i] = 0;
     }
 
-  for (unsigned int i = 0; i < user_keymap.size (); ++i)
-    {
-      delete user_keymap [i];
-      user_keymap [i] = 0;
-    }
-
-  user_keymap.clear ();
-  user_translations.clear ();
+  keymap.clear ();
 }
 
 // a wrapper for register_keymap,
@@ -229,8 +157,6 @@ keyboard_manager::register_user_translation (KeySym keysym, unsigned int state, 
       else if (strncmp (translation, "builtin:", 8) == 0)
         key->type = keysym_t::BUILTIN;
 
-      user_keymap.push_back (key);
-      user_translations.push_back (translation);
       register_keymap (key);
     }
   else
@@ -254,17 +180,6 @@ keyboard_manager::register_keymap (keysym_t *key)
 void
 keyboard_manager::register_done ()
 {
-#if STOCK_KEYMAP
-  int n = sizeof (stock_keymap) / sizeof (keysym_t);
-
-  //TODO: shield against repeated calls and empty keymap
-  //if (keymap.back () != &stock_keymap[n - 1])
-    for (int i = 0; i < n; ++i)
-      register_keymap (&stock_keymap[i]);
-#endif
-
-  purge_duplicate_keymap ();
-
   setup_hash ();
 }
 
@@ -303,26 +218,6 @@ keyboard_manager::dispatch (rxvt_term *term, KeySym keysym, unsigned int state)
                 output_string (term, str);
                 break;
 
-              case keysym_t::RANGE:
-                {
-                  char buf[STRING_MAX];
-
-                  if (format_keyrange_string (str, keysym_offset, buf, sizeof (buf)) > 0)
-                    output_string (term, buf);
-                }
-                break;
-
-              case keysym_t::RANGE_META8:
-                {
-                  int len;
-                  char buf[STRING_MAX];
-
-                  len = format_keyrange_string (str, keysym_offset, buf, sizeof (buf));
-                  if (len > 0)
-                    output_string_meta8 (term, state, buf, len);
-                }
-                break;
-
               case keysym_t::LIST:
                 {
                   char buf[STRING_MAX];
@@ -351,69 +246,45 @@ keyboard_manager::dispatch (rxvt_term *term, KeySym keysym, unsigned int state)
   return false;
 }
 
-// purge duplicate keymap entries
-void keyboard_manager::purge_duplicate_keymap ()
-{
-  for (unsigned int i = 0; i < keymap.size (); ++i)
-    {
-      for (unsigned int j = 0; j < i; ++j)
-        {
-          if (keymap [i] == keymap [j])
-            {
-              while (keymap [i] == keymap.back ())
-                keymap.pop_back ();
-
-              if (i < keymap.size ())
-                {
-                  keymap[i] = keymap.back ();
-                  keymap.pop_back ();
-                }
-
-              break;
-            }
-        }
-    }
-}
-
 void
 keyboard_manager::setup_hash ()
 {
   unsigned int i, index, hashkey;
   vector <keysym_t *> sorted_keymap;
-  uint16_t hash_budget_size[KEYSYM_HASH_BUDGETS];	// size of each budget
-  uint16_t hash_budget_counter[KEYSYM_HASH_BUDGETS];	// #elements in each budget
+  uint16_t hash_bucket_size[KEYSYM_HASH_BUCKETS];	// size of each bucket
+  uint16_t hash_bucket_counter[KEYSYM_HASH_BUCKETS];	// #elements in each bucket
 
-  memset (hash_budget_size, 0, sizeof (hash_budget_size));
-  memset (hash_budget_counter, 0, sizeof (hash_budget_counter));
+  memset (hash_bucket_size, 0, sizeof (hash_bucket_size));
+  memset (hash_bucket_counter, 0, sizeof (hash_bucket_counter));
 
   // determine hash bucket size
   for (i = 0; i < keymap.size (); ++i)
-    for (int j = min (keymap [i]->range, KEYSYM_HASH_BUDGETS) - 1; j >= 0; --j)
+    for (int j = min (keymap [i]->range, KEYSYM_HASH_BUCKETS) - 1; j >= 0; --j)
       {
         hashkey = (keymap [i]->keysym + j) & KEYSYM_HASH_MASK;
-        ++hash_budget_size [hashkey];
+        ++hash_bucket_size [hashkey];
       }
 
-  // now we know the size of each budget
-  // compute the index of each budget
+  // now we know the size of each bucket
+  // compute the index of each bucket
   hash [0] = 0;
-  for (index = 0, i = 1; i < KEYSYM_HASH_BUDGETS; ++i)
+  for (index = 0, i = 1; i < KEYSYM_HASH_BUCKETS; ++i)
     {
-      index += hash_budget_size [i - 1];
+      index += hash_bucket_size [i - 1];
       hash [i] = index;
     }
 
   // and allocate just enough space
-  sorted_keymap.insert (sorted_keymap.begin (), index + hash_budget_size [i - 1], 0);
+  sorted_keymap.insert (sorted_keymap.begin (), index + hash_bucket_size [i - 1], 0);
 
   // fill in sorted_keymap
-  // it is sorted in each budget
+  // it is sorted in each bucket
   for (i = 0; i < keymap.size (); ++i)
-    for (int j = min (keymap [i]->range, KEYSYM_HASH_BUDGETS) - 1; j >= 0; --j)
+    for (int j = min (keymap [i]->range, KEYSYM_HASH_BUCKETS) - 1; j >= 0; --j)
       {
         hashkey = (keymap [i]->keysym + j) & KEYSYM_HASH_MASK;
 
-        index = hash [hashkey] + hash_budget_counter [hashkey];
+        index = hash [hashkey] + hash_bucket_counter [hashkey];
 
         while (index > hash [hashkey]
                && compare_priority (keymap [i], sorted_keymap [index - 1]) > 0)
@@ -423,17 +294,17 @@ keyboard_manager::setup_hash ()
           }
 
         sorted_keymap [index] = keymap [i];
-        ++hash_budget_counter [hashkey];
+        ++hash_bucket_counter [hashkey];
       }
 
   keymap.swap (sorted_keymap);
 
 #ifndef NDEBUG
   // check for invariants
-  for (i = 0; i < KEYSYM_HASH_BUDGETS; ++i)
+  for (i = 0; i < KEYSYM_HASH_BUCKETS; ++i)
     {
       index = hash[i];
-      for (int j = 0; j < hash_budget_size [i]; ++j)
+      for (int j = 0; j < hash_bucket_size [i]; ++j)
         {
           if (keymap [index + j]->range == 1)
             assert (i == (keymap [index + j]->keysym & KEYSYM_HASH_MASK));
@@ -467,7 +338,7 @@ keyboard_manager::find_keysym (KeySym keysym, unsigned int state)
 {
   int hashkey = keysym & KEYSYM_HASH_MASK;
   unsigned int index = hash [hashkey];
-  unsigned int end = hashkey < KEYSYM_HASH_BUDGETS - 1
+  unsigned int end = hashkey < KEYSYM_HASH_BUCKETS - 1
                      ? hash [hashkey + 1]
                      : keymap.size ();
 

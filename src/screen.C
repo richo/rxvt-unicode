@@ -30,9 +30,10 @@
 
 #include <inttypes.h>
 
-#include "salloc.C" // HACK, should be a seperate compile!
+#include "salloc.C" // HACK, should be a separate compile!
 
-static inline void fill_text (text_t *start, text_t value, int len)
+static inline void
+fill_text (text_t *start, text_t value, int len)
 {
   while (len--)
     *start++ = value;
@@ -145,6 +146,8 @@ rxvt_term::scr_kill_char (line_t &l, int col) const NOTHROW
   rend_t rend = l.r[col] & ~RS_baseattrMask;
   rend = SET_FONT (rend, FONTSET (rend)->find_font (' '));
 
+  l.touch ();
+
   // found start, nuke
   do {
     l.t[col] = ' ';
@@ -233,6 +236,8 @@ rxvt_term::scr_reset ()
       selection.op = SELECTION_CLEAR;
       selection.screen = PRIMARY;
       selection.clicks = 0;
+      selection.clip_text = NULL;
+      selection.clip_len = 0;
     }
   else
     {
@@ -546,7 +551,7 @@ rxvt_term::scr_change_screen (int scrn)
 
   selection_check (2);        /* check for boundary cross */
 
-  int i = current_screen; current_screen = scrn; scrn = i;
+  current_screen = scrn;
 
 #if NSCREENS
   if (option (Opt_secondaryScreen))
@@ -897,24 +902,28 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
 # endif
 #endif
 
-          // nuke the character at this position, if required
-          if (expect_false (
-                line->t[screen.cur.col] == NOCHAR
-                || (screen.cur.col < ncol - 1
-                    && line->t[screen.cur.col + 1] == NOCHAR)
-             ))
-            scr_kill_char (*line, screen.cur.col);
-
           rend_t rend = SET_FONT (rstyle, FONTSET (rstyle)->find_font (c));
 
           // if the character doesn't fit into the remaining columns...
           if (expect_false (screen.cur.col > ncol - width && ncol >= width))
             {
-              // ... artificially enlargen the previous one
-              c = NOCHAR;
-              // and try the same character next loop iteration
-              --str;
+              if (screen.flags & Screen_Autowrap)
+                {
+                  // ... artificially enlargen the previous one
+                  c = NOCHAR;
+                  // and try the same character next loop iteration
+                  --str;
+                }
+              else
+                screen.cur.col = ncol - width;
             }
+
+          // nuke the character at this position, if required
+          // due to wonderful coincidences everywhere else in this loop
+          // we never have to check for overwriting a wide char itself,
+          // only its tail.
+          if (expect_false (line->t[screen.cur.col] == NOCHAR))
+            scr_kill_char (*line, screen.cur.col);
 
           line->touch ();
 
@@ -930,7 +939,8 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
                   line->l = ncol;
                   if (screen.flags & Screen_Autowrap)
                     screen.flags |= Screen_WrapNext;
-                  break;
+
+                  goto end_of_line;
                 }
 
               c = NOCHAR;
@@ -938,16 +948,14 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
           while (expect_false (--width > 0));
 
           // pad with spaces when overwriting wide character with smaller one
-          if (expect_false (!width))
+          for (int c = screen.cur.col; expect_false (c < ncol && line->t[c] == NOCHAR); c++)
             {
-              line->touch ();
-
-              for (int c = screen.cur.col; c < ncol && line->t[c] == NOCHAR; c++)
-                {
-                  line->t[c] = ' ';
-                  line->r[c] = rend;
-                }
+              line->t[c] = ' ';
+              line->r[c] = rend;
             }
+
+end_of_line:
+          ;
         }
 #if ENABLE_COMBINING
       else // width == 0
@@ -1020,6 +1028,8 @@ rxvt_term::scr_backspace () NOTHROW
 #endif
         }
     }
+  else if (screen.flags & Screen_WrapNext)
+    screen.flags &= ~Screen_WrapNext;
   else
     scr_gotorc (0, -1, RELATIVE);
 }
@@ -1335,16 +1345,13 @@ rxvt_term::scr_erase_screen (int mode) NOTHROW
 
   min_it (num, nrow - row);
 
-  // TODO: the code below does not work when view_start != 0
-  // the workaround is to disable the clear and use a normal refresh
-  // when view_start != 0. mysterious.
-  if (rstyle & (RS_RVid | RS_Uline))
+  if (rstyle & (RS_Blink | RS_RVid | RS_Uline))
     ren = (rend_t) ~RS_None;
   else if (GET_BASEBG (rstyle) == Color_bg)
     {
       ren = DEFAULT_RSTYLE;
 
-      if (mapped && !view_start)
+      if (mapped)
         XClearArea (dpy, vt, 0,
                     Row2Pixel (row - view_start), (unsigned int)width,
                     (unsigned int)Height2Pixel (num), False);
@@ -1353,7 +1360,7 @@ rxvt_term::scr_erase_screen (int mode) NOTHROW
     {
       ren = rstyle & (RS_fgMask | RS_bgMask);
 
-      if (mapped && !view_start)
+      if (mapped)
         {
           gcvalue.foreground = pix_colors[bgcolor_of (rstyle)];
           XChangeGC (dpy, gc, GCForeground, &gcvalue);
@@ -1370,8 +1377,8 @@ rxvt_term::scr_erase_screen (int mode) NOTHROW
     {
       scr_blank_screen_mem (ROW(row), rstyle);
 
-      if (!view_start)
-        scr_blank_line (drawn_buf [row], 0, ncol, ren);
+      if (row - view_start < nrow)
+        scr_blank_line (drawn_buf [row - view_start], 0, ncol, ren);
     }
 }
 
@@ -1834,7 +1841,7 @@ rxvt_term::scr_expose (int x, int y, int ewidth, int eheight, bool refresh) NOTH
       min_it (rc[i].col, ncol - 1);
       min_it (rc[i].row, nrow - 1);
     }
-// TODO: this line somehow causes segfault if scr_expose() is called just after resize
+
   for (i = rc[PART_BEG].row; i <= rc[PART_END].row; i++)
     fill_text (&drawn_buf[i].t[rc[PART_BEG].col], 0, rc[PART_END].col - rc[PART_BEG].col + 1);
 
@@ -1935,6 +1942,7 @@ rxvt_term::scr_bell () NOTHROW
     }
   else
     XBell (dpy, 0);
+  HOOK_INVOKE ((this, HOOK_BELL, DT_END));
 #endif
 }
 
@@ -2084,7 +2092,7 @@ rxvt_term::scr_refresh () NOTHROW
           ccol2 = Color_bg;
 #endif
 
-        if (showcursor && focus)
+        if (focus)
           {
             if (option (Opt_cursorUnderline))
               *crp ^= RS_Uline;
@@ -2230,7 +2238,7 @@ rxvt_term::scr_refresh () NOTHROW
           while (expect_false (stp[col] == NOCHAR && col > 0))
             --col;
 
-          rend_t rend = srp[col];     /* screen rendition (target rendtion) */
+          rend_t rend = srp[col];     /* screen rendition (target rendition) */
           text_t *text = stp + col;
           int count = 1;
 
@@ -2285,7 +2293,7 @@ rxvt_term::scr_refresh () NOTHROW
           int back = bgcolor_of (rend); // desired background
 
           // only do special processing if any attributes are set, which is unlikely
-          if (expect_false (rend & (RS_Bold | RS_Italic | RS_Uline | RS_RVid | RS_Blink | RS_Careful)))
+          if (expect_false (rend & (RS_baseattrMask | RS_Careful | RS_Sel)))
             {
               bool invert = rend & RS_RVid;
 
@@ -2314,25 +2322,31 @@ rxvt_term::scr_refresh () NOTHROW
                 fore = Color_UL;
 #endif
 
-              if (invert)
+#ifdef OPTION_HC
+              if (rend & RS_Sel)
                 {
-#ifdef OPTION_HC
-                  if ((showcursor && row == screen.cur.row && text - stp == screen.cur.col)
-                      || !ISSET_PIXCOLOR (Color_HC))
-#endif
-                    /* invert the column if no highlightColor is set or it is the
-                     * current cursor column */
-                    ::swap (fore, back);
-#ifdef OPTION_HC
-                  else if (ISSET_PIXCOLOR (Color_HC))
-                    back = Color_HC;
+                  /* invert the column if no highlightColor is set or it is the
+                   * current cursor column */
+                  if (!(showcursor && row == screen.cur.row && text - stp == screen.cur.col)
+                      && ISSET_PIXCOLOR (Color_HC))
+                    {
+                      if (ISSET_PIXCOLOR (Color_HTC))
+                        fore = Color_HTC;
+                      // if invert is 0 reverse video is set so we use bg color as fg color
+                      else if (!invert)
+                        fore = back;
+
+                      back = Color_HC;
+                      invert = 0;
+                    }
+                }
 #endif
 
+              if (invert)
+                {
+                    ::swap (fore, back);
+
 #ifndef NO_BOLD_UNDERLINE_REVERSE
-# ifndef OPTION_HC
-                  if (ISSET_PIXCOLOR (Color_RV))
-                    back = Color_RV;
-# endif
                   if (fore == back)
                     {
                       fore = Color_bg;
@@ -2595,12 +2609,12 @@ rxvt_term::scr_reverse_selection () NOTHROW
       if (selection.rect)
         scr_xor_rect (selection.beg.row, selection.beg.col,
                       selection.end.row, selection.end.col,
-                      RS_RVid, RS_RVid | RS_Uline);
+                      RS_Sel | RS_RVid, RS_Sel | RS_RVid | RS_Uline);
       else
 #endif
         scr_xor_span (selection.beg.row, selection.beg.col,
                       selection.end.row, selection.end.col,
-                      RS_RVid);
+                      RS_Sel | RS_RVid);
     }
 }
 
@@ -2671,7 +2685,7 @@ rxvt_term::selection_check (int check_more) NOTHROW
  * Paste a selection direct to the command fd
  */
 void
-rxvt_term::paste (char *data, unsigned int len) NOTHROW
+rxvt_term::tt_paste (char *data, unsigned int len) NOTHROW
 {
   /* convert normal newline chars into common keyboard Return key sequence */
   for (unsigned int i = 0; i < len; i++)
@@ -2685,6 +2699,15 @@ rxvt_term::paste (char *data, unsigned int len) NOTHROW
 
   if (priv_modes & PrivMode_BracketPaste)
     tt_printf ("\e[201~");
+}
+
+void
+rxvt_term::paste (char *data, unsigned int len) NOTHROW
+{
+  if (HOOK_INVOKE ((this, HOOK_TT_PASTE, DT_STR_LEN, data, len, DT_END)))
+    return;
+
+  tt_paste (data, len);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2903,11 +2926,11 @@ rxvt_term::selection_request (Time tm, int selnum) NOTHROW
 #if X_HAVE_UTF8_STRING
       selection_type = Sel_UTF8String;
       if (selection_request_other (xa[XA_UTF8_STRING], selnum))
-	return;
+        return;
 #else
       selection_type = Sel_CompoundText;
       if (selection_request_other (xa[XA_COMPOUND_TEXT], selnum))
-	return;
+        return;
 #endif
     }
 
@@ -2945,16 +2968,28 @@ rxvt_term::selection_request_other (Atom target, int selnum) NOTHROW
  * EXT: SelectionClear
  */
 void
-rxvt_term::selection_clear () NOTHROW
+rxvt_term::selection_clear (bool clipboard) NOTHROW
 {
-  want_refresh = 1;
-  free (selection.text);
-  selection.text = NULL;
-  selection.len = 0;
-  CLEAR_SELECTION ();
+  if (!clipboard)
+    {
+      want_refresh = 1;
+      free (selection.text);
+      selection.text = NULL;
+      selection.len = 0;
+      CLEAR_SELECTION ();
 
-  if (display->selection_owner == this)
-    display->selection_owner = 0;
+      if (display->selection_owner == this)
+        display->selection_owner = 0;
+    }
+  else
+    {
+      free (selection.clip_text);
+      selection.clip_text = NULL;
+      selection.clip_len = 0;
+
+      if (display->clipboard_owner == this)
+        display->clipboard_owner = 0;
+    }
 }
 
 /* ------------------------------------------------------------------------- */
@@ -3090,19 +3125,30 @@ rxvt_term::selection_make (Time tm)
 }
 
 bool
-rxvt_term::selection_grab (Time tm) NOTHROW
+rxvt_term::selection_grab (Time tm, bool clipboard) NOTHROW
 {
-  selection_time = tm;
+  Atom sel;
 
-  XSetSelectionOwner (dpy, XA_PRIMARY, vt, tm);
-  if (XGetSelectionOwner (dpy, XA_PRIMARY) == vt)
+  if (!clipboard)
     {
-      display->set_selection_owner (this);
+      selection_time = tm;
+      sel = XA_PRIMARY;
+    }
+  else
+    {
+      clipboard_time = tm;
+      sel = xa[XA_CLIPBOARD];
+    }
+
+  XSetSelectionOwner (dpy, sel, vt, tm);
+  if (XGetSelectionOwner (dpy, sel) == vt)
+    {
+      display->set_selection_owner (this, clipboard);
       return true;
     }
   else
     {
-      selection_clear ();
+      selection_clear (clipboard);
       return false;
     }
 
@@ -3607,10 +3653,16 @@ rxvt_term::selection_send (const XSelectionRequestEvent &rq) NOTHROW
       /* TODO: Handle MULTIPLE */
     }
 #endif
-  else if (rq.target == xa[XA_TIMESTAMP] && selection.text)
+  else if (rq.target == xa[XA_TIMESTAMP] && rq.selection == XA_PRIMARY && selection.text)
     {
       XChangeProperty (dpy, rq.requestor, rq.property, rq.target,
                        32, PropModeReplace, (unsigned char *)&selection_time, 1);
+      ev.property = rq.property;
+    }
+  else if (rq.target == xa[XA_TIMESTAMP] && rq.selection == xa[XA_CLIPBOARD] && selection.clip_text)
+    {
+      XChangeProperty (dpy, rq.requestor, rq.property, rq.target,
+                       32, PropModeReplace, (unsigned char *)&clipboard_time, 1);
       ev.property = rq.property;
     }
   else if (rq.target == XA_STRING
@@ -3653,10 +3705,15 @@ rxvt_term::selection_send (const XSelectionRequestEvent &rq) NOTHROW
           style = enc_compound_text;
         }
 
-      if (selection.text)
+      if (rq.selection == XA_PRIMARY && selection.text)
         {
           cl = selection.text;
           selectlen = selection.len;
+        }
+      else if (rq.selection == xa[XA_CLIPBOARD] && selection.clip_text)
+        {
+          cl = selection.clip_text;
+          selectlen = selection.clip_len;
         }
       else
         {

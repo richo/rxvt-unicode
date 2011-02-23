@@ -114,10 +114,6 @@ typedef char *XPointer;
 # define STDERR_FILENO  2
 #endif
 
-#if !defined (EACCESS) && defined(EAGAIN)
-# define EACCESS EAGAIN
-#endif
-
 #ifndef EXIT_SUCCESS            /* missing from <stdlib.h> */
 # define EXIT_SUCCESS           0       /* exit function success */
 # define EXIT_FAILURE           1       /* exit function failure */
@@ -253,7 +249,11 @@ struct mouse_event
 # define COLORTERMENVFULL COLORTERMENV
 #endif
 #ifndef TERMENV
-# define TERMENV        "rxvt-unicode"
+# if USE_256_COLORS
+#  define TERMENV        "rxvt-unicode-256color"
+# else
+#  define TERMENV        "rxvt-unicode"
+# endif
 #endif
 
 #if defined (NO_MOUSE_REPORT) && !defined (NO_MOUSE_REPORT_SCROLLBAR)
@@ -310,44 +310,52 @@ enum {
   SECONDARY,
 };
 
+// define various rendition bits and masks. the rendition word
+// is 32 bits in size, and we should use it as efficiently as possible
+
 #define RS_None                 0
 
-#define RS_fgMask               0x0000007fUL    // 128 colors
-#define RS_bgMask               0x00003f80UL    // 128 colors
+// GET_BGATTR depends on RS_fgShift > RS_bgShift
+#define RS_colorMask		((1UL << Color_Bits) - 1UL)
+#define RS_bgShift		0
+#define RS_fgShift		(RS_bgShift + Color_Bits)
+#define RS_bgMask               (RS_colorMask << RS_bgShift)
+#define RS_fgMask               (RS_colorMask << RS_fgShift)
+
+// must have space for rxvt_fontset::fontCount * 2 + 2 values
+#define RS_fontShift            (RS_fgShift + Color_Bits)
+#define RS_Careful		(1UL << RS_fontShift)	/* be careful when drawing these */
+#define RS_fontCount		rxvt_fontset::fontCount
+#define RS_fontMask             ((RS_fontCount << (RS_fontShift + 1)) | RS_Careful)   // includes RS_Careful
+
+// toggle this to force redraw, must be != RS_Careful and otherwise "pretty neutral"
+#define RS_redraw		(2UL << RS_fontShift)
+
+#define RS_Sel                  (1UL << 22)
+
+// 4 custom bits for extensions
+#define RS_customCount          16UL
+#define RS_customShift          23
+#define RS_customMask           ((RS_customCount - 1UL) << RS_customShift)
 
 // font styles
-#define RS_Bold                 0x00004000UL    // value 1
-#define RS_Italic		0x00008000UL    // value 2
-
-// fake styles
-#define RS_Blink                0x00010000UL    // blink
-#define RS_RVid                 0x00020000UL    // reverse video
-#define RS_Uline                0x00040000UL    // underline
-
-// toggle this to force redraw, must be != RS_Careful
-#define RS_redraw               0x01000000UL
-
-// 5 custom bits for extensions
-#define RS_customCount          32
-#define RS_customMask           0x00f80000UL
-#define RS_customShift          19
-
-// other flags
-#define RS_Careful		0x80000000UL	/* be careful when drawing these */
+#define RS_Bold                 (1UL << RS_styleShift)
+#define RS_Italic		(2UL << RS_styleShift)
 
 #define RS_styleCount		4
+#define RS_styleShift		27
 #define RS_styleMask		(RS_Bold | RS_Italic)
-#define RS_styleShift		14
+
+// fake styles
+#define RS_Blink                (1UL << 29)
+#define RS_RVid                 (1UL << 30)    // reverse video
+#define RS_Uline                (1UL << 31)    // underline
 
 #define RS_baseattrMask         (RS_Italic | RS_Bold | RS_Blink | RS_RVid | RS_Uline)
 #define RS_attrMask             (RS_baseattrMask | RS_fontMask)
 
-#define RS_fontCount		127		// not 127 or 256, see rxvtfont.h
-#define RS_fontMask             0xff000000UL    // plenty(?) of fonts, includes RS_Careful
-#define RS_fontShift            24
-
-#define DEFAULT_RSTYLE  (RS_None | Color_fg | (Color_bg << Color_Bits))
-#define OVERLAY_RSTYLE  (RS_None | Color_Black | (Color_Yellow << Color_Bits))
+#define DEFAULT_RSTYLE  (RS_None | (Color_fg    << RS_fgShift) | (Color_bg     << RS_bgShift))
+#define OVERLAY_RSTYLE  (RS_None | (Color_Black << RS_fgShift) | (Color_Yellow << RS_bgShift))
 
 #define Sel_none                0       /* Not waiting */
 #define Sel_normal              0x01    /* normal selection */
@@ -386,7 +394,8 @@ enum {
   XTerm_Color_pointer_bg = 14,      // change actual 'Pointer' bg color
   XTerm_Color05          = 15,      // not implemented (tektronix fg)
   XTerm_Color06          = 16,      // not implemented (tektronix bg)
-  XTerm_Color_RV         = 17,      // change actual 'Highlight' color
+  XTerm_Color_HC         = 17,      // change actual 'Highlight' bg color
+  XTerm_Color_HTC        = 19,      // change actual 'Highlight' fg color
   XTerm_logfile          = 46,      // not implemented
   XTerm_font             = 50,
 
@@ -398,8 +407,6 @@ enum {
    */
 
   // deprecated
-  Rxvt_Color_BD          = 18,
-  Rxvt_Color_UL          = 19,
   Rxvt_restoreFG         = 39,
   Rxvt_restoreBG         = 49,
 
@@ -463,7 +470,11 @@ enum colour_list {
   Color_White = maxCOLOR,
 #endif
   minTermCOLOR = Color_White + 1,
+#if USE_256_COLORS
+  maxTermCOLOR = Color_White + 240,
+#else
   maxTermCOLOR = Color_White + 72,
+#endif
 #ifndef NO_CURSORCOLOR
   Color_cursor,
   Color_cursor2,
@@ -482,6 +493,7 @@ enum colour_list {
 #endif
 #ifdef OPTION_HC
   Color_HC,
+  Color_HTC,
 #endif
   Color_scroll,
 #ifdef RXVT_SCROLLBAR
@@ -503,7 +515,11 @@ enum colour_list {
 #endif
 };
 
-#define Color_Bits      7 // 0 .. maxTermCOLOR
+#if USE_256_COLORS
+# define Color_Bits      9 // 0 .. maxTermCOLOR
+#else
+# define Color_Bits      7 // 0 .. maxTermCOLOR
+#endif
 
 /*
  * Resource list
@@ -601,6 +617,8 @@ typedef struct _mwmhints
  * MACRO DEFINES
  *****************************************************************************
  */
+
+// speed hack, copy some member variable into a local variable of the same name
 #define dLocal(type,name)       type const name = this->name
 
 // for speed reasons, we assume that all codepoints 32 to 126 are
@@ -624,8 +642,8 @@ typedef struct _mwmhints
 #define ROW(n) ROW_of (this, n)
 
 /* how to build & extract colors and attributes */
-#define GET_BASEFG(x)           (((x) & RS_fgMask))
-#define GET_BASEBG(x)           (((x) & RS_bgMask)>>Color_Bits)
+#define GET_BASEFG(x)           (((x) & RS_fgMask) >> RS_fgShift)
+#define GET_BASEBG(x)           (((x) & RS_bgMask) >> RS_bgShift)
 
 #define GET_FONT(x)             (((x) & RS_fontMask) >> RS_fontShift)
 #define SET_FONT(x,fid)         (((x) & ~RS_fontMask) | ((fid) << RS_fontShift))
@@ -634,12 +652,15 @@ typedef struct _mwmhints
 #define SET_STYLE(x,style)	(((x) & ~RS_styleMask) | ((style) << RS_styleShift))
 
 #define GET_ATTR(x)             (((x) & RS_attrMask))
-#define GET_BGATTR(x)                                                   \
-    (((x) & RS_RVid) ? (((x) & (RS_attrMask & ~RS_RVid))                \
-                        | (((x) & RS_fgMask)<<Color_Bits))              \
-                     : ((x) & (RS_attrMask | RS_bgMask)))
-#define SET_FGCOLOR(x,fg)       (((x) & ~RS_fgMask)   | (fg))
-#define SET_BGCOLOR(x,bg)       (((x) & ~RS_bgMask)   | ((bg)<<Color_Bits))
+// return attributes defining the background, encoding doesn't matter
+// depends on RS_fgShift > RS_bgShift
+#define GET_BGATTR(x)                                      \
+  (expect_false ((x) & RS_RVid)                            \
+    ? (((x) & (RS_attrMask & ~RS_RVid))                    \
+      | (((x) & RS_fgMask) >> (RS_fgShift - RS_bgShift)))  \
+    : ((x) & (RS_attrMask | RS_bgMask)))
+#define SET_FGCOLOR(x,fg)       (((x) & ~RS_fgMask)   | ((fg) << RS_fgShift))
+#define SET_BGCOLOR(x,bg)       (((x) & ~RS_bgMask)   | ((bg) << RS_bgShift))
 #define SET_ATTR(x,a)           (((x) & ~RS_attrMask) | (a))
 
 #define RS_SAME(a,b)		(!(((a) ^ (b)) & ~RS_Careful))
@@ -788,7 +809,7 @@ struct overlay_base
   text_t **text;
   rend_t **rend;
 
-  // while tempting to add swap() etc. here, it effetcively only increases code size
+  // while tempting to add swap() etc. here, it effectively only increases code size
 };
 
 /* ------------------------------------------------------------------------- */
@@ -914,6 +935,8 @@ struct selection_t
   row_col_t         beg;        /* beginning of selection   <= mark          */
   row_col_t         mark;       /* point of initial click   <= end           */
   row_col_t         end;        /* one character past end point              */
+  wchar_t          *clip_text;  /* text copied to the clipboard              */
+  unsigned int      clip_len;   /* length of clipboard text                  */
 };
 
 /* ------------------------------------------------------------------------- */
@@ -945,7 +968,6 @@ struct rxvt_vars : TermWin_t
   XSizeHints      szHint;
   rxvt_color     *pix_colors;
   Cursor          TermWin_cursor;       /* cursor for vt window */
-  int             numlock_state;
   line_t         *row_buf;      // all lines, scrollback + terminal, circular, followed by temp_buf
   line_t         *drawn_buf;    // text on screen
   line_t         *swap_buf;     // lines for swap buffer
@@ -990,9 +1012,9 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 #if POINTER_BLANK
                   hidden_pointer:1,
 #endif
-                  enc_utf8:1,		/* wether locale uses utf-8 */
-                  seen_input:1,         /* wether we have seen some program output yet */
-                  seen_resize:1,	/* wether we had a resize event */
+                  enc_utf8:1,		/* whether locale uses utf-8 */
+                  seen_input:1,         /* whether we have seen some program output yet */
+                  seen_resize:1,	/* whether we had a resize event */
                   parsed_geometry:1;
 
   unsigned char   refresh_type,
@@ -1006,7 +1028,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 #ifndef NO_BELL
   bool            rvideo_bell;
 #endif
-  int             num_scr;              /* screen: number lines scrolled */
+  int             num_scr;              /* screen: number of lines scrolled */
   int             prev_ncol,            /* screen: previous number of columns */
                   prev_nrow;            /* screen: previous number of rows */
 /* ---------- */
@@ -1046,14 +1068,15 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   Atom            *xa;
 /* ---------- */
   Time            selection_time,
-                  selection_request_time;
+                  selection_request_time,
+                  clipboard_time;
   pid_t           cmd_pid;    /* process id of child */
   char *          incr_buf;
   size_t          incr_buf_size, incr_buf_fill;
 /* ---------- */
   struct mouse_event MEvent;
   XComposeStatus  compose;
-  struct termios  tio;
+  static struct termios def_tio;
   row_col_t       oldcursor;
 #ifdef HAVE_BG_PIXMAP
   bgPixmap_t      bgPixmap;
@@ -1137,10 +1160,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 #endif
 #ifdef HAVE_BG_PIXMAP
   void update_background ();
-#if TRACE_PIXMAPS
-  void trace_update_background (const char *file, int line);
-# define update_background() trace_update_background (__FILE__, __LINE__)
-#endif
   void update_background_cb (ev::timer &w, int revents);
   ev::timer update_background_ev;
 #endif
@@ -1276,6 +1295,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void create_windows (int argc, const char *const *argv);
   void get_colours ();
   void get_ourmods ();
+  void set_icon (const char *file);
   // main.C
   void tt_winch ();
   rxvt_term ();
@@ -1287,6 +1307,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void window_calc (unsigned int newwidth, unsigned int newheight);
   bool set_fonts ();
   void set_string_property (Atom prop, const char *str, int len = -1);
+  void set_mbstring_property (Atom prop, const char *str, int len = -1);
   void set_utf8_property (Atom prop, const char *str, int len = -1);
   void set_title (const char *str);
   void set_icon_name (const char *str);
@@ -1386,6 +1407,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   }
 
   // modifies first argument(!)
+  void tt_paste (char *data, unsigned int len) NOTHROW;
   void paste (char *data, unsigned int len) NOTHROW;
   void scr_blank_line (line_t &l, unsigned int col, unsigned int width, rend_t efs) const NOTHROW;
   void scr_blank_screen_mem (line_t &l, rend_t efs) const NOTHROW;
@@ -1453,9 +1475,9 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void selection_property (Window win, Atom prop) NOTHROW;
   void selection_request (Time tm, int selnum = Sel_Primary) NOTHROW;
   int selection_request_other (Atom target, int selnum) NOTHROW;
-  void selection_clear () NOTHROW;
+  void selection_clear (bool clipboard = false) NOTHROW;
   void selection_make (Time tm);
-  bool selection_grab (Time tm) NOTHROW;
+  bool selection_grab (Time tm, bool clipboard = false) NOTHROW;
   void selection_start_colrow (int col, int row) NOTHROW;
   void selection_delimit_word (enum page_dirn dirn, const row_col_t *mark, row_col_t *ret) NOTHROW;
   void selection_extend_colrow (int32_t col, int32_t row, int button3, int buttonpress, int clickchange) NOTHROW;

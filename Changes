@@ -1,5 +1,83 @@
 rxvt-unicode changelog <= google-friendly title
 
+TODO: xcopyarea pass broken, fix and improve
+TODO: event mechanism that replaces on_user_command with something more scalable.
+TODO: slipwheeling needs a keyboard grab to get key release events.
+TODO: overlays collide with the way the out-of-focus cursor is being drawn
+TODO: "slow" rendering mode for bidi and scripts, pango!
+TODO: read property sequence is broken with respect to utf-8 etc.
+TODO: slow drag selection on remote display - other things seem fast (rxvt illness, motion hints?)
+TODO: better resource handling for tabbar in -pe tabbed.
+WISH: investigate -pe tabbed -g 80x25 being 23 not 24 or 25 lines
+      => when setting the constraints, the wm might (correctly)
+         resize the outer window, which might result in a smaller window overall.
+         or something like that. guys, send me a patch.
+WISH: coloured pastebin
+WISH: load system-wide config file even if we don't have one
+WISH: look into XAddConnectionWatch, does anybody need that?
+DUMB: support tex fonts
+TODO: perl-shell-window? perl-unix-socket?
+TODO: command line editing when icanon?
+
+9.09 Sat Nov 13 01:39:07 CET 2010
+	- NOTICE: this release updates terminfo/termcap.
+	- the bestest release ever.
+        - it was verified that urxvt handles µ and μ correctly.
+	- add support for blending and blurring with XRender (Emanuele Giaquinta).
+	- add support for using gdk-pixbuf as image backend (Emanuele Giaquinta).
+	- cleanup and minor fixes of the image code (Emanuele Giaquinta).
+	- new perl extension "confirm-paste" (Emanuele Giaquinta).
+	- new on_tt_paste perl hook and tt_paste perl binding (Emanuele Giaquinta).
+	- new on_bell perl hook (Emanuele Giaquinta).
+	- searchable-scrollback no longer ignores the first line
+	  (Emanuele Giaquinta).
+	- properly set VSTATUS in termios for *BSD (reported by Ed Schouten).
+	- fix utmpx detection on upcoming FreeBSD 9.
+	- Use COMPOUND_TEXT encoding for WM_NAME/WM_ICON_NAME value when it
+	  is not fully convertible to STRING (patch by James Cloos).
+        - fix a buffer overflow that would cause wrong key sequences to
+          be generated for numpad keys (introduced in 9.05).
+        - fix definition of sgr0 to work around limitations in luit.
+	- extend ISO 14755 5.4 mode to also print the font name of the
+	  characters other than first one in the selected cell
+	  (Emanuele Giaquinta).
+	- new iso14755 option to disable ISO 14755 at runtime
+          (Emanuele Giaquinta).
+	- make sure pagewise scrolling scrolls at least one line
+          (found by Mikachu).
+	- remove deprecated OSC 18 / 19 and make OSC 17 / 19 apply to
+	  highlightColor / highlightTextColor (Emanuele Giaquinta).
+	- add highlightTextColor resource to change the foreground colour of
+	  highlighted characters (Emanuele Giaquinta).
+	- make highlightColor apply also to selected cells with reverse video
+	  but not to non selected cells with reverse video (Emanuele Giaquinta).
+	- remove colorRV resource (it was enabled only with frills off).
+	- fix numlock handling, the most longstanding bug to date (Emanuele Giaquinta).
+        - reduce the number of custom bits to 4, to make room
+          for 256 colours.
+	- add support for 256 colors (Emanuele Giaquinta, Marc Lehmann).
+        - add rxvt-unicode-256color terminfo and use it by default in 256 colors mode.
+        - update rxvt-unicode terminfo to state 7744 colour pairs to cover all
+          88*88 possible pairs.
+        - actually added macosx-clipboard-native, which should have been in
+          the 9.07 release but had been forgotten.
+        - fix hang if DECAWM is not set and there are not enough columns to insert a
+          character (Emanuele Giaquinta).
+        - cub1 ("backspace") will now respect wrapping when past the rightmost column,
+          working around a shortcoming of most tty line discipline's line editing.
+	- add support for grabbing the clipboard selection and extend
+	  selection{_clear,_grab,} perl bindings to optionally work
+	  on the clipboard selection (based on patch by Dana Jansens).
+        - no longer force CERASE to BACKSPACE - use the system default. affects
+          default value for VERASE only when no compatible setting for
+          backspacekey was given.
+        - use higher than 38400 baudrate setting, if detected.
+        - erase screen would clear to the wrong background when blinking
+          was enabled (which selects high intensity under some circumstances).
+        - scr_kill_char didn't touch the line.
+        - upgrade and port to libev-4.01.
+        - enabled solaris event ports and kqueue backends (if available).
+
 9.07 Wed Dec 30 07:07:18 CET 2009
 	- port to glibc-2.10 changes (strchr etc. returning const char *
           in C++), based on patches by Milos Jakubicek and Oliver Mader.
@@ -25,8 +103,8 @@ rxvt-unicode changelog <= google-friendly title
         - make sure the alignment for fd passing control messages
           is correct and work around some NetBSD issues (Taylor R Campbell).
         - update to libptytty 1.3.
-        - replace maxosc-pastebin by a nicer version by Reza Jelveh, and move
-          the old version to macosx-pastebin-native.
+        - replace macosx-clipboard by a nicer version by Reza Jelveh, and move
+          the old version to macosx-clipboard-native.
         - document the -uc option (Emanuele Giaquinta).
         - assertions in libev are now enabled depending on frills.
         - update AnyEvent implementation to version 5.23 API.
@@ -36,7 +114,7 @@ rxvt-unicode changelog <= google-friendly title
           in need of fixing. go figure.
         - on_keyboard_command is on_user_command (patch by Michael Witten).
         - setting the selection from perl will now reset the selection screen
-          to the current screen. the srceen can be manipulated using
+          to the current screen. the screen can be manipulated using
           the new ->selection_screen method.
         - implement --enable-assert configure option and get rid of DEBUG_STRICT
           (based on patch by Emanuele Giaquinta).
@@ -72,7 +150,7 @@ rxvt-unicode changelog <= google-friendly title
         - new option -icon to set _NET_WM_ICON (based on patch by Frank Schmitt).
         - initialise the as visual only on demand, instead of unconditionally,
           to save memory in the common case of not using visual gimmicks.
-        - try to work around bugs in a few wm's that errornously resize
+        - try to work around bugs in a few wm's that erroneously resize
           client windows on hint property updates by temporarily
           disabling size hints.
         - implement the DECSTR soft reset sequence and use it for tput init,

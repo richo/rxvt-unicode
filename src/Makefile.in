@@ -19,10 +19,13 @@ CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 DEFS = @DEFS@
 LIBS = @LIBS@
-XINC = @X_CFLAGS@ @AFTERIMAGE_CFLAGS@
-XLIB = @X_LIBS@ @AFTERIMAGE_LIBS@ -lX11 @X_EXTRA_LIBS@
+XINC = @X_CFLAGS@ @AFTERIMAGE_CFLAGS@ @PIXBUF_CFLAGS@
+XLIB = @X_LIBS@ @AFTERIMAGE_LIBS@ -lX11 @X_EXTRA_LIBS@ @PIXBUF_LIBS@
 COMPILE = $(CXX) -I.. -I$(srcdir) -I. -I$(srcdir)/../libev $(DEFS) $(CPPFLAGS) $(CXXFLAGS) $(XINC)
 LINK = @LINKER@ $(LDFLAGS)
+EXEEXT = @EXEEXT@
+PERLFLAGS = @PERLFLAGS@
+PERLLIB = @PERLLIB@
 
 srcdir =	@srcdir@
 VPATH =		@srcdir@
@@ -39,10 +42,9 @@ COMMON = \
 
 COMMON_DAEMON = rxvtdaemon.o
 
-RXVT_BASENAME=`echo $(RXVTNAME)|sed 's/$(EXEEXT)$$//'|sed '$(transform)'`
-RXVT_BINNAME=$(DESTDIR)$(bindir)/$(RXVT_BASENAME)$(EXEEXT)
-RXVTC_BINNAME=$(DESTDIR)$(bindir)/$(RXVT_BASENAME)c$(EXEEXT)
-RXVTD_BINNAME=$(DESTDIR)$(bindir)/$(RXVT_BASENAME)d$(EXEEXT)
+RXVT_BINNAME=$(DESTDIR)$(bindir)/$(RXVTNAME)$(EXEEXT)
+RXVTC_BINNAME=$(DESTDIR)$(bindir)/$(RXVTNAME)c$(EXEEXT)
+RXVTD_BINNAME=$(DESTDIR)$(bindir)/$(RXVTNAME)d$(EXEEXT)
 
 #
 # Distribution variables
@@ -60,13 +62,13 @@ RXVTD_BINNAME=$(DESTDIR)$(bindir)/$(RXVT_BASENAME)d$(EXEEXT)
 all: allbin
 
 rxvt: rxvt.o $(COMMON)
-	$(LINK) -o $@ rxvt.o $(COMMON) $(LIBS) $(XLIB) @PERLLIB@
+	$(LINK) -o $@ rxvt.o $(COMMON) $(LIBS) $(XLIB) $(PERLLIB)
 
 rxvtd: rxvtd.o $(COMMON) $(COMMON_DAEMON)
-	$(LINK) -o $@ rxvtd.o $(COMMON) $(COMMON_DAEMON) $(LIBS) $(XLIB) @PERLLIB@
+	$(LINK) -o $@ rxvtd.o $(COMMON) $(COMMON_DAEMON) $(LIBS) $(XLIB) $(PERLLIB)
 
-rxvtc: rxvtc.o $(COMMON_DAEMON) fdpass.o ev_cpp.o
-	$(LINK) -o $@ rxvtc.o $(COMMON_DAEMON) fdpass.o ev_cpp.o $(LIBS)
+rxvtc: rxvtc.o $(COMMON_DAEMON) fdpass.o
+	$(LINK) -o $@ rxvtc.o $(COMMON_DAEMON) fdpass.o $(LIBS)
 
 #-------------------------------------------------------------------------
 
@@ -99,7 +101,7 @@ install-perl:
 @IF_PERL@	$(INSTALL) -d $(DESTDIR)$(libdir)/urxvt
 @IF_PERL@	$(INSTALL) -d $(DESTDIR)$(libdir)/urxvt/perl
 @IF_PERL@	$(INSTALL_DATA) $(srcdir)/urxvt.pm $(DESTDIR)$(libdir)/urxvt/urxvt.pm
-@IF_PERL@	for ext in $(srcdir)/perl/*; do test -f "$$ext" && $(INSTALL_DATA) "$$ext" $(DESTDIR)$(libdir)/urxvt/perl/"`basename "$$ext"`"; done
+@IF_PERL@	for ext in $(srcdir)/perl/*; do test -f "$$ext" && $(INSTALL_DATA) "$$ext" $(DESTDIR)$(libdir)/urxvt/perl/; done
 
 install-bin: allbin
 	$(INSTALL) -d $(DESTDIR)$(bindir)
@@ -116,7 +118,7 @@ rxvtperl.C: rxvtperl.xs iom_perl.h iom_perl.xs typemap typemap.iom
 	PERL="$(PERL)" $(PERL) @PERLPRIVLIBEXP@/ExtUtils/xsubpp -C++ -typemap @PERLPRIVLIBEXP@/ExtUtils/typemap -typemap typemap.iom -typemap typemap -prototypes $(srcdir)/rxvtperl.xs >$@
 
 rxvtperl.o: rxvtperl.C perlxsi.c
-	$(COMPILE) @PERLFLAGS@ -DLIBDIR="\"$(libdir)/urxvt\"" -c $<
+	$(COMPILE) $(PERLFLAGS) -DLIBDIR="\"$(libdir)/urxvt\"" -c $<
 
 depend:
 	makedepend -f Makefile.in -I. -I.. -I../libev -Y *.C >/dev/null 2>&1
@@ -159,22 +161,22 @@ keyboard.o: callback.h scrollbar.h salloc.h libptytty.h rxvtperl.h hookinc.h
 keyboard.o: background.h rsinc.h optinc.h keyboard.h command.h
 logging.o: ../config.h ptytty.h libptytty.h ptytty_conf.h rxvt.h feature.h
 logging.o: encoding.h rxvtutil.h rxvtfont.h rxvttoolkit.h ev_cpp.h
-logging.o: ../config.h ../libev/ev++.h ../libev/ev.h callback.h scrollbar.h
-logging.o: salloc.h rxvtperl.h hookinc.h background.h rsinc.h optinc.h
+logging.o: ../libev/ev++.h ../libev/ev.h callback.h scrollbar.h salloc.h
+logging.o: rxvtperl.h hookinc.h background.h rsinc.h optinc.h
 main.o: ../config.h rxvt.h feature.h encoding.h rxvtutil.h rxvtfont.h
 main.o: rxvttoolkit.h ev_cpp.h ../config.h ../libev/ev++.h ../libev/ev.h
 main.o: callback.h scrollbar.h salloc.h libptytty.h rxvtperl.h hookinc.h
-main.o: background.h rsinc.h optinc.h keyboard.h
+main.o: background.h rsinc.h optinc.h init.h keyboard.h
 misc.o: ../config.h rxvt.h feature.h encoding.h rxvtutil.h rxvtfont.h
 misc.o: rxvttoolkit.h ev_cpp.h ../config.h ../libev/ev++.h ../libev/ev.h
 misc.o: callback.h scrollbar.h salloc.h libptytty.h rxvtperl.h hookinc.h
 misc.o: background.h rsinc.h optinc.h
 proxy.o: ../config.h ptytty.h libptytty.h ptytty_conf.h rxvt.h feature.h
-proxy.o: encoding.h rxvtutil.h rxvtfont.h rxvttoolkit.h ev_cpp.h ../config.h
+proxy.o: encoding.h rxvtutil.h rxvtfont.h rxvttoolkit.h ev_cpp.h
 proxy.o: ../libev/ev++.h ../libev/ev.h callback.h scrollbar.h salloc.h
 proxy.o: rxvtperl.h hookinc.h background.h rsinc.h optinc.h
 ptytty.o: ../config.h ptytty.h libptytty.h ptytty_conf.h rxvt.h feature.h
-ptytty.o: encoding.h rxvtutil.h rxvtfont.h rxvttoolkit.h ev_cpp.h ../config.h
+ptytty.o: encoding.h rxvtutil.h rxvtfont.h rxvttoolkit.h ev_cpp.h
 ptytty.o: ../libev/ev++.h ../libev/ev.h callback.h scrollbar.h salloc.h
 ptytty.o: rxvtperl.h hookinc.h background.h rsinc.h optinc.h
 rxvt.o: ../config.h rxvt.h feature.h encoding.h rxvtutil.h rxvtfont.h

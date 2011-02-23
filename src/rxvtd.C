@@ -224,15 +224,15 @@ void server::read_cb (ev::io &w, int revents)
     return err ();
 }
 
-int opt_fork, opt_opendisplay, opt_quiet;
-#if ENABLE_MLOCK
-int opt_lock;
-#endif
-
 int
 main (int argc, const char *const *argv)
 {
-  rxvt_init ();
+  ptytty::init ();
+
+  int opt_fork, opt_opendisplay, opt_quiet;
+#if ENABLE_MLOCK
+  int opt_lock;
+#endif
 
   for (int i = 1; i < argc; i++)
     {
@@ -252,6 +252,8 @@ main (int argc, const char *const *argv)
           return EXIT_FAILURE;
         }
     }
+
+  rxvt_init ();
 
   // optionally open display and never release it.
   if (opt_opendisplay)
@@ -294,10 +296,10 @@ main (int argc, const char *const *argv)
       else if (pid > 0)
         _exit (EXIT_SUCCESS);
 
-      ev_default_fork ();
+      ev_loop_fork (EV_DEFAULT_UC);
     }
 
-  ev_loop (0);
+  ev_run ();
 
   return EXIT_SUCCESS;
 }

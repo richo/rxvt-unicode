@@ -52,3 +52,7 @@
 
   def (CUSTOM_REND) // hovering over custom rendition, generate enter/leave maybe?
 
+  def (BELL)
+
+  def (TT_PASTE)
+
