@@ -149,8 +149,8 @@ resource I<tintColor>.
 
 =item B<-sh> I<number>
 
-Darken (0 .. 100) or lighten (100 .. 200) the transparent background;
-resource I<shading>.
+Darken (0 .. 99) or lighten (101 .. 200) the transparent background.
+A value of 100 means no shading; resource I<shading>.
 
 =item B<-blt> I<string>
 
@@ -707,13 +707,16 @@ colour is black; option B<-fadecolor>.
 
 =item B<tintColor:> I<colour>
 
-Tint the transparent background with the given colour; option
-B<-tint>.
+Tint the transparent background with the given colour. If the RENDER
+extension is not available only black, red, green, yellow, blue,
+magenta, cyan and white tints can be performed server-side. Note that
+a black tint yields a completely black image while a white tint yields
+the image unchanged; option B<-tint>.
 
 =item B<shading:> I<number>
 
-Darken (0 .. 100) or lighten (100 .. 200) the transparent background;
-option B<-sh>.
+Darken (0 .. 99) or lighten (101 .. 200) the transparent background.
+A value of 100 means no shading; option B<-sh>.
 
 =item B<blendType:> I<string>
 
@@ -1694,7 +1697,7 @@ Project Coordinator (Changes 1.0 -)
 
 =item Emanuele Giaquinta L<< <e.giaquinta@glauco.it> >>
 
-Pty/tty/utmp/wtmp rewrite, lots of random hacking and bugfixing.
+pty/utmp code rewrite, image code improvements, many random hacks and bugfixes.
 
 =back
 

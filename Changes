@@ -16,8 +16,46 @@ WISH: coloured pastebin
 WISH: load system-wide config file even if we don't have one
 WISH: look into XAddConnectionWatch, does anybody need that?
 DUMB: support tex fonts
+TODO: decrqm http://ue.tst.eu/71d7dbd1fcfeaa7d2a4b96eb957d570c.txt
 TODO: perl-shell-window? perl-unix-socket?
 TODO: command line editing when icanon?
+
+9.10 Mon Dec 13 17:43:52 CET 2010
+	- the "schmorp=north korea dickey=south korea" release.
+	- if options were compiled out, this could lead to the option
+          count to be defined wrongly. This is likely behind the
+          failures with gcc 4.5.
+        - explicitly depend on fontconfig and xrender when xft support
+          is enabled. Although the public Xft api uses types from
+          both, in recent Xft releases these libs are private
+          dependencies only thanks to an idiotic behaviour of
+          pkg-config that was added to workaround cases like this one.
+          Fixes linking when using GNU ld with --as-needed or GNU gold
+          (based on patch by Jan Palus).
+        - fix minor memory leaks in urxvt and urxvtd.
+        - fix regression in urxvtd that prevented options from being correctly
+          set (reported by Michal Vaner).
+        - INCOMPATIBLE CHANGE: make OSC 20 simpler and more correct
+          (Emanuele Giaquinta).
+	- implement xterm's horribly broken 1005 mouse reporting mode,
+          and an alternative 1015 mode that works in non-utf-8 locales
+          and has fewer limitations.
+	- fix a possible bug where mouse notifications didn't work after
+          startup for the upper left corner.
+        - implement our own pixbuf to pixmap rendering to get rid of
+          dependency on buggy gdk-pixbuf-xlib. Only truecolor visuals
+          are supported (Emanuele Giaquinta).
+        - apply tinting before shading when both operations are requested.
+          Previously they were intermixed when lightening and the result
+          was inaccurate and confusing. Note that now a black tint yields a
+          completely black image, regardless of shading (Emanuele Giaquinta).
+        - avoid spurious redraws of the bg image when bg is transparent or
+          when using 'root' mode (Emanuele Giaquinta).
+        - fix build on XFree86.
+        - dynamically number options according to compiletime requirements.
+          For the extra saved byte. Or so. Yay.
+        - start options at one, not zero. Wastes a bit per terminal. Maybe.
+          saves 50 instruction bytes. Possibly.
 
 9.09 Sat Nov 13 01:39:07 CET 2010
 	- NOTICE: this release updates terminfo/termcap.

@@ -102,7 +102,7 @@ unix_listener::unix_listener (const char *sockname)
   sa.sun_family = AF_UNIX;
   strcpy (sa.sun_path, sockname);
 
-  unlink (rxvt_connection::unix_sockname ());
+  unlink (sockname);
 
   mode_t omask = umask (0077);
 
@@ -229,9 +229,9 @@ main (int argc, const char *const *argv)
 {
   ptytty::init ();
 
-  int opt_fork, opt_opendisplay, opt_quiet;
+  static char opt_fork, opt_opendisplay, opt_quiet;
 #if ENABLE_MLOCK
-  int opt_lock;
+  static char opt_lock;
 #endif
 
   for (int i = 1; i < argc; i++)
