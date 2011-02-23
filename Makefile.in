@@ -15,60 +15,29 @@ man3dir = @mandir@/man3
 man3ext = 3
 man7dir = @mandir@/man7
 man7ext = 7
-CC = @CC@
-CXX = @CXX@
-CPP = @CPP@
-MV = @MV@
-CP = @CP@
-LN = @LN@
-SED = @SED@
-AWK = @AWK@
-ECHO = @ECHO@
-CMP = @CMP@
-TBL = @TBL@
 PERL = @PERL@
 INSTALL = @INSTALL@
 INSTALL_PROGRAM = @INSTALL@ -m 755
 INSTALL_DATA = @INSTALL@ -m 644
-CXXFLAGS = @CXXFLAGS@ 
-CPPFLAGS = @CPPFLAGS@ @XPM_CPPFLAGS@
-LDFLAGS = @LDFLAGS@
-DEFS = @DEFS@
-LIBS = @LIBS@
-DINCLUDE = @DINCLUDE@
-DLIB = @DLIB@
-XINC = @X_CFLAGS@ @XPM_CFLAGS@
-XLIB = @X_LIBS@ @XPM_LIBS@ -lX11 @X_EXTRA_LIBS@
-COMPILE = $(CXX) $(DEFS) $(INCLUDES) $(CPPFLAGS) $(CXXFLAGS) $(DEBUG) $(DINCLUDE) $(XINC) -I$(basedir) -I$(srcdir) -I.
-LINK = @LINKER@ $(LDFLAGS)
 
 VERNAME = rxvt-unicode-$(VERSION)
 
 srcdir =	@srcdir@
 VPATH =		@srcdir@
-.PATH:		@srcdir@
 
 first_rule: all
 dummy:
 
 subdirs = src doc
-allsubdirs = $(subdirs)
-
-DIST =	INSTALL README.configure configure Makefile Makefile.in ChangeLog
-
-MKDIR = $(srcdir)/mkinstalldirs
 
 #-------------------------------------------------------------------------
 
 all allbin alldoc tags:
 	@for I in ${subdirs}; do (cd $$I; ${MAKE} $@) || exit 1; done
 
-realclean: clean
-	rm -f config.h config.status config.log libtool
+distclean realclean: distclean-local
 
-clean:
-	rm -f *~ config.cache
-	rm -f -r autom4te.cache
+clean distclean realclean:
 	@for I in ${subdirs}; do (cd $$I; ${MAKE} $@) || exit 1; done
 
 #
@@ -76,9 +45,6 @@ clean:
 #
 rxvt:
 	(cd src; ${MAKE})
-
-tests:
-	(cd src/test; ${MAKE} tests)
 
 #-------------------------------------------------------------------------
 configure: configure.ac aclocal.m4 config.h.in
@@ -91,11 +57,7 @@ config.status:
 config.h.in: configure.ac
 	cd $(srcdir); ./autogen.sh
 
-installdirs:
-	$(MKDIR) $(DESTDIR)$(bindir)
-	$(MKDIR) $(DESTDIR)$(mandir)
-
-install: installdirs
+install:
 	@for I in $(subdirs); do (cd $$I; $(MAKE) DESTDIR=$(DESTDIR) $@) || exit 1; done
 
 check: all
@@ -106,15 +68,9 @@ Makefiles:
 
 cleandir: realclean
 
-# distclean goal is for making a clean source tree, but if you have run
-# configure from a different directory, then doesn't destroy all your
-# hardly compiled and linked stuff. That's why there is always $(srcdir)/
-# In that case most of those commands do nothing, except cleaning *~
-# and cleaning source links.
-distclean:
-	(cd $(srcdir); rm -f *~ config.cache config.h config.log config.status libtool)
-	@for I in $(allsubdirs); do (cd $$I; $(MAKE) $@) || exit 1; done
-	(cd $(srcdir); rm -f Makefile)
+distclean-local:
+	rm -f *~ config.cache config.h config.log config.status libtool
+	rm -f Makefile
 
 distdir:
 	cd doc && $(MAKE) distdepend

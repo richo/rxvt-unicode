@@ -28,6 +28,9 @@ thus must be encoded as UTF-8.
 Each script will only ever be loaded once, even in @@RXVT_NAME@@d, where
 scripts will be shared (but not enabled) for all terminals.
 
+You can disable the embedded perl interpreter by setting both "perl-ext"
+and "perl-ext-common" resources to the empty string.
+
 =head1 PREPACKAGED EXTENSIONS
 
 This section describes the extensions delivered with this release. You can
@@ -151,7 +154,7 @@ search upwards/downwards in the scrollback buffer, C<End> jumps to the
 bottom. C<Escape> leaves search mode and returns to the point where search
 was started, while C<Enter> or C<Return> stay at the current position and
 additionally stores the first match in the current line into the primary
-selection.
+selection if the C<Shift> modifier is active.
 
 The regex defaults to "(?i)", resulting in a case-insensitive search. To
 get a case-sensitive search you can delete this prefix using C<BackSpace>
@@ -242,12 +245,34 @@ following four resources (shown with defaults):
 See I<COLOR AND GRAPHICS> in the @@RXVT_NAME@@(1) manpage for valid
 indices.
 
-=item mark-urls
+=item matcher
 
-Uses per-line display filtering (C<on_line_update>) to underline urls and
-make them clickable. When middle-clicked, the program specified in the
-resource C<urlLauncher> (default C<x-www-browser>) will be started with
-the URL as first argument.
+Uses per-line display filtering (C<on_line_update>) to underline text
+matching a certain pattern and make it clickable. When clicked with the
+mouse button specified in the C<matcher.button> resource (default 2, or
+middle), the program specified in the C<matcher.launcher> resource
+(default, the C<urlLauncher> resource, C<sensible-browser>) will be started
+with the matched text as first argument.  The default configuration is
+suitable for matching URLs and launching a web browser, like the
+former "mark-urls" extension.
+
+The default pattern to match URLs can be overridden with the
+C<matcher.pattern.0> resource, and additional patterns can be specified
+with numbered patterns, in a manner similar to the "selection" extension.
+The launcher can also be overridden on a per-pattern basis.
+
+It is possible to activate the most recently seen match from the keyboard.
+Simply bind a keysym to "perl:matcher" as seen in the example below.
+
+Example configuration:
+
+    URxvt.perl-ext:           default,matcher
+    URxvt.urlLauncher:        sensible-browser
+    URxvt.keysym.C-Delete:    perl:matcher
+    URxvt.matcher.button:     1
+    URxvt.matcher.pattern.1:  \\bwww\\.[\\w-]+\\.[\\w./?&@#-]*[\\w/-]
+    URxvt.matcher.pattern.2:  \\B(/\\S+?):(\\d+)(?=:|$)
+    URxvt.matcher.launcher.2: gvim +$2 $1
 
 =item xim-onthespot
 
@@ -288,6 +313,10 @@ same effect as pseudo transparency with a custom pixmap. No scaling is
 supported in this mode. Example:
 
    @@RXVT_NAME@@ -pixmap background.xpm -pe automove-background
+
+L<http://wiki.archlinux.org/index.php/Perl_Background_Rotation/Extensions>
+shows how this extension can be used to implement an automatically blurred
+transparent background.
 
 =item block-graphics-to-ascii
 
@@ -348,6 +377,11 @@ for the filename):
 
    URxvt.selection-pastebin.url: http://www.ta-sa.org/files/txt/%
 
+I<Note to xrdb users:> xrdb uses the C preprocessor, which might interpret
+the double C</> characters as comment start. Use C<\057\057> instead,
+which works regardless of wether xrdb is used to parse the resource file
+or not.
+
 =item example-refresh-hooks
 
 Displays a very simple digital clock in the upper right corner of the
@@ -397,11 +431,12 @@ locale-specific way.
 =head2 Extension Objects
 
 Every perl extension is a perl class. A separate perl object is created
-for each terminal and each extension and passed as the first parameter to
-hooks. So extensions can use their C<$self> object without having to think
-about other extensions, with the exception of methods and members that
-begin with an underscore character C<_>: these are reserved for internal
-use.
+for each terminal, and each terminal has its own set of extenion objects,
+which are passed as the first parameter to hooks. So extensions can use
+their C<$self> object without having to think about clashes with other
+extensions or other terminals, with the exception of methods and members
+that begin with an underscore character C<_>: these are reserved for
+internal use.
 
 Although it isn't a C<urxvt::term> object, you can call all methods of the
 C<urxvt::term> class on this object.
@@ -968,6 +1003,31 @@ sub SET_COLOR($$$) {
    SET_BGCOLOR (SET_FGCOLOR ($_[0], $_[1]), $_[2])
 }
 
+sub rend2mask {
+   no strict 'refs';
+   my ($str, $mask) = (@_, 0);
+   my %color = ( fg => undef, bg => undef );
+   my @failed;
+   for my $spec ( split /\s+/, $str ) {
+      if ( $spec =~ /^([fb]g)[_:-]?(\d+)/i ) {
+         $color{lc($1)} = $2;
+      } else {
+         my $neg = $spec =~ s/^[-^]//;
+         unless ( exists &{"RS_$spec"} ) {
+            push @failed, $spec;
+            next;
+         }
+         my $cur = &{"RS_$spec"};
+         if ( $neg ) {
+            $mask &= ~$cur;
+         } else {
+            $mask |= $cur;
+         }
+      }
+   }
+   ($mask, @color{qw(fg bg)}, \@failed)
+}
+
 # urxvt::term::extension
 
 package urxvt::term::extension;
@@ -1088,17 +1148,21 @@ sub DESTROY {
 }
 
 sub condvar {
-   bless \my $flag, urxvt::anyevent::condvar::
+   bless \my $flag, urxvt::anyevent::
 }
 
-sub urxvt::anyevent::condvar::broadcast {
+sub broadcast {
    ${$_[0]}++;
 }
 
-sub urxvt::anyevent::condvar::wait {
+sub wait {
    unless (${$_[0]}) {
       Carp::croak "AnyEvent->condvar blocking wait unsupported in urxvt, use a non-blocking API";
    }
+}
+
+sub one_event {
+   Carp::croak "AnyEvent->one_event blocking wait unsupported in urxvt, use a non-blocking API";
 }
 
 package urxvt::term;
@@ -1928,11 +1992,6 @@ sub DESTROY {
 
 package urxvt::watcher;
 
-@urxvt::timer::ISA = __PACKAGE__;
-@urxvt::iow::ISA   = __PACKAGE__;
-@urxvt::pw::ISA    = __PACKAGE__;
-@urxvt::iw::ISA    = __PACKAGE__;
-
 =head2 The C<urxvt::timer> Class
 
 This class implements timer watchers/events. Time is represented as a
@@ -2127,3 +2186,5 @@ numbers indicate more verbose output.
 =cut
 
 1
+
+# vim: sw=3:

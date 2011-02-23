@@ -66,7 +66,7 @@ const char *const xa_names[] =
   "WM_LOCALE_NAME",
   "XIM_SERVERS",
 #endif
-#ifdef TRANSPARENT
+#ifdef ENABLE_TRANSPARENCY
   "_XROOTPMAP_ID",
   "ESETROOT_PMAP_ID",
 #endif
@@ -471,7 +471,7 @@ bool rxvt_display::ref_init ()
   socklen_t sl = sizeof (sa);
 
   if (!getsockname (fd, (sockaddr *)&sa, &sl))
-    is_local = sa.sun_family == AF_LOCAL;
+    is_local = sa.sun_family == AF_UNIX;
 
   x_ev.start (fd, EVENT_READ);
   fcntl (fd, F_SETFD, FD_CLOEXEC);
@@ -555,6 +555,9 @@ void rxvt_display::x_cb (io_watcher &w, short revents)
               && xev.xproperty.atom == xa[XA_XIM_SERVERS])
             im_change_check ();
 #endif
+          if (xev.type == MappingNotify)
+            XRefreshKeyboardMapping (&xev.xmapping);
+
           for (int i = xw.size (); i--; )
             {
               if (!xw[i])
@@ -709,12 +712,9 @@ rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
 
   if (screen->visual->c_class == TrueColor)
     {
-      c.pixel = (color.r * (screen->visual->red_mask   >> ctz (screen->visual->red_mask  ))
-                         / rgba::MAX_CC) << ctz (screen->visual->red_mask  )
-              | (color.g * (screen->visual->green_mask >> ctz (screen->visual->green_mask))
-                         / rgba::MAX_CC) << ctz (screen->visual->green_mask)
-              | (color.b * (screen->visual->blue_mask  >> ctz (screen->visual->blue_mask ))
-                         / rgba::MAX_CC) << ctz (screen->visual->blue_mask );
+      c.pixel = (color.r >> (16 - popcount (screen->visual->red_mask  )) << ctz (screen->visual->red_mask  ))
+              | (color.g >> (16 - popcount (screen->visual->green_mask)) << ctz (screen->visual->green_mask))
+              | (color.b >> (16 - popcount (screen->visual->blue_mask )) << ctz (screen->visual->blue_mask ));
 
       return true;
     }
@@ -811,7 +811,7 @@ rxvt_color::set (rxvt_screen *screen, const rgba &color)
           
       got = alloc (screen, rgba (best->red, best->green, best->blue));
 
-      delete colors;
+      delete [] colors;
     }
 #endif
 

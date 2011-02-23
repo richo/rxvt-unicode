@@ -65,130 +65,152 @@
  *                  GET PSEUDO TELETYPE - MASTER AND SLAVE                   *
  * ------------------------------------------------------------------------- */
 /*
- * Returns pty file descriptor, or -1 on failure 
+ * Returns pty file descriptor, or -1 on failure
  * If successful, ttydev is set to the name of the slave device.
  * fd_tty _may_ also be set to an open fd to the slave device
  */
 #if defined(UNIX98_PTY)
-static int
-get_pty (int *fd_tty, char **ttydev)
-{
-  int pfd;
+
+  static int
+  get_pty (int *fd_tty, char **ttydev)
+  {
+    int pfd;
 
 # if defined(HAVE_GETPT)
-  pfd = getpt();
+    pfd = getpt();
 # elif defined(HAVE_POSIX_OPENPT)
-  pfd = posix_openpt (O_RDWR);
+    pfd = posix_openpt (O_RDWR);
 # else
-  pfd = open (CLONE_DEVICE, O_RDWR | O_NOCTTY, 0);
+    pfd = open (CLONE_DEVICE, O_RDWR | O_NOCTTY, 0);
 # endif
-  if (pfd >= 0)
-    {
-      if (grantpt (pfd) == 0	/* change slave permissions */
-          && unlockpt (pfd) == 0)
-        {	/* slave now unlocked */
-          *ttydev = strdup (ptsname (pfd));	/* get slave's name */
-          return pfd;
-        }
 
-      close (pfd);
-    }
+    if (pfd >= 0)
+      {
+        if (grantpt (pfd) == 0	/* change slave permissions */
+            && unlockpt (pfd) == 0)
+          {	/* slave now unlocked */
+            *ttydev = strdup (ptsname (pfd));	/* get slave's name */
+            return pfd;
+          }
 
-  return -1;
-}
+        close (pfd);
+      }
+
+    return -1;
+  }
+
 #elif defined(HAVE_OPENPTY)
-static int
-get_pty (int *fd_tty, char **ttydev)
-{
-  int pfd;
-  int res;
-  char tty_name[32];
-  
-  res = openpty (&pfd, fd_tty, tty_name, NULL, NULL);
-  if (res != -1)
-    {
-      *ttydev = strdup (tty_name);
-      return pfd;
-    }
 
-  return -1;
-}
+  static int
+  get_pty (int *fd_tty, char **ttydev)
+  {
+    int pfd;
+    int res;
+
+    res = openpty (&pfd, fd_tty, NULL, NULL, NULL);
+
+    if (res != -1)
+      {
+        *ttydev = strdup (ttyname (*fd_tty));
+        return pfd;
+      }
+
+    return -1;
+  }
+
 #elif defined(HAVE__GETPTY)
-static int
-get_pty (int *fd_tty, char **ttydev)
-{
-  int pfd;
 
-  *ttydev = _getpty (&pfd, O_RDWR | O_NONBLOCK | O_NOCTTY, 0622, 0);
-  if (*ttydev != NULL)
-    return pfd;
+  static int
+  get_pty (int *fd_tty, char **ttydev)
+  {
+    int pfd;
+    char *slave;
 
-  return -1;
-}
+    slave = _getpty (&pfd, O_RDWR | O_NONBLOCK | O_NOCTTY, 0622, 0);
+
+    if (slave != NULL) {
+      *ttydev = strdup (slave);
+      return pfd;
+    }
+
+    return -1;
+  }
+
 #elif defined(HAVE_DEV_PTC)
-static int
-get_pty (int *fd_tty, char **ttydev)
-{
-  int pfd;
 
-  if ((pfd = open ("/dev/ptc", O_RDWR | O_NOCTTY, 0)) >= 0)
-    {
-      *ttydev = strdup (ttyname (pfd));
-      return pfd;
-    }
+  static int
+  get_pty (int *fd_tty, char **ttydev)
+  {
+    int pfd;
 
-  return -1;
-}
+    if ((pfd = open ("/dev/ptc", O_RDWR | O_NOCTTY, 0)) >= 0)
+      {
+        *ttydev = strdup (ttyname (pfd));
+        return pfd;
+      }
+
+    return -1;
+  }
+
 #elif defined(HAVE_DEV_CLONE)
-static int
-get_pty (int *fd_tty, char **ttydev)
-{
-  int pfd;
 
-  if ((pfd = open ("/dev/ptym/clone", O_RDWR | O_NOCTTY, 0)) >= 0)
-    {
-      *ttydev = strdup (ptsname (pfd));
-      return pfd;
-    }
+  static int
+  get_pty (int *fd_tty, char **ttydev)
+  {
+    int pfd;
 
-  return -1;
-}
+    if ((pfd = open ("/dev/ptym/clone", O_RDWR | O_NOCTTY, 0)) >= 0)
+      {
+        *ttydev = strdup (ptsname (pfd));
+        return pfd;
+      }
+
+    return -1;
+  }
+
 #else
-/* Based on the code in openssh/openbsd-compat/bsd-openpty.c */
-static int
-get_pty (int *fd_tty, char **ttydev)
-{
-  int pfd;
-  int i;
-  char pty_name[32];
-  char tty_name[32];
-  const char *majors = "pqrstuvwxyzabcde";
-  const char *minors = "0123456789abcdef";
-  for (i = 0; i < 256; i++)
-    {
-      snprintf(pty_name, 32, "/dev/pty%c%c", majors[i / 16], minors[i % 16]);
-      snprintf(tty_name, 32, "/dev/tty%c%c", majors[i / 16], minors[i % 16]);
-      if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) == -1)
-        {
-	  snprintf(pty_name, 32, "/dev/ptyp%d", i);
-	  snprintf(tty_name, 32, "/dev/ttyp%d", i);
-	  if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) == -1)
-	    continue;
-        }
-      if (access (tty_name, R_OK | W_OK) == 0)
-        {
-	  *ttydev = strdup (tty_name);
-	  return pfd;
-        }
 
-      close (pfd);
-    }
-}
+  /* Based on the code in openssh/openbsd-compat/bsd-openpty.c */
+  static int
+  get_pty (int *fd_tty, char **ttydev)
+  {
+    int pfd;
+    int i;
+    char pty_name[32];
+    char tty_name[32];
+    const char *majors = "pqrstuvwxyzabcde";
+    const char *minors = "0123456789abcdef";
+
+    for (i = 0; i < 256; i++)
+      {
+        snprintf(pty_name, 32, "/dev/pty%c%c", majors[i / 16], minors[i % 16]);
+        snprintf(tty_name, 32, "/dev/tty%c%c", majors[i / 16], minors[i % 16]);
+
+        if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) == -1)
+          {
+            snprintf(pty_name, 32, "/dev/ptyp%d", i);
+            snprintf(tty_name, 32, "/dev/ttyp%d", i);
+            if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) == -1)
+              continue;
+          }
+
+        if (access (tty_name, R_OK | W_OK) == 0)
+          {
+            *ttydev = strdup (tty_name);
+            return pfd;
+          }
+
+        close (pfd);
+      }
+
+    return -1;
+  }
+
 #endif
 
 /*----------------------------------------------------------------------*/
 /*
- * Returns tty file descriptor, or -1 on failure 
+ * Returns tty file descriptor, or -1 on failure
  */
 static int
 get_tty (char *ttydev)
@@ -203,6 +225,8 @@ get_tty (char *ttydev)
 static int
 control_tty (int fd_tty)
 {
+  int fd;
+
   setsid ();
 
 #if defined(HAVE_DEV_PTMX) && defined(I_PUSH)
@@ -233,9 +257,15 @@ control_tty (int fd_tty)
     }
 #endif
 
+#ifdef TIOCSCTTY
   ioctl (fd_tty, TIOCSCTTY, NULL);
+#else
+  fd = open (ttyname (fd_tty), O_RDWR);
+  if (fd >= 0)
+    close (fd);
+#endif
 
-  int fd = open ("/dev/tty", O_WRONLY);
+  fd = open ("/dev/tty", O_WRONLY);
   if (fd < 0)
     return -1; /* fatal */
 
@@ -329,8 +359,11 @@ ptytty_unix::~ptytty_unix ()
 void
 ptytty_unix::put ()
 {
-  chmod (name, RESTORE_TTY_MODE);
-  chown (name, 0, ttyconf.gid);
+  if (name)
+    {
+      chmod (name, RESTORE_TTY_MODE);
+      chown (name, 0, ttyconf.gid);
+    }
 
   close_tty ();
 

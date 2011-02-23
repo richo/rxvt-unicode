@@ -5,7 +5,6 @@ INSTALL
 MANIFEST
 README.configure
 README.FAQ
-reconf
 update_ptytty
 configure
 configure.ac
@@ -17,7 +16,6 @@ autogen.sh
 config.h.in
 Makefile.in
 install-sh
-mkinstalldirs
 
 doc/embed
 doc/embed-tk
@@ -25,7 +23,8 @@ doc/rxvt-tabbed
 doc/pty-fd
 doc/etc/rxvt-unicode.terminfo
 doc/etc/rxvt-unicode.termcap
-doc/solaris9.patch
+doc/wcwidth.patch
+doc/urxvt-8.2-256color.patch
 
 doc/.cvsignore
 doc/Makefile.in
@@ -155,6 +154,9 @@ src/table/jis0213_2.h
 
 src/urxvt.pm
 src/typemap
+src/typemap.iom
+src/iom_perl.h
+src/iom_perl.xs
 src/rxvtperl.h
 src/rxvtperl.xs
 
@@ -166,7 +168,7 @@ src/perl/selection-autotransform
 src/perl/selection-pastebin
 src/perl/searchable-scrollback
 src/perl/automove-background
-src/perl/mark-urls
+src/perl/matcher
 src/perl/tabbed
 src/perl/xim-onthespot
 src/perl/readline
@@ -175,4 +177,5 @@ src/perl/kuake
 src/perl/example-refresh-hooks
 src/perl/block-graphics-to-ascii
 src/perl/digital-clock
+src/perl/macosx-clipboard
 

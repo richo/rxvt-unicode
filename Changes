@@ -11,19 +11,109 @@ TODO: investigate -pe tabbed -g 80x25 being 23 not 24 or 25 lines
       => when setting the constraints, the wm might (correctly)
          resize the outer window, which might result in a smaller window overall.
          or something like that. guys, send me a patch.
-TODO: zeroing scorllback buffer should free memory
-WISH: skipscroll option
 WISH: selection-color-pair instead of reverse video
 WISH: load system-wide config file even if we don't have one
 WISH: look into XAddConnectionWatch, does anybody need that?
 WISH: anyevent mouse notification / manage MotionMask better.
-WISH: http://www120.pair.com/mccarthy/nextstep/intro.htmld/Workspace.html is the correct nextstep scrollbar look.
 WISH: kick out xpm.C, replace by pixbuf
 DUMB: support tex fonts
 
+8.3  Wed Aug  1 20:21:31 CEST 2007
+	- new option: skipScroll/-ss, enabled by default.
+        - go with the times and expect x11 library files in /usr/lib, not
+          /usr/X11R6/lib.
+	- initial transparency improvement/afterimage support
+          patch by Sasha Vasko.
+        - add urgentOnBell resource to set the urgency hint
+          (patch by Philip Paeps).
+        - do not process focus events caused by grabs
+          (patch by Mikachu).
+        - add iso14755_52 resource to disable iso14755 5.2 (exg).
+        - add binding for backspace in iso14755 5.1 to remove the last
+          digit (exg).
+        - better option handling, support more than 30 options (exg).
+	- nuke reconf script, serves no purpose anymore.
+	- fixed and documented matcher/on_user_command processing in matcher
+	  extension (tpope).
+	- compile out of the box on Solaris 10 (exg).
+        - fix MappingNotify events (reported by Stephan Walter).
+        - zero-initialise mwmhints, this seems to solve all sorts of minor
+          problems.
+
+8.2  Sat Feb 17 21:35:28 CET 2007
+	- fix make depend in src/, reported by exg.
+        - fixed typo in urxvt::GET_CUSTOM, causing the result to be wrong.
+          (patch by Sergey Vlasov).
+        - unbundled iom perl interface somewhat.
+        - scrollbar-xterm now uses the selected scrollColor instead of fg
+          (found by Aiviru).
+        - disabled linux kernel bug workaround again: disabling it gives
+          a 50% speed hit on affected machines, while enabling it gives
+          a similar speed hit to screen, which is likely the more common
+          case to work around for :/
+        - urxvt::rend2mask perl function, and utilization of it by matcher
+          (patch by Moshe Kamensky).
+        - use perl:matcher on a keysym to open most recently displayed URL.
+        - with matcher, when multiple patterns match, last wins, not first.
+        - fix make and make install with srcdir != builddir (exg).
+        - updated bundled libptytty to fix a bug where the tty would be kept
+          open (see the libptytty ChangeLog for details).
+        - delay setting the IUTF8 flag to after the tty settings have been
+          set so its value does not get lost (reported and analysed by Andrei
+          Paskevich).
+        - rip out support for obsolete sgtty.h interface.
+        - rip out support for non-POSIX termios variants.
+        - update libptytty.
+        - update iom.C, make it call ptytty::sanitise_stdfd on init.
+        - when !XFT, change rounding of colours to use a less correct formula to
+          meet user expectancies (#aaa becomes #a000a000a000 not #9f9f9f9f9f9f).
+        - change the starting offset of the pixmap set with backgroundPixmap
+          from (50,50) to (0,0) (exg).
+        - fix a typo in button_release, now meta-button2 request the value of
+          the Clipboard selection as it should (patch by Serge Koksharov).
+        - fix a bug in drawing a cell with a nonspacing char when using an xft
+          font with inheritPixmap and tintColor (exg).
+
+8.1  Thu Dec  7 22:27:25 CET 2006
+        - ｹﾘｽﾏｽﾌ゚ﾚｾ゙ﾝﾄ - zomg!!1, it's too early!!!
+        - fix the assumption that chars < 256 are single-width. Now
+          only assume this for codepoints 32 to 126 (reported by Dai.H.).
+        - $term->strwidth returned wide chars as width 1, because some jerk
+          confused min and max. Fixing this also fixes xim-onthespot.
+          Reported by Takano Akio.
+	- secondaryScroll is now enabled by default (as per the manpage),
+          reported by exg.
+        - correct the description of [percent]color rgba format in the manpage.
+        - incorporated macosx-clipboard extension by Samuel Ljungkvist.
+        - ignore (some) useless focus events (reported by mmc).
+	- updated compose table to unicode 5.0.0.
+
+8.0  Thu Nov  2 18:35:19 CET 2006
+	- combining characters cleared the area instead of creating an overlay,
+          thus losing the ability to draw combining characters properly in most
+          circumstances (reported by exg).
+	- specified fonts were incorrectly morphed to bold/italic according to the
+          basefont, even if explicitly specified (tracked down by tpope).
+        - fixed urxvt::strwidth to calculate width in the same way as screen.C.
+	- fix a crash caused by passing negative widths to overlay functions.
+	- added 'matcher' extension by tpope, replacing the mark-urls extension.
+        - improve url regex to match anything www.* (tpope).
+        - fixed bug with outline cursor color being wrong after xft fonts.
+        - update to libptytty-1.0.
+	- give proper diagnostic when RXVT_SOCKET is too long instead of
+          corrupting the stack (patch by exg).
+        - display current terminal locale in option menu.
+        - urxvtd no longer crashes when the client sends an inaccessible
+          working directory (reported by Roland Baer, possibly fixes gentoo
+          bug #143985).
+        - fixed many minor issues reported by Roland Baer.
+        - Leonid Khramov spotted a minor glitch in rxvtfont.C that
+          should not have any consequences, but was buggy nonetheless.
+        - manpage fix by exg.
+
 7.9  Mon Aug  7 18:16:07 CEST 2006
         - fix the crashing bug people encountered with 7.8 + urxvtd + perl
-          + transparency. Oight to fix debian bug #380348.
+          + transparency. Ought to fix debian bug #380348.
 	- fix urxvtc.1.pod: it actually claimed -pty-fd would not work. But
           it does! :->
 	- rxvt_fatal() in case the locale string is too long for our static buffer.
@@ -61,7 +151,7 @@ DUMB: support tex fonts
           (patch by Wu Fengguang).
         - removed rxvtlib.h from the tarball, it had no reason to be there
           (spotted by Decklin Foster).
-        - fix compiling with TRANSPARENT but !XPM_BACKGROUND, as reported 
+        - fix compiling with TRANSPARENT but !XPM_BACKGROUND, as reported
           by omatunto_.
         - slap in a using namespace std, might help on platforms that don't
           follow C++ closely enough.
@@ -131,7 +221,7 @@ DUMB: support tex fonts
 
 7.5  Tue Jan 31 15:15:43 CET 2006
         - further improvements to the careful mode detection, and font width
-          detection: 
+          detection:
           - fully double-wide fonts will now be correctly treated,
           - overlap detection was improved.
           - detect totally broken fonts (usually synthesized by xft).
@@ -869,7 +959,7 @@ DUMB: support tex fonts
 	- fix pixmap offset when tinting (reported by Eduard Bloch).
 	- new -sh option by Mikael Magnusson.
 	- off-focus-fading (--enable-fading) support (patch by
-	  Mikael Magnusson).
+	  Mikael Magnusson, based on aterm code).
 	- cursor now set correctly on --disable-blank (reported by
 	  Mikael Magnusson).
 	- better (and non-crashing) slipwheeling (Mikael Magnusson).

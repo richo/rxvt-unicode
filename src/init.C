@@ -48,7 +48,7 @@ const char *const def_colorName[] =
     "rgb:00/00/00",             // 0: black             (Black)
     "rgb:cd/00/00",             // 1: red               (Red3)
     "rgb:00/cd/00",             // 2: green             (Green3)
-    "rgb:cd/cd/00",             // 3: ywlloe            (Yellow3)
+    "rgb:cd/cd/00",             // 3: yellow            (Yellow3)
     "rgb:00/00/cd",             // 4: blue              (Blue3)
     "rgb:cd/00/cd",             // 5: magenta           (Magenta3)
     "rgb:00/cd/cd",             // 6: cyan              (Cyan3)
@@ -185,13 +185,12 @@ rxvt_term::init_vars ()
   pix_colors_unfocused = new rxvt_color [TOTAL_COLORS];
 #endif
 
-#if defined(XPM_BACKGROUND) || defined(TRANSPARENT)
+#if defined(XPM_BACKGROUND) || defined(ENABLE_TRANSPARENCY)
   pixmap = None;
 #endif
 
   MEvent.time = CurrentTime;
   MEvent.button = AnyButton;
-  options = DEFAULT_OPTIONS;
   want_refresh = 1;
   priv_modes = SavedModes = PrivMode_Default;
   ncol = 80;
@@ -202,17 +201,26 @@ rxvt_term::init_vars ()
   saveLines = SAVELINES;
   numpix_colors = TOTAL_COLORS;
 
-  refresh_limit = 1;
   refresh_type = SLOW_REFRESH;
 
   oldcursor.row = oldcursor.col = -1;
 #ifdef XPM_BACKGROUND
   /*  bgPixmap.w = bgPixmap.h = 0; */
-  bgPixmap.x = bgPixmap.y = 50;
+  bgPixmap.x = bgPixmap.y = 0;
   bgPixmap.pixmap = None;
 #endif
 
   last_bot = last_state = -1;
+
+  set_option (Opt_scrollBar);
+  set_option (Opt_scrollTtyOutput);
+  set_option (Opt_jumpScroll);
+  set_option (Opt_skipScroll);
+  set_option (Opt_secondaryScreen);
+  set_option (Opt_secondaryScroll);
+  set_option (Opt_pastableTabs);
+  set_option (Opt_intensityStyles);
+  set_option (Opt_iso14755_52);
 
   return true;
 }
@@ -310,6 +318,9 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     select_visual (strtol (rs[Rs_depth], 0, 0));
 #endif
 
+#ifdef HAVE_AFTERIMAGE
+  asv = create_asvisual_for_id (dpy, display->screen, depth, XVisualIDFromVisual (visual), cmap, NULL);
+#endif
   free (r_argv);
 
   for (int i = NUM_RESOURCES; i--; )
@@ -423,7 +434,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 
 #ifdef XTERM_REVERSE_VIDEO
   /* this is how xterm implements reverseVideo */
-  if (OPTION (Opt_reverseVideo))
+  if (option (Opt_reverseVideo))
     {
       if (!rs[Rs_color + Color_fg])
         rs[Rs_color + Color_fg] = def_colorName[Color_bg];
@@ -439,7 +450,7 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 
 #ifndef XTERM_REVERSE_VIDEO
   /* this is how we implement reverseVideo */
-  if (OPTION (Opt_reverseVideo))
+  if (option (Opt_reverseVideo))
     ::swap (rs[Rs_color + Color_fg], rs[Rs_color + Color_bg]);
 #endif
 
@@ -623,16 +634,16 @@ rxvt_term::init_command (const char *const *argv)
    */
 
 #ifdef META8_OPTION
-  meta_char = OPTION (Opt_meta8) ? 0x80 : C0_ESC;
+  meta_char = option (Opt_meta8) ? 0x80 : C0_ESC;
 #endif
 
   get_ourmods ();
 
-  if (!OPTION (Opt_scrollTtyOutput))
+  if (!option (Opt_scrollTtyOutput))
     priv_modes |= PrivMode_TtyOutputInh;
-  if (OPTION (Opt_scrollTtyKeypress))
+  if (option (Opt_scrollTtyKeypress))
     priv_modes |= PrivMode_Keypress;
-  if (!OPTION (Opt_jumpScroll))
+  if (!option (Opt_jumpScroll))
     priv_modes |= PrivMode_smoothScroll;
 
 #ifndef NO_BACKSPACE_KEY
@@ -672,7 +683,7 @@ rxvt_term::Get_Colours ()
       if (!set_color (xcol, name))
         {
 #ifndef XTERM_REVERSE_VIDEO
-          if (i < 2 && OPTION (Opt_reverseVideo))
+          if (i < 2 && option (Opt_reverseVideo))
             name = def_colorName [1 - i];
           else
 #endif
@@ -873,7 +884,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   XClassHint classHint;
   XWMHints wmHint;
 #if ENABLE_FRILLS
-  MWMHints mwmhints;
+  MWMHints mwmhints = { };
 #endif
   XGCValues gcvalue;
   XSetWindowAttributes attributes;
@@ -889,10 +900,10 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   parent = display->root;
 
-  attributes.override_redirect = !!OPTION (Opt_override_redirect);
+  attributes.override_redirect = !!option (Opt_override_redirect);
 
 #if ENABLE_FRILLS
-  if (OPTION (Opt_borderLess))
+  if (option (Opt_borderLess))
     {
       if (XInternAtom (dpy, "_MOTIF_WM_INFO", True) == None)
         {
@@ -952,7 +963,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   wmHint.flags         = InputHint | StateHint | WindowGroupHint;
   wmHint.input         = True;
-  wmHint.initial_state = OPTION (Opt_iconic) ? IconicState : NormalState;
+  wmHint.initial_state = option (Opt_iconic) ? IconicState : NormalState;
   wmHint.window_group  = top;
 
   XmbSetWMProperties (dpy, top, NULL, NULL, (char **)argv, argc,
@@ -1019,7 +1030,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   vt_emask = ExposureMask | ButtonPressMask | ButtonReleaseMask | PropertyChangeMask;
 
-  if (OPTION (Opt_pointerBlank))
+  if (option (Opt_pointerBlank))
     vt_emask |= PointerMotionMask;
   else
     vt_emask |= Button1MotionMask | Button3MotionMask;
@@ -1030,7 +1041,10 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
 #ifdef XPM_BACKGROUND
   if (rs[Rs_backgroundPixmap] != NULL
-      && !OPTION (Opt_transparent))
+#ifndef HAVE_AFTERIMAGE  
+      && !option (Opt_transparent)
+#endif	  
+    )
     {
       const char *p = rs[Rs_backgroundPixmap];
 
@@ -1081,7 +1095,6 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 void
 rxvt_get_ttymode (ttymode_t *tio, int erase)
 {
-#ifdef HAVE_TERMIOS_H
   /*
    * standard System V termios interface
    */
@@ -1158,53 +1171,6 @@ rxvt_get_ttymode (ttymode_t *tio, int erase)
                   | ECHOCTL | ECHOKE
 # endif
                   | ECHOE | ECHOK);
-# else                          /* HAVE_TERMIOS_H */
-
-  /*
-  * sgtty interface
-  */
-
-  /* get parameters -- gtty */
-  if (ioctl (STDIN_FILENO, TIOCGETP, & (tio->sg)) < 0)
-    {
-      tio->sg.sg_erase = CERASE;      /* ^H */
-      tio->sg.sg_kill = CKILL;        /* ^U */
-    }
-
-  if (erase != -1)
-    tio->sg.sg_erase = (char)erase;
-
-  tio->sg.sg_flags = (CRMOD | ECHO | EVENP | ODDP);
-
-  /* get special characters */
-  if (ioctl (STDIN_FILENO, TIOCGETC, & (tio->tc)) < 0)
-    {
-      tio->tc.t_intrc = CINTR;        /* ^C */
-      tio->tc.t_quitc = CQUIT;        /* ^\ */
-      tio->tc.t_startc = CSTART;      /* ^Q */
-      tio->tc.t_stopc = CSTOP;        /* ^S */
-      tio->tc.t_eofc = CEOF;  /* ^D */
-      tio->tc.t_brkc = -1;
-    }
-
-  /* get local special chars */
-  if (ioctl (STDIN_FILENO, TIOCGLTC, & (tio->lc)) < 0)
-    {
-      tio->lc.t_suspc = CSUSP;        /* ^Z */
-      tio->lc.t_dsuspc = CDSUSP;      /* ^Y */
-      tio->lc.t_rprntc = CRPRNT;      /* ^R */
-      tio->lc.t_flushc = CFLUSH;      /* ^O */
-      tio->lc.t_werasc = CWERASE;     /* ^W */
-      tio->lc.t_lnextc = CLNEXT;      /* ^V */
-    }
-  /* get line discipline */
-  ioctl (STDIN_FILENO, TIOCGETD, & (tio->line));
-# ifdef NTTYDISC
-  tio->line = NTTYDISC;
-# endif                         /* NTTYDISC */
-
-  tio->local = (LCRTBS | LCRTERA | LCTLECH | LPASS8 | LCRTKIL);
-#endif                          /* HAVE_TERMIOS_H */
 
   /*
    * Debugging
@@ -1315,11 +1281,6 @@ rxvt_term::run_command (const char *const *argv)
     if (!pty->get ())
       rxvt_fatal ("can't initialize pseudo-tty, aborting.\n");
 
-  pty->set_utf8_mode (enc_utf8);
-
-  /* set initial window size */
-  tt_winch ();
-
   int er;
 
 #ifndef NO_BACKSPACE_KEY
@@ -1332,6 +1293,11 @@ rxvt_term::run_command (const char *const *argv)
     er = -1;
 
   rxvt_get_ttymode (&tio, er);
+  SET_TERMIOS (pty->tty, &tio);       /* init terminal attributes */
+  pty->set_utf8_mode (enc_utf8);
+
+  /* set initial window size */
+  tt_winch ();
 
 #if ENABLE_FRILLS
   if (rs[Rs_pty_fd])
@@ -1372,8 +1338,8 @@ rxvt_term::run_command (const char *const *argv)
         _exit (EXIT_FAILURE);
 
       default:
-        if (!OPTION (Opt_utmpInhibit))
-          pty->login (cmd_pid, OPTION (Opt_loginShell), rs[Rs_display_name]);
+        if (!option (Opt_utmpInhibit))
+          pty->login (cmd_pid, option (Opt_loginShell), rs[Rs_display_name]);
 
         pty->close_tty ();
 
@@ -1396,9 +1362,7 @@ rxvt_term::run_child (const char *const *argv)
 {
   char *login;
 
-  SET_TTYMODE (STDIN_FILENO, &tio);       /* init terminal attributes */
-
-  if (OPTION (Opt_console))
+  if (option (Opt_console))
     {     /* be virtual console, fail silently */
 #ifdef TIOCCONS
       unsigned int on = 1;
@@ -1457,7 +1421,7 @@ rxvt_term::run_child (const char *const *argv)
 
       argv0 = (const char *)rxvt_r_basename (shell);
 
-      if (OPTION (Opt_loginShell))
+      if (option (Opt_loginShell))
         {
           login = (char *)rxvt_malloc ((strlen (argv0) + 2) * sizeof (char));
 

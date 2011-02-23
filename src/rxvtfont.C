@@ -234,9 +234,9 @@ rxvt_font::clear_rect (rxvt_drawable &d, int x, int y, int w, int h, int color) 
   dTermDisplay;
   dTermGC;
   
-  if (color < 0 || color == Color_bg)
+  if (color == Color_bg || color == Color_transparent)
     XClearArea (disp, d, x, y, w, h, false);
-  else
+  else if (color >= 0)
     {
 #if XFT
       XftDrawRect (d, &term->pix_colors[color].c, x, y, w, h);
@@ -272,7 +272,7 @@ struct rxvt_font_default : rxvt_font {
     return p;
   }
 
-  bool load (const rxvt_fontprop &prop)
+  bool load (const rxvt_fontprop &prop, bool force_prop)
   {
     width = 1; height = 1;
     ascent = 1; descent = 0;
@@ -443,7 +443,7 @@ rxvt_font_default::draw (rxvt_drawable &d, int x, int y,
                                 ? f1
                                 : (*fs)[fs->find_font (cc->c2)];
 
-              f2->draw (d, x, y, chrs, width, fg, -1);
+              f2->draw (d, x, y, chrs, width, fg, Color_none);
             }
         }
 #endif
@@ -473,7 +473,7 @@ struct rxvt_font_x11 : rxvt_font {
 
   rxvt_fontprop properties ();
 
-  bool load (const rxvt_fontprop &prop);
+  bool load (const rxvt_fontprop &prop, bool force_prop);
 
   bool has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &careful) const;
 
@@ -483,7 +483,6 @@ struct rxvt_font_x11 : rxvt_font {
 
   bool slow; // wether this is a proportional font or has other funny characteristics
   XFontStruct *f;
-  codeset cs;
   bool enc2b, encm;
 
   char *get_property (XFontStruct *f, Atom property, const char *repl) const;
@@ -629,7 +628,7 @@ replace_field (char *buf, const char *name, int index, const char old, const cha
 }
 
 bool
-rxvt_font_x11::load (const rxvt_fontprop &prop)
+rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
 {
   dTermDisplay;
 
@@ -638,8 +637,7 @@ rxvt_font_x11::load (const rxvt_fontprop &prop)
   char field_str[64]; // enough for 128 bits
 
   // first morph the font if required
-  if (prop.weight != rxvt_fontprop::unset
-      || prop.slant != rxvt_fontprop::unset)
+  if (force_prop)
     {
       char fname[1024];
 
@@ -1041,7 +1039,7 @@ struct rxvt_font_xft : rxvt_font {
 
   rxvt_fontprop properties ();
 
-  bool load (const rxvt_fontprop &prop);
+  bool load (const rxvt_fontprop &prop, bool force_prop);
 
   void draw (rxvt_drawable &d, int x, int y,
              const text_t *text, int len,
@@ -1084,7 +1082,7 @@ rxvt_font_xft::properties ()
 }
 
 bool
-rxvt_font_xft::load (const rxvt_fontprop &prop)
+rxvt_font_xft::load (const rxvt_fontprop &prop, bool force_prop)
 {
   dTermDisplay;
 
@@ -1103,11 +1101,11 @@ rxvt_font_xft::load (const rxvt_fontprop &prop)
     FcPatternAddInteger (p, FC_PIXEL_SIZE, prop.height);
 
   if (prop.weight != rxvt_fontprop::unset
-      && FcPatternGet (p, FC_WEIGHT, 0, &v) != FcResultMatch)
+      && (force_prop || FcPatternGet (p, FC_WEIGHT, 0, &v) != FcResultMatch))
     FcPatternAddInteger (p, FC_WEIGHT, prop.weight);
 
   if (prop.slant != rxvt_fontprop::unset
-      && FcPatternGet (p, FC_SLANT, 0, &v) != FcResultMatch)
+      && (force_prop || FcPatternGet (p, FC_SLANT, 0, &v) != FcResultMatch))
     FcPatternAddInteger (p, FC_SLANT, prop.slant);
 
 #if 0 // clipping unfortunately destroys our precious double-width-characters
@@ -1278,9 +1276,8 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
 
   bool buffered = bg >= 0                         // we don't use a transparent bg
 #ifndef FORCE_UNBUFFERED_XFT
-# if defined(XPM_BACKGROUND) || defined(TRANSPARENT)
+# ifdef ENABLE_TRANSPARENCY
                   || !term->am_transparent        // we aren't transparent
-                  || term->am_pixmap_trans        // we have a pixmap
 # endif
 #endif
                   ;
@@ -1326,7 +1323,7 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
 
           if (0)
             ;
-#ifdef TRANSPARENT
+#ifdef ENABLE_TRANSPARENCY
           else if (bg < 0 && term->am_pixmap_trans)
             XCopyArea (disp, term->pixmap, d2, gc,
                        x + term->window_vt_x, y + term->window_vt_y,
@@ -1387,6 +1384,7 @@ rxvt_fontset::clear ()
 {
   prop.width = prop.height = prop.ascent = prop.weight = prop.slant
     = rxvt_fontprop::unset;
+  force_prop = false;
 
   for (rxvt_font **i = fonts.begin (); i != fonts.end (); i++)
     FONT_UNREF (*i);
@@ -1508,7 +1506,7 @@ rxvt_fontset::realize_font (int i)
 
   fonts[i]->loaded = true;
 
-  if (!fonts[i]->load (prop))
+  if (!fonts[i]->load (prop, force_prop))
     {
       fonts[i]->cs = CS_UNKNOWN;
       return false;

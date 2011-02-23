@@ -22,6 +22,7 @@
 #endif
   def (loginShell)
   def (jumpScroll)
+  def (skipScroll)
 #ifdef HAVE_SCROLLBARS
   def (scrollBar)
   def (scrollBar_right)
@@ -59,9 +60,8 @@
   def (preeditType)
   def (inputMethod)
 #endif
-#ifdef TRANSPARENT
+#ifdef ENABLE_TRANSPARENCY
   def (transparent)
-  def (transparent_all)
 #endif
 #if XFT
   def (depth)
@@ -77,6 +77,7 @@
   def (lineSpace)
   def (cursorUnderline)
   def (skipBuiltinGlyphs)
+  def (urgentOnBell)
 #endif
 #if CURSOR_BLINK
   def (cursorBlink)
@@ -109,4 +110,11 @@
   def (perl_ext_1)
   def (perl_ext_2)
   def (perl_lib)
+#endif
+#if ISO_14755
+  def (iso14755_52)
+#endif
+#ifdef HAVE_AFTERIMAGE
+  def (blendtype)
+  def (blurradius)
 #endif

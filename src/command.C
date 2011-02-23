@@ -502,6 +502,14 @@ rxvt_term::key_press (XKeyEvent &ev)
 # endif
               return;
             }
+          else if (keysym == XK_BackSpace)
+            {
+              iso14755buf = ((iso14755buf & ISO_14755_MASK) >> 4) | ISO_14755_51;
+# if ISO_14755
+              iso14755_51 (iso14755buf & ISO_14755_MASK);
+# endif
+              return;
+            }
           else if ((hv = hex_keyval (ev)) >= 0)
             {
               iso14755buf = ((iso14755buf << 4) & ISO_14755_MASK)
@@ -513,7 +521,7 @@ rxvt_term::key_press (XKeyEvent &ev)
             }
           else
             {
-# if ENABLE_OVERLAY
+# if ISO_14755
               scr_overlay_off ();
 # endif
               iso14755buf = 0;
@@ -524,13 +532,13 @@ rxvt_term::key_press (XKeyEvent &ev)
         if (!(iso14755buf & ISO_14755_STARTED))
           {
             iso14755buf |= ISO_14755_STARTED;
-# if ENABLE_OVERLAY
+# if ISO_14755
             scr_overlay_new (0, -1, sizeof ("ISO 14755 mode") - 1, 1);
             scr_overlay_set (0, 0, "ISO 14755 mode");
 # endif
           }
 #endif
-      
+
 #ifdef PRINTPIPE
       if (keysym == XK_Print)
         {
@@ -722,7 +730,7 @@ rxvt_term::key_press (XKeyEvent &ev)
                     strcpy (kbuf, "\033[1~");
                     break;
 
-#ifdef XK_KP_End
+#ifdef XK_KP_Insert
                   case XK_KP_Insert:
                     /* allow shift to override */
                     if ((priv_modes & PrivMode_aplKP) ? !shft : shft)
@@ -879,7 +887,7 @@ rxvt_term::key_press (XKeyEvent &ev)
   if (len <= 0)
     return;			/* not mapped */
 
-  if (OPTION (Opt_scrollTtyKeypress))
+  if (option (Opt_scrollTtyKeypress))
     if (view_start)
       {
         view_start = 0;
@@ -928,7 +936,7 @@ rxvt_term::key_release (XKeyEvent &ev)
   if (iso14755buf)
     if (iso14755buf & ISO_14755_52)
       {
-# if ENABLE_OVERLAY
+# if ISO_14755
         scr_overlay_off ();
 # endif
 # if ISO_14755
@@ -961,13 +969,13 @@ rxvt_term::key_release (XKeyEvent &ev)
       }
     else if ((ev.state & (ShiftMask | ControlMask)) != (ShiftMask | ControlMask))
       {
-# if ENABLE_OVERLAY
+# if ISO_14755
         scr_overlay_off ();
 # endif
         if (iso14755buf & ISO_14755_51)
           commit_iso14755 ();
 #if ISO_14755
-        else if (iso14755buf & ISO_14755_STARTED)
+        else if (option (Opt_iso14755_52) && iso14755buf & ISO_14755_STARTED)
           {
             iso14755buf = ISO_14755_52; // iso14755 part 5.2: remember empty begin/end pair
 
@@ -1029,7 +1037,7 @@ rxvt_term::flush ()
 {
   flush_ev.stop ();
 
-#ifdef TRANSPARENT
+#ifdef ENABLE_TRANSPARENCY
   if (want_full_refresh)
     {
       want_full_refresh = 0;
@@ -1104,7 +1112,6 @@ rxvt_term::flush_cb (time_watcher &w)
 {
   make_current ();
 
-  refresh_limit = 1;
   refresh_count = 0;
   flush ();
 }
@@ -1180,7 +1187,7 @@ rxvt_term::slip_wheel_cb (time_watcher &w)
 static struct event_handler
 {
   check_watcher yield_ev;
-  
+
   void yield_cb (check_watcher &w)
   {
     // this should really be sched_yield(), but the linux guys thought
@@ -1234,10 +1241,10 @@ rxvt_term::pty_fill ()
     {
       pty_ev.stop ();
 
-      if (!OPTION (Opt_hold))
+      if (!option (Opt_hold))
         destroy ();
     }
-  
+
   return false;
 }
 
@@ -1265,7 +1272,7 @@ rxvt_term::pointer_unblank ()
 #ifdef POINTER_BLANK
   hidden_pointer = 0;
 
-  if (OPTION (Opt_pointerBlank))
+  if (option (Opt_pointerBlank))
     pointer_ev.start (NOW + pointerBlankDelay);
 #endif
 }
@@ -1274,7 +1281,7 @@ rxvt_term::pointer_unblank ()
 void
 rxvt_term::pointer_blank ()
 {
-  if (!OPTION (Opt_pointerBlank))
+  if (!option (Opt_pointerBlank))
     return;
 
   XDefineCursor (dpy, vt, display->blank_cursor);
@@ -1430,10 +1437,6 @@ rxvt_term::x_cb (XEvent &ev)
           }
         break;
 
-      case MappingNotify:
-        XRefreshKeyboardMapping (&ev.xmapping);
-        break;
-
         /*
          * XXX: this is not the _current_ arrangement
          * Here's my conclusion:
@@ -1460,11 +1463,17 @@ rxvt_term::x_cb (XEvent &ev)
         break;
 
       case FocusIn:
-        focus_in ();
+        if (ev.xfocus.detail != NotifyInferior
+            && ev.xfocus.detail != NotifyPointer
+            && ev.xfocus.mode != NotifyGrab)
+          focus_in ();
         break;
 
       case FocusOut:
-        focus_out ();
+        if (ev.xfocus.detail != NotifyInferior
+            && ev.xfocus.detail != NotifyPointer
+            && ev.xfocus.mode != NotifyGrab)
+          focus_out ();
         break;
 
       case ConfigureNotify:
@@ -1477,12 +1486,19 @@ rxvt_term::x_cb (XEvent &ev)
               {
                 seen_resize = 1;
                 resize_all_windows (ev.xconfigure.width, ev.xconfigure.height, 1);
+#ifdef XPM_BACKGROUND
+                if (!option (Opt_transparent) && bgPixmap.auto_resize)
+                  {
+                    resize_pixmap ();
+                    scr_touch (true);
+                  }
+#endif
               }
 
             HOOK_INVOKE ((this, HOOK_CONFIGURE_NOTIFY, DT_XEVENT, &ev, DT_END));
 
-#ifdef TRANSPARENT		/* XXX: maybe not needed - leave in for now */
-            if (OPTION (Opt_transparent))
+#ifdef ENABLE_TRANSPARENCY
+            if (option (Opt_transparent))
               check_our_parents ();
 #endif
           }
@@ -1525,11 +1541,11 @@ rxvt_term::x_cb (XEvent &ev)
         HOOK_INVOKE ((this, HOOK_UNMAP_NOTIFY, DT_XEVENT, &ev, DT_END));
         break;
 
-#ifdef TRANSPARENT
+#ifdef ENABLE_TRANSPARENCY
       case ReparentNotify:
         rootwin_cb (ev);
         break;
-#endif				/* TRANSPARENT */
+#endif				/* ENABLE_TRANSPARENCY */
 
       case GraphicsExpose:
       case Expose:
@@ -1563,7 +1579,7 @@ rxvt_term::x_cb (XEvent &ev)
                 scrollbar_show (0);
               }
 
-#ifdef TRANSPARENT
+#ifdef ENABLE_TRANSPARENCY
             if (am_transparent && ev.xany.window == parent[0])
               XClearWindow (dpy, ev.xany.window);
 #endif
@@ -1674,14 +1690,13 @@ rxvt_term::x_cb (XEvent &ev)
             scr_move_to (scrollbar_position (ev.xbutton.y) - csrO,
                          scrollbar_size ());
             want_refresh = 1;
-            refresh_limit = 0;
             scrollbar_show (1);
           }
         break;
     }
 
 #if defined(CURSOR_BLINK)
-  if (OPTION (Opt_cursorBlink) && ev.type == KeyPress)
+  if (option (Opt_cursorBlink) && ev.type == KeyPress)
     {
       if (hidden_cursor)
         {
@@ -1694,7 +1709,7 @@ rxvt_term::x_cb (XEvent &ev)
 #endif
 
 #if defined(POINTER_BLANK)
-  if (OPTION (Opt_pointerBlank) && pointerBlankDelay > 0)
+  if (option (Opt_pointerBlank) && pointerBlankDelay > 0)
     {
       if (ev.type == MotionNotify
           || ev.type == ButtonPress
@@ -1726,7 +1741,7 @@ rxvt_term::focus_in ()
         }
 #endif
 #if CURSOR_BLINK
-      if (OPTION (Opt_cursorBlink))
+      if (option (Opt_cursorBlink))
         cursor_blink_ev.start (NOW + CURSOR_BLINK_INTERVAL);
 #endif
 #if OFF_FOCUS_FADING
@@ -1734,6 +1749,19 @@ rxvt_term::focus_in ()
         {
           pix_colors = pix_colors_focused;
           scr_recolour ();
+        }
+#endif
+#if ENABLE_FRILLS
+      if (option (Opt_urgentOnBell))
+        {
+          XWMHints *h;
+
+          h = XGetWMHints(dpy, parent[0]);
+          if (h != NULL)
+            {
+              h->flags &= ~XUrgencyHint;
+              XSetWMHints(dpy, parent[0], h);
+            }
         }
 #endif
     }
@@ -1753,7 +1781,7 @@ rxvt_term::focus_out ()
       if (iso14755buf)
         {
           iso14755buf = 0;
-# if ENABLE_OVERLAY
+# if ISO_14755
           scr_overlay_off ();
 # endif
         }
@@ -1763,7 +1791,7 @@ rxvt_term::focus_out ()
         XUnsetICFocus (Input_Context);
 #endif
 #if CURSOR_BLINK
-      if (OPTION (Opt_cursorBlink))
+      if (option (Opt_cursorBlink))
         cursor_blink_ev.stop ();
       hidden_cursor = 0;
 #endif
@@ -1790,7 +1818,7 @@ rxvt_term::update_fade_color (unsigned int idx)
 #endif
 }
 
-#if TRANSPARENT || ENABLE_PERL
+#if ENABLE_TRANSPARENCY || ENABLE_PERL
 void
 rxvt_term::rootwin_cb (XEvent &ev)
 {
@@ -1800,7 +1828,7 @@ rxvt_term::rootwin_cb (XEvent &ev)
       && HOOK_INVOKE ((this, HOOK_ROOT_EVENT, DT_XEVENT, &ev, DT_END)))
     return;
 
-# if TRANSPARENT
+# if ENABLE_TRANSPARENCY
   switch (ev.type)
     {
       case PropertyNotify:
@@ -1814,8 +1842,8 @@ rxvt_term::rootwin_cb (XEvent &ev)
 
         /* FALLTHROUGH */
       case ReparentNotify:
-        if (OPTION (Opt_transparent) && check_our_parents () && am_transparent)
-          want_refresh = want_full_refresh = 1;
+        if (option (Opt_transparent))
+          check_our_parents ();
         break;
     }
 # endif
@@ -2156,7 +2184,7 @@ rxvt_term::button_release (XButtonEvent &ev)
 
           case Button2:
             if (IN_RANGE_EXC (ev.x, 0, width) && IN_RANGE_EXC (ev.y, 0, height)) // inside window?
-	      selection_request (ev.time, ev.state & ModMetaMask ? Sel_Primary : Sel_Primary);
+	      selection_request (ev.time, ev.state & ModMetaMask ? Sel_Clipboard : Sel_Primary);
             break;
 
 #ifdef MOUSE_WHEEL
@@ -2170,7 +2198,7 @@ rxvt_term::button_release (XButtonEvent &ev)
 
               if (ev.state & ShiftMask)
                 i = 1;
-              else if (OPTION (Opt_mouseWheelScrollPage))
+              else if (option (Opt_mouseWheelScrollPage))
                 i = nrow - 1;
               else
                 i = 5;
@@ -2201,478 +2229,6 @@ rxvt_term::button_release (XButtonEvent &ev)
         }
     }
 }
-
-#ifdef TRANSPARENT
-#if TINTING
-/* taken from aterm-0.4.2 */
-
-typedef uint32_t RUINT32T;
-
-void ShadeXImage(rxvt_term *term, XImage* srcImage, int shade, int rm, int gm, int bm)
-{
-  int sh_r, sh_g, sh_b;
-  RUINT32T mask_r, mask_g, mask_b;
-  RUINT32T *lookup, *lookup_r, *lookup_g, *lookup_b;
-  unsigned int lower_lim_r, lower_lim_g, lower_lim_b;
-  unsigned int upper_lim_r, upper_lim_g, upper_lim_b;
-  int i;
-
-  Visual *visual = term->visual;
-
-  if( visual->c_class != TrueColor || srcImage->format != ZPixmap ) return ;
-
-  /* for convenience */
-  mask_r = visual->red_mask;
-  mask_g = visual->green_mask;
-  mask_b = visual->blue_mask;
-
-  /* boring lookup table pre-initialization */
-  switch (srcImage->bits_per_pixel) {
-    case 15:
-      if ((mask_r != 0x7c00) ||
-          (mask_g != 0x03e0) ||
-          (mask_b != 0x001f))
-        return;
-        lookup = (RUINT32T *) malloc (sizeof (RUINT32T)*(32+32+32));
-        lookup_r = lookup;
-        lookup_g = lookup+32;
-        lookup_b = lookup+32+32;
-        sh_r = 10;
-        sh_g = 5;
-        sh_b = 0;
-      break;
-    case 16:
-      if ((mask_r != 0xf800) ||
-          (mask_g != 0x07e0) ||
-          (mask_b != 0x001f))
-        return;
-        lookup = (RUINT32T *) malloc (sizeof (RUINT32T)*(32+64+32));
-        lookup_r = lookup;
-        lookup_g = lookup+32;
-        lookup_b = lookup+32+64;
-        sh_r = 11;
-        sh_g = 5;
-        sh_b = 0;
-      break;
-    case 24:
-      if ((mask_r != 0xff0000) ||
-          (mask_g != 0x00ff00) ||
-          (mask_b != 0x0000ff))
-        return;
-        lookup = (RUINT32T *) malloc (sizeof (RUINT32T)*(256+256+256));
-        lookup_r = lookup;
-        lookup_g = lookup+256;
-        lookup_b = lookup+256+256;
-        sh_r = 16;
-        sh_g = 8;
-        sh_b = 0;
-      break;
-    case 32:
-      if ((mask_r != 0xff0000) ||
-          (mask_g != 0x00ff00) ||
-          (mask_b != 0x0000ff))
-        return;
-        lookup = (RUINT32T *) malloc (sizeof (RUINT32T)*(256+256+256));
-        lookup_r = lookup;
-        lookup_g = lookup+256;
-        lookup_b = lookup+256+256;
-        sh_r = 16;
-        sh_g = 8;
-        sh_b = 0;
-      break;
-    default:
-      return; /* we do not support this color depth */
-  }
-
-  /* prepare limits for color transformation (each channel is handled separately) */
-  if (shade < 0) {
-    shade = -shade;
-    if (shade < 0) shade = 0;
-    if (shade > 100) shade = 100;
-
-    lower_lim_r = 65535-rm;
-    lower_lim_g = 65535-gm;
-    lower_lim_b = 65535-bm;
-
-    lower_lim_r = 65535-(unsigned int)(((RUINT32T)lower_lim_r)*((RUINT32T)shade)/100);
-    lower_lim_g = 65535-(unsigned int)(((RUINT32T)lower_lim_g)*((RUINT32T)shade)/100);
-    lower_lim_b = 65535-(unsigned int)(((RUINT32T)lower_lim_b)*((RUINT32T)shade)/100);
-
-    upper_lim_r = upper_lim_g = upper_lim_b = 65535;
-  } else {
-    if (shade < 0) shade = 0;
-    if (shade > 100) shade = 100;
-
-    lower_lim_r = lower_lim_g = lower_lim_b = 0;
-
-    upper_lim_r = (unsigned int)((((RUINT32T)rm)*((RUINT32T)shade))/100);
-    upper_lim_g = (unsigned int)((((RUINT32T)gm)*((RUINT32T)shade))/100);
-    upper_lim_b = (unsigned int)((((RUINT32T)bm)*((RUINT32T)shade))/100);
-  }
-
-  /* switch red and blue bytes if necessary, we need it for some weird XServers like XFree86 3.3.3.1 */
-  if ((srcImage->bits_per_pixel == 24) && (mask_r >= 0xFF0000 ))
-  {
-    unsigned int tmp;
-
-    tmp = lower_lim_r;
-    lower_lim_r = lower_lim_b;
-    lower_lim_b = tmp;
-
-    tmp = upper_lim_r;
-    upper_lim_r = upper_lim_b;
-    upper_lim_b = tmp;
-  }
-
-  /* fill our lookup tables */
-  for (i = 0; i <= mask_r>>sh_r; i++)
-  {
-    RUINT32T tmp;
-    tmp = ((RUINT32T)i)*((RUINT32T)(upper_lim_r-lower_lim_r));
-    tmp += ((RUINT32T)(mask_r>>sh_r))*((RUINT32T)lower_lim_r);
-    lookup_r[i] = (tmp/65535)<<sh_r;
-  }
-  for (i = 0; i <= mask_g>>sh_g; i++)
-  {
-    RUINT32T tmp;
-    tmp = ((RUINT32T)i)*((RUINT32T)(upper_lim_g-lower_lim_g));
-    tmp += ((RUINT32T)(mask_g>>sh_g))*((RUINT32T)lower_lim_g);
-    lookup_g[i] = (tmp/65535)<<sh_g;
-  }
-  for (i = 0; i <= mask_b>>sh_b; i++)
-  {
-    RUINT32T tmp;
-    tmp = ((RUINT32T)i)*((RUINT32T)(upper_lim_b-lower_lim_b));
-    tmp += ((RUINT32T)(mask_b>>sh_b))*((RUINT32T)lower_lim_b);
-    lookup_b[i] = (tmp/65535)<<sh_b;
-  }
-
-  /* apply table to input image (replacing colors by newly calculated ones) */
-  switch (srcImage->bits_per_pixel)
-  {
-    case 15:
-    {
-      unsigned short *p1, *pf, *p, *pl;
-      p1 = (unsigned short *) srcImage->data;
-      pf = (unsigned short *) (srcImage->data + srcImage->height * srcImage->bytes_per_line);
-      while (p1 < pf)
-      {
-        p = p1;
-        pl = p1 + srcImage->width;
-        for (; p < pl; p++)
-        {
-          *p = lookup_r[(*p & 0x7c00)>>10] |
-               lookup_g[(*p & 0x03e0)>> 5] |
-               lookup_b[(*p & 0x001f)];
-        }
-        p1 = (unsigned short *) ((char *) p1 + srcImage->bytes_per_line);
-      }
-      break;
-    }
-    case 16:
-    {
-      unsigned short *p1, *pf, *p, *pl;
-      p1 = (unsigned short *) srcImage->data;
-      pf = (unsigned short *) (srcImage->data + srcImage->height * srcImage->bytes_per_line);
-      while (p1 < pf)
-      {
-        p = p1;
-        pl = p1 + srcImage->width;
-        for (; p < pl; p++)
-        {
-          *p = lookup_r[(*p & 0xf800)>>11] |
-               lookup_g[(*p & 0x07e0)>> 5] |
-               lookup_b[(*p & 0x001f)];
-        }
-        p1 = (unsigned short *) ((char *) p1 + srcImage->bytes_per_line);
-      }
-      break;
-    }
-    case 24:
-    {
-      unsigned char *p1, *pf, *p, *pl;
-      p1 = (unsigned char *) srcImage->data;
-      pf = (unsigned char *) (srcImage->data + srcImage->height * srcImage->bytes_per_line);
-      while (p1 < pf)
-      {
-        p = p1;
-        pl = p1 + srcImage->width * 3;
-        for (; p < pl; p += 3)
-        {
-          p[0] = lookup_r[(p[0] & 0xff0000)>>16];
-          p[1] = lookup_r[(p[1] & 0x00ff00)>> 8];
-          p[2] = lookup_r[(p[2] & 0x0000ff)];
-        }
-        p1 = (unsigned char *) ((char *) p1 + srcImage->bytes_per_line);
-      }
-      break;
-    }
-    case 32:
-    {
-      RUINT32T *p1, *pf, *p, *pl;
-      p1 = (RUINT32T *) srcImage->data;
-      pf = (RUINT32T *) (srcImage->data + srcImage->height * srcImage->bytes_per_line);
-
-      while (p1 < pf)
-      {
-        p = p1;
-        pl = p1 + srcImage->width;
-        for (; p < pl; p++)
-        {
-          *p = lookup_r[(*p & 0xff0000)>>16] |
-               lookup_g[(*p & 0x00ff00)>> 8] |
-               lookup_b[(*p & 0x0000ff)] |
-               (*p & ~0xffffff);
-        }
-        p1 = (RUINT32T *) ((char *) p1 + srcImage->bytes_per_line);
-      }
-      break;
-    }
-  }
-
-  free (lookup);
-}
-#endif
-
-/*
- * Check our parents are still who we think they are.
- * Do transparency updates if required
- */
-int
-rxvt_term::check_our_parents ()
-{
-  int i, pchanged, aformat, have_pixmap, rootdepth;
-  unsigned long nitems, bytes_after;
-  Atom atype;
-  unsigned char *prop = NULL;
-  Window root, oldp, *list;
-  Pixmap rootpixmap = None;
-  XWindowAttributes wattr, wrootattr;
-
-  pchanged = 0;
-
-  if (!OPTION (Opt_transparent))
-    return pchanged;	/* Don't try any more */
-
-  XGetWindowAttributes (dpy, display->root, &wrootattr);
-  rootdepth = wrootattr.depth;
-
-  XGetWindowAttributes (dpy, parent[0], &wattr);
-
-  if (rootdepth != wattr.depth)
-    {
-      if (am_transparent)
-        {
-          pchanged = 1;
-          XSetWindowBackground (dpy, vt, pix_colors_focused[Color_bg]);
-          am_transparent = am_pixmap_trans = 0;
-        }
-
-      return pchanged;	/* Don't try any more */
-    }
-
-  /* Get all X ops out of the queue so that our information is up-to-date. */
-  XSync (dpy, False);
-
-  /*
-   * Make the frame window set by the window manager have
-   * the root background. Some window managers put multiple nested frame
-   * windows for each client, so we have to take care about that.
-   */
-  i = (xa[XA_XROOTPMAP_ID]
-       && XGetWindowProperty (dpy, display->root, xa[XA_XROOTPMAP_ID],
-                              0L, 1L, False, XA_PIXMAP, &atype, &aformat,
-                              &nitems, &bytes_after, &prop) == Success);
-
-  if (!i || prop == NULL)
-     i = (xa[XA_ESETROOT_PMAP_ID]
-          && XGetWindowProperty (dpy, display->root, xa[XA_ESETROOT_PMAP_ID],
-                                 0L, 1L, False, XA_PIXMAP, &atype, &aformat,
-                                 &nitems, &bytes_after, &prop) == Success);
-
-  if (!i || prop == NULL
-#if TINTING
-      || !ISSET_PIXCOLOR (Color_tint)
-#endif
-      )
-    have_pixmap = 0;
-  else
-    {
-      have_pixmap = 1;
-      rootpixmap = *(Pixmap *)prop;
-      XFree (prop);
-    }
-
-  if (have_pixmap)
-    {
-      /*
-       * Copy display->root pixmap transparency
-       */
-      int sx, sy, nx, ny;
-      unsigned int nw, nh;
-      Window cr;
-      XImage *image;
-      GC gc;
-      XGCValues gcvalue;
-
-      XTranslateCoordinates (dpy, parent[0], display->root,
-                             0, 0, &sx, &sy, &cr);
-      nw = (unsigned int)szHint.width;
-      nh = (unsigned int)szHint.height;
-      nx = ny = 0;
-
-      if (sx < 0)
-        {
-          nw += sx;
-          nx = -sx;
-          sx = 0;
-        }
-
-      if (sy < 0)
-        {
-          nh += sy;
-          ny = -sy;
-          sy = 0;
-        }
-
-      min_it (nw, (unsigned int) (wrootattr.width - sx));
-      min_it (nh, (unsigned int) (wrootattr.height - sy));
-
-      XSync (dpy, False);
-      allowedxerror = -1;
-      image = XGetImage (dpy, rootpixmap, sx, sy, nw, nh, AllPlanes, ZPixmap);
-
-      /* XXX: handle BadMatch - usually because we're outside the pixmap */
-      /* XXX: may need a delay here? */
-      allowedxerror = 0;
-
-      if (image == NULL)
-        {
-          if (am_transparent && am_pixmap_trans)
-            {
-              pchanged = 1;
-              if (pixmap != None)
-                {
-                  XFreePixmap (dpy, pixmap);
-                  pixmap = None;
-                }
-            }
-
-          am_pixmap_trans = 0;
-        }
-      else
-        {
-          if (pixmap != None)
-            XFreePixmap (dpy, pixmap);
-
-#if TINTING
-          if (ISSET_PIXCOLOR (Color_tint))
-            {
-              int shade = rs[Rs_shade] ? atoi (rs[Rs_shade]) : 100;
-
-              rgba c;
-              pix_colors_focused [Color_tint].get (c);
-
-              ShadeXImage (this, image, shade, c.r, c.g, c.b);
-            }
-#endif
-
-          pixmap = XCreatePixmap (dpy, vt, szHint.width, szHint.height, image->depth);
-          gc = XCreateGC (dpy, vt, 0UL, &gcvalue);
-          XPutImage (dpy, pixmap, gc, image, 0, 0,
-                     nx, ny, image->width, image->height);
-          XFreeGC (dpy, gc);
-          XDestroyImage (image);
-          XSetWindowBackgroundPixmap (dpy, parent[0], pixmap);
-          XClearWindow (dpy, parent[0]);
-
-          if (!am_transparent || !am_pixmap_trans)
-            pchanged = 1;
-
-          am_transparent = am_pixmap_trans = 1;
-        }
-    }
-
-  if (am_pixmap_trans)
-    XSetWindowBackgroundPixmap (dpy, vt, ParentRelative);
-  else
-    {
-      unsigned int n;
-      /*
-       * InheritPixmap transparency
-       */
-      for (i = 1; i < (int) (sizeof (parent) / sizeof (Window)); i++)
-        {
-          oldp = parent[i];
-          XQueryTree (dpy, parent[i - 1], &root, &parent[i], &list, &n);
-          XFree (list);
-
-          if (parent[i] == display->root)
-            {
-              if (oldp != None)
-                pchanged = 1;
-
-              break;
-            }
-
-          if (oldp != parent[i])
-            pchanged = 1;
-        }
-
-      n = 0;
-
-      if (pchanged)
-        for (; n < (unsigned int)i; n++)
-          {
-            XGetWindowAttributes (dpy, parent[n], &wattr);
-
-            if (wattr.depth != rootdepth || wattr.c_class == InputOnly)
-              {
-                n = (int) (sizeof (parent) / sizeof (Window)) + 1;
-                break;
-              }
-          }
-
-      if (n > (sizeof (parent) / sizeof (parent[0])))
-        {
-          XSetWindowBackground (dpy, parent[0], pix_colors_focused[Color_border]);
-          XSetWindowBackground (dpy, vt, pix_colors_focused[Color_bg]);
-          am_transparent = 0;
-          /* XXX: also turn off Opt_transparent? */
-        }
-      else
-        {
-          for (n = 0; n < (unsigned int)i; n++)
-            {
-              XSetWindowBackgroundPixmap (dpy, parent[n], ParentRelative);
-              XClearWindow (dpy, parent[n]);
-            }
-
-          XSetWindowBackgroundPixmap (dpy, vt, ParentRelative);
-          am_transparent = 1;
-        }
-
-      for (; i < (int) (sizeof (parent) / sizeof (Window)); i++)
-        parent[i] = None;
-    }
-
-  if (scrollBar.win)
-    {
-      XSetWindowBackgroundPixmap (dpy, scrollBar.win, ParentRelative);
-      scrollBar.setIdle ();
-      scrollbar_show (0);
-    }
-
-  if (am_transparent)
-    {
-      want_refresh = want_full_refresh = 1;
-      if (am_pixmap_trans)
-        flush ();
-    }
-
-  return pchanged;
-}
-#endif
 
 /*}}} */
 
@@ -2731,13 +2287,16 @@ rxvt_term::cmd_parse ()
 
                   refresh_count++;
 
-                  if (!OPTION (Opt_jumpScroll)
-                      || (refresh_count >= refresh_limit * (nrow - 1)))
+                  if (!option (Opt_jumpScroll) || refresh_count >= nrow - 1)
                     {
-                      refreshnow = true;
                       refresh_count = 0;
-                      ch = NOCHAR;
-                      break;
+
+                      if (!option (Opt_skipScroll) || io_manager::now () > NOW + 1. / 60.)
+                        {
+                          refreshnow = true;
+                          ch = NOCHAR;
+                          break;
+                        }
                     }
 
                   // scr_add_lines only works for nlines <= nrow - 1.
@@ -2775,21 +2334,14 @@ rxvt_term::cmd_parse ()
 
           /*
            * If there have been a lot of new lines, then update the screen
-           * What the heck I'll cheat and only refresh less than every page-full.
-           * the number of pages between refreshes is refresh_limit, which
-           * is incremented here because we must be doing flat-out scrolling.
+           * What the heck we'll cheat and only refresh less than every page-full.
+           * if skipScroll is enabled.
            */
           if (refreshnow)
             {
-              if (OPTION (Opt_jumpScroll) && refresh_limit < REFRESH_PERIOD)
-                refresh_limit++;
-              else
-                {
-                  flag = true;
-                  //TODO: due to popular request, implement "skipscroll" option here
-                  scr_refresh ();
-                  want_refresh = 1;
-                }
+              flag = true;
+              scr_refresh ();
+              want_refresh = 1;
             }
 
         }
@@ -2948,7 +2500,7 @@ rxvt_term::process_print_pipe ()
                     break;	/* done = 1 */
                 }
             }
-          
+
           for (i = 0; i < len; i++)
             if (putc (buf[i], fd) == EOF)
               {
@@ -3020,7 +2572,7 @@ rxvt_term::process_nonprinting (unicode_t ch)
       case 0x9b: 	/* CSI */
         process_csi_seq ();
         break;
-      case 0x9d: 	/* CSI */
+      case 0x9d: 	/* OSC */
         process_osc_seq ();
         break;
 #endif
@@ -3258,8 +2810,8 @@ rxvt_term::process_csi_seq ()
   int n, ndef;
   int arg[ESC_ARGS];
 
-  for (nargs = ESC_ARGS; nargs > 0;)
-    arg[--nargs] = 0;
+  memset (arg, 0, sizeof (arg));
+  nargs = 0;
 
   priv = 0;
   ch = cmd_getc ();
@@ -3313,7 +2865,7 @@ rxvt_term::process_csi_seq ()
           case '>':
             if (ch == CSI_DA)	/* secondary device attributes */
               {
-                // first parameter is normally 0 for vt100, 1 for some newer vtxxx, 'R' for rxvt,
+                // first parameter is normally 0 for vt100, 1 for vt220, 'R' for rxvt,
                 // 'U' for rxvt-unicode != 7.[34] (where it was broken).
                 //
                 // second parameter is xterm patch level for xterm, MMmmpp (e.g. 20703) for rxvt
@@ -3457,7 +3009,7 @@ rxvt_term::process_csi_seq ()
               scr_report_position ();
               break;
             case 7:			/* unofficial extension */
-              if (OPTION (Opt_insecure))
+              if (option (Opt_insecure))
                 tt_printf ("%-.250s\012", rs[Rs_display_name]);
               break;
             case 8:			/* unofficial extension */
@@ -3631,7 +3183,7 @@ rxvt_term::process_window_ops (const int *args, unsigned int nargs)
         {
           char *s;
           XGetIconName (dpy, parent[0], &s);
-          tt_printf ("\033]L%-.250s\234", OPTION (Opt_insecure) && s ? s : "");	/* 8bit ST */
+          tt_printf ("\033]L%-.250s\234", option (Opt_insecure) && s ? s : "");	/* 8bit ST */
           XFree (s);
         }
         break;
@@ -3639,7 +3191,7 @@ rxvt_term::process_window_ops (const int *args, unsigned int nargs)
         {
           char *s;
           XFetchName (dpy, parent[0], &s);
-          tt_printf ("\033]l%-.250s\234", OPTION (Opt_insecure) && s ? s : "");	/* 8bit ST */
+          tt_printf ("\033]l%-.250s\234", option (Opt_insecure) && s ? s : "");	/* 8bit ST */
           XFree (s);
         }
         break;
@@ -3676,6 +3228,8 @@ rxvt_term::get_to_st (unicode_t &ends_how)
         }
       else if (ch == C0_BEL || ch == CHAR_ST)
         break;
+      else if (ch == C0_SYN)
+        ch = cmd_get8 ();
       else if (ch < 0x20)
         return NULL;	/* other control character - exit */
 
@@ -3685,10 +3239,7 @@ rxvt_term::get_to_st (unicode_t &ends_how)
         // stop at some sane length
         return NULL;
 
-      if (ch == C0_SYN)
-        string[n++] = cmd_get8 ();
-      else
-        string[n++] = ch;
+      string[n++] = ch;
     }
 
   string[n++] = '\0';
@@ -3777,7 +3328,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
   dLocal (Display *, dpy);
 
   assert (str != NULL);
-  
+
   if (HOOK_INVOKE ((this, HOOK_OSC_SEQ, DT_INT, op, DT_STR, str, DT_END)))
     return;
 
@@ -3882,7 +3433,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
         process_color_seq (op, Color_IT, str, resp);
         break;
 #endif
-#if TRANSPARENT && TINTING
+#if ENABLE_TRANSPARENCY && TINTING
       case URxvt_Color_tint:
         process_color_seq (op, Color_tint, str, resp);
 
@@ -3922,6 +3473,10 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
               scr_touch (true);
 #endif
             }
+#if ENABLE_TRANSPARENCY && defined(HAVE_AFTERIMAGE)
+          if (option (Opt_transparent))
+            check_our_parents ();
+#endif
         }
         break;
 
@@ -3958,7 +3513,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
 #endif
         if (query)
           tt_printf ("\33]%d;%-.250s%c", saveop,
-                     OPTION (Opt_insecure) && fontset[op - URxvt_font]->fontdesc
+                     option (Opt_insecure) && fontset[op - URxvt_font]->fontdesc
                        ? fontset[op - URxvt_font]->fontdesc : "",
                      resp);
         else
@@ -3982,7 +3537,7 @@ rxvt_term::process_xterm_seq (int op, const char *str, char resp)
 #if !ENABLE_MINIMAL
       case URxvt_locale:
         if (query)
-          tt_printf ("\33]%d;%-.250s%c", op, OPTION (Opt_insecure) ? locale : "", resp);
+          tt_printf ("\33]%d;%-.250s%c", op, option (Opt_insecure) ? locale : "", resp);
         else
           {
             set_locale (str);
@@ -4133,7 +3688,7 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
 #endif
           case 1048:		/* alternative cursor save */
           case 1049:
-            if (OPTION (Opt_secondaryScreen))
+            if (option (Opt_secondaryScreen))
               if (mode == 0)
                 scr_cursor (RESTORE);
               else if (mode == 1)
@@ -4208,14 +3763,14 @@ rxvt_term::process_terminal_mode (int mode, int priv UNUSED, unsigned int nargs,
               set_option (Opt_scrollTtyKeypress, state);
               break;
             case 1047:		/* secondary screen w/ clearing last */
-              if (OPTION (Opt_secondaryScreen))
+              if (option (Opt_secondaryScreen))
                 if (current_screen != PRIMARY)
                   scr_erase_screen (2);
               scr_change_screen (state);
               break;
             case 1049:		/* secondary screen w/ clearing first */
               scr_change_screen (state);
-              if (OPTION (Opt_secondaryScreen))
+              if (option (Opt_secondaryScreen))
                 if (current_screen != PRIMARY)
                   scr_erase_screen (2);
               break;

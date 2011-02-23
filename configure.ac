@@ -15,10 +15,10 @@ VERSION=`sed -n -e 's/^.*[ \t]VERSION.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
 DATE=`sed -n -e 's/^.*[ \t]DATE.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
 dnl LIBVERSION=`sed -n -e 's/^.*[ \t]LIBVERSION.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
 changequote([, ])dnl
-AC_SUBST(VERSION)dnl 
-AC_SUBST(DATE)dnl 
-AC_SUBST(LSMDATE)dnl 
-AC_SUBST(LIBVERSION)dnl 
+AC_SUBST(VERSION)dnl
+AC_SUBST(DATE)dnl
+AC_SUBST(LSMDATE)dnl
+AC_SUBST(LIBVERSION)dnl
 echo ""
 echo "configuring for rxvt $VERSION"
 echo ""
@@ -76,9 +76,7 @@ AC_DEFINE(_GNU_SOURCE, 1, Use all glibc features.)
 
 case $host in
    *-*-solaris* )
-      AC_DEFINE(_XOPEN_SOURCE_EXTENDED, 1, Needed to get declarations for msg_control and msg_controllen on Solaris)
-      AC_DEFINE(_XOPEN_SOURCE,          2, Needed to get declarations for msg_control and msg_controllen on Solaris)
-      AC_DEFINE(__EXTENSIONS__,         1, Needed to get declarations for msg_control and msg_controllen on Solaris)
+      AC_DEFINE(_XOPEN_SOURCE, 500, Needed to get declarations for msg_control and msg_controllen on Solaris)
       ;;
 esac
 
@@ -113,6 +111,8 @@ support_scroll_xterm=yes
 support_scroll_plain=yes
 support_xim=yes
 support_xpm=yes
+support_afterimage=yes
+support_afterstep=yes
 support_xft=yes
 support_unicode3=no
 support_combining=yes
@@ -157,6 +157,8 @@ AC_ARG_ENABLE(everything,
        support_wtmp=no
        support_xim=no
        support_xpm=no
+       support_afterimage=no
+       support_afterstep=no
        support_xft=no
        support_unicode3=no
        support_combining=no
@@ -186,6 +188,8 @@ AC_ARG_ENABLE(everything,
        support_wtmp=yes
        support_xim=yes
        support_xpm=yes
+       support_afterimage=yes
+       support_afterstep=yes
        support_xft=yes
        support_unicode3=yes
        support_combining=yes
@@ -222,10 +226,28 @@ AC_ARG_ENABLE(font-styles,
   fi])
 
 AC_ARG_ENABLE(xpm-background,
-  [  --enable-xpm-background enable XPM background pixmaps],
+  [  --enable-xpm-background enable background pixmaps],
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_xpm=$enableval
   fi])
+
+AC_ARG_ENABLE(afterimage,
+  [  --enable-afterimage enable integration with libAfterImage for background images],
+  [if test x$enableval = xyes -o x$enableval = xno; then
+    support_afterimage=$enableval
+  fi])
+
+AC_ARG_WITH(afterimage_config,
+  [  --with-afterimage-config=DIR  use libAfterImage config script in DIR],
+  [if test "x$withval" != x; then
+    afterimage_config=$withval/afterimage-config
+  fi])
+
+dnl AC_ARG_ENABLE(afterstep,
+dnl   [  --enable-afterstep enable integration with AfterStep window manager],
+dnl   [if test x$enableval = xyes -o x$enableval = xno; then
+dnl     support_afterstep=$enableval
+dnl   fi])
 
 AC_ARG_ENABLE(transparency,
   [  --enable-transparency   enable transparent backgrounds],
@@ -417,12 +439,6 @@ AC_ARG_WITH(terminfo,
 
 dnl# --------------------------------------------------------------------------
 
-AC_PATH_PROG(MV, mv, mv)
-AC_PATH_PROG(CP, cp, cp)
-AC_PATH_PROG(LN, ln, ln)
-AC_PATH_PROG(SED, sed, sed)
-AC_PATH_PROG(ECHO, echo, echo)
-AC_PATH_PROG(CMP, cmp, cmp)
 AC_PATH_PROG(TIC, tic)
 
 dnl# need a neat way to detect SVR4 or its features
@@ -443,7 +459,42 @@ AC_PATH_XTRA
 dnl# the only reasonable way to find libXpm is do-it-yourself
 dnl# only check if we want xpm-background
 
-if test x$support_xpm = xyes; then
+AFTERIMAGE_CFLAGS=
+AFTERIMAGE_LIBS=
+AFTERIMAGE_VERSION=
+
+if test x$support_afterimage = xyes; then
+  support_afterimage=no
+
+  if test "x$afterimage_config" = "x" ; then
+    AC_PATH_PROG(afterimage_config, afterimage-config, no)
+  fi
+  if test "x$afterimage_config" != "xno" ; then
+    AC_MSG_CHECKING(for libAfterImage version >= 1.15)
+    xAFTERIMAGE_VERSION=`$afterimage_config --version`
+    if test -n "$xAFTERIMAGE_VERSION" ; then
+      xAFTERIMAGE_CFLAGS=`$afterimage_config --cflags`
+      xAFTERIMAGE_LIBS=`$afterimage_config --libs`
+      if test "x$xAFTERIMAGE_LIBS" != "x"; then
+        libai_ver_major=`echo $xAFTERIMAGE_VERSION | cut -f 1 -d .`
+        libai_ver_minor=`echo $xAFTERIMAGE_VERSION | cut -f 2 -d .`
+        if test $libai_ver_major -gt 1 -o \( $libai_ver_major -eq 1 -a $libai_ver_minor -ge 15 \); then
+          support_afterimage=yes
+          AFTERIMAGE_CFLAGS="$xAFTERIMAGE_CFLAGS"
+          AFTERIMAGE_LIBS="$xAFTERIMAGE_LIBS"
+          AFTERIMAGE_VERSION="$xAFTERIMAGE_VERSION"
+        fi
+      fi
+    fi
+    if test "x$support_afterimage" = "xyes"; then
+      AC_MSG_RESULT($AFTERIMAGE_LIBS)
+    else
+      AC_MSG_RESULT(no)
+    fi
+  fi
+fi
+
+if test x$support_afterimage != xyes -a x$support_xpm = xyes ; then
   VT_FIND_LIBXPM
   if test x$no_xpm = xyes; then
     support_xpm=needsmanualspecification
@@ -484,54 +535,11 @@ AC_CACHE_CHECK(whether termios.h and sys/ioctl.h may both be included, rxvt_cv_h
 #include <termios.h>
 #endif]], [[int a = ECHO;]])],[rxvt_cv_header_sysioctl=yes],[rxvt_cv_header_sysioctl=no])])
 
-dnl# ELF systems may want to store paths for dynamic libraries.
-dnl# Lets see if the compiler can accept "-Rpath" or "-Wl,-Rpath"
-dnl# At least one version of SunOS wants "-R path" but it's not checked yet.
-if test -n "$GCC"; then
-  LDARG="-Wl,"
-else
-  LDARG=""
-fi
-changequote(, )dnl
-R_TRANSLATE='s/-L\([^ ]*\)/-L\1 '$LDARG'-rpath '$LDARG'\1/g'
-changequote([, ])dnl
-
-ac_save_CFLAGS=$CFLAGS
-ac_save_LIBS=$LIBS
-CFLAGS="$CFLAGS $X_CFLAGS"
-LIBS=`echo "$LIBS $X_LIBS $X_EXTRA_LIBS -lX11" | sed "$R_TRANSLATE"`
-AC_CACHE_CHECK([for -rpath dynamic library path recording], rxvt_cv_rpath,
-[AC_RUN_IFELSE([AC_LANG_SOURCE([[
-main()
-{
-    exit(0);
-    (void) XOpenDisplay("foobar");
-}]])],[rxvt_cv_rpath=yes],[rxvt_cv_rpath=no],[dnl                  
-  AC_MSG_WARN(You may need to check the LIBS line)])])             
-if test x$rxvt_cv_rpath != xyes; then
-  changequote(, )dnl
-  R_TRANSLATE='s/-L\([^ ]*\)/-L\1 '$LDARG'-R\1/g'
-  changequote([, ])dnl
-  LIBS=`echo "$ac_save_LIBS $X_LIBS $X_EXTRA_LIBS -lX11" | sed "$R_TRANSLATE"`
-  AC_CACHE_CHECK([for -R dynamic library path recording], rxvt_cv_R,
-[AC_RUN_IFELSE([AC_LANG_SOURCE([[
-main()
-{
-    exit(0);
-    (void) XOpenDisplay("foobar");
-}]])],[rxvt_cv_R=yes],[rxvt_cv_R=no],[rxvt_cv_R=no])])             
-  if test x$rxvt_cv_R != xyes; then
-    LIBS="$ac_save_LIBS $X_LIBS $X_EXTRA_LIBS -lX11"
-  fi
-fi
-
 AC_CACHE_CHECK([for XPointer], rxvt_cv_xpointer,
 [AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <X11/Xlib.h>]], [[XPointer dummy;]])],[rxvt_cv_xpointer=yes],[rxvt_cv_xpointer=no])])
 if test x$rxvt_cv_xpointer = xyes; then
   AC_DEFINE(HAVE_XPOINTER, 1, Define if you have XPointer typedef)
 fi
-LIBS=$ac_save_LIBS
-CFLAGS=$ac_save_CFLAGS
 
 AC_CACHE_CHECK([for XLIB_ILLEGAL_ACCESS], rxvt_xlib_illegal_access,
 [AC_COMPILE_IFELSE(
@@ -663,7 +671,7 @@ AC_CACHE_CHECK(where ttys/ttytab is located, rxvt_cv_path_ttytab,
 [for ttys_file in   dnl
   /etc/ttys /etc/ttytab;
 do
-  if test -f "$ttys_file" ; then 
+  if test -f "$ttys_file" ; then
     rxvt_cv_path_ttytab=$ttys_file
     break
   fi
@@ -681,11 +689,9 @@ ac_save_LIBS=$LIBS
 ac_save_CFLAGS=$CFLAGS
 CFLAGS="$CFLAGS $X_CFLAGS"
 LIBS="$LIBS $X_LIBS $X_EXTRA_LIBS -lX11"
-if test x$rxvt_cv_rpath = xyes -o x$rxvt_cv_R = xyes; then
-  LIBS=`echo $LIBS | sed "$R_TRANSLATE"`
-fi
 AC_CACHE_CHECK(for working Xlocale, rxvt_cv_func_xlocale,
 [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <X11/Xlib.h>
+#include <stdlib.h>
 main() {
 char *p;
 if ((p = XSetLocaleModifiers("@im=none")) != NULL && *p)
@@ -693,9 +699,11 @@ exit (XSupportsLocale() ? 0 : 1);
 else
 exit (1);}]])],[dnl
   rxvt_cv_func_xlocale=yes],[rxvt_cv_func_xlocale=no],[dnl
-  AC_MSG_WARN(Define NO_XLOCALE in config.h manually)])])
-if test x$rxvt_cv_func_xlocale = xyes; then
-  AC_DEFINE(HAVE_XLOCALE, 1, Define if Xlocale support works)
+  :])])
+if test x$support_xim = xyes; then
+  if test x$rxvt_cv_func_xlocale = xyes; then
+    AC_DEFINE(USE_XIM, 1, Define if you want to have XIM (X Input Method) protocol support - required for multibyte characters input)
+  fi
 fi
 
 AC_CACHE_CHECK(for working X setlocale, rxvt_cv_func_xsetlocale,
@@ -780,7 +788,7 @@ if test x$support_tinting = xyes; then
   AC_DEFINE(TINTING, 1, Define if you want your background to be tinted)
 fi
 if test x$support_inheritpixmap = xyes; then
-  AC_DEFINE(TRANSPARENT, 1, Define if you want your background to use the parent window background)
+  AC_DEFINE(ENABLE_TRANSPARENCY, 1, Define if you want your background to use the parent window background)
 fi
 if test x$support_keepscrolling = xno; then
   AC_DEFINE(NO_SCROLLBAR_BUTTON_CONTINUAL_SCROLLING, 1, Define for continual scrolling when you keep the scrollbar button pressed)
@@ -788,23 +796,24 @@ fi
 if test x$support_selectionscrolling = xyes; then
   AC_DEFINE(SELECTION_SCROLLING, 1, Define to allow scrolling when the selection moves to the top or bottom of the screen)
 fi
-if test x$support_frills = xyes; then
-  AC_DEFINE(ENABLE_FRILLS, 1, Define if you want handling for rarely used but handy features)
-fi
 if test x$support_mousewheel = xyes; then
   AC_DEFINE(MOUSE_WHEEL, 1, Define to use wheel events (button4 and button5) to scroll)
 fi
 if test x$support_mouseslipwheel = xyes; then
   AC_DEFINE(MOUSE_SLIP_WHEELING, 1, Define to have CTRL cause wheel events to accelerate scrolling. Release CTRL to halt scrolling)
 fi
-if test x$support_xim = xyes -o x$multichar_set = xyes; then
-  if test x$rxvt_cv_func_xlocale = xyes; then
-    AC_DEFINE(USE_XIM, 1, Define if you want to have XIM (X Input Method) protocol support - required for multibyte characters input)
-  fi
+if test x$support_xpm = xyes -o x$support_afterimage = xyes ; then
+  AC_DEFINE(XPM_BACKGROUND, 1, Define if you want to have sexy-looking background pixmaps. Needs libXpm or libAfterImage)
 fi
-if test x$support_xpm = xyes; then
-  AC_DEFINE(XPM_BACKGROUND, 1, Define if you want to have sexy-looking background pixmaps. Needs libXpm)
+
+if test x$support_afterimage = xyes; then
+  AC_DEFINE(HAVE_AFTERIMAGE, 1, Define if you want to use libAfterImage for image processing)
 fi
+
+dnl if test x$support_afterstep = xyes; then
+dnl   AC_DEFINE(AFTERSTEP_INTEGRATION, 1, Define if you want to integrate with AfterStep window manager)
+dnl fi
+
 if test x$support_scroll_rxvt = xyes; then
   AC_DEFINE(RXVT_SCROLLBAR, 1, Support Rxvt original style scrollbars)
   scrolltypes="rxvt"
@@ -892,36 +901,26 @@ AC_SUBST(PERL)
 AC_SUBST(IF_PERL)
 AC_SUBST(PERL_O)
 
-     AC_TRY_LINK([
-#include <EXTERN.h>
-#include <perl.h>
-#include <XSUB.h>
-],[
-     PerlInterpreter *perl = perl_alloc ();
-],[rxvt_perl_link=yes],[rxvt_perl_link=no])
 if test x$support_perl = xyes; then
    support_frills=yes
 fi
 
-AC_SUBST(DEBUG)
-AC_SUBST(DINCLUDE)
+if test x$support_frills = xyes; then
+  AC_DEFINE(ENABLE_FRILLS, 1, Define if you want handling for rarely used but handy features)
+fi
+
 AC_SUBST(CFLAGS)
 AC_SUBST(CPPFLAGS)
 AC_SUBST(LDFLAGS)
 AC_SUBST(X_CFLAGS)
 
 dnl# Attack the libs
-if test x$rxvt_cv_rpath = xyes -o x$rxvt_cv_R = xyes; then
-  DLIB=`echo $DLIB | sed "$R_TRANSLATE"`
-  LIBS=`echo $LIBS | sed "$R_TRANSLATE"`
-  X_LIBS=`echo $X_LIBS | sed "$R_TRANSLATE"`
-  X_EXTRA_LIBS=`echo $X_EXTRA_LIBS | sed "$R_TRANSLATE"`
-  XPM_LIBS=`echo $XPM_LIBS | sed "$R_TRANSLATE"`
-fi
-AC_SUBST(DLIB)
 AC_SUBST(LIBS)
 AC_SUBST(X_LIBS)
 AC_SUBST(X_EXTRA_LIBS)
+
+AC_SUBST(AFTERIMAGE_CFLAGS)
+AC_SUBST(AFTERIMAGE_LIBS)
 
 AC_ARG_PROGRAM
 
@@ -970,6 +969,14 @@ if test x$support_xpm = xyes; then
   echo "  Xpm library:                $XPM_LIBS"
 fi
 
+if test x$support_afterimage = xyes; then
+  echo "  AfterImage support:         yes"
+fi
+
+dnl if test x$support_afterstep = xyes; then
+dnl   echo "  AfterStep integration:      yes"
+dnl fi
+
 if test x$term != x; then
   echo "  set TERM to:                $term"
 fi
@@ -983,6 +990,7 @@ if test x$RESFALLBACK != x; then
 fi
 echo
 echo "  embedded perl:              $support_perl"
+echo "  libafterimage:              $support_afterimage"
 echo
 if test x$support_xpm = xneedsmanualspecification; then
   echo ".----------------------------------------------------------------."
