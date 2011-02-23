@@ -13,6 +13,7 @@ Build-Depends: debhelper (>= 7.0.0),
  libxft-dev (>= 2.1.8.2-5.1),
  chrpath,
  libperl-dev,
+ libev-dev,
  libafterimage-dev
 Standards-Version: 3.9.1
 
