@@ -1,3 +1,15 @@
+rxvt-unicode (9.10-1) UNRELEASED; urgency=low
+
+  * Imported Upstream version 9.10
+    - Fixes regression, urxvtd no longer forks when it shouldn't
+     (Closes: #613076)
+  * Remove a copy of part of Decklin's homedir
+  * Bump standards to 3.9.1
+  * Bump debhelper to 7.0.0 in control
+  * Compat 7
+
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Wed, 23 Feb 2011 16:13:48 -0500
+
 rxvt-unicode (9.09-5) unstable; urgency=low
 
   * Split into rxvt-unicode-256color package
