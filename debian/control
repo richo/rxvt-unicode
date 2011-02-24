@@ -14,7 +14,7 @@ Build-Depends: debhelper (>= 7.0.0),
  chrpath,
  libperl-dev,
  libev-dev,
- libafterimage-dev
+ libgfcui-dev
 Standards-Version: 3.9.1
 
 Package: rxvt-unicode
