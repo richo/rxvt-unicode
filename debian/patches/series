@@ -1,4 +1,5 @@
 01_app-defaults.diff
 02_use_dejavu.diff
+03_fix_xterm_scrollbar.diff
 debian-changes-9.09-1
 debian-changes-9.09-2
