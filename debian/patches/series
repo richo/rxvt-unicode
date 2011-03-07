@@ -2,5 +2,6 @@
 02_use_dejavu.diff
 03_fix_xterm_scrollbar.diff
 05_cutchars.diff
+06_debian_docs.diff
 debian-changes-9.09-1
 debian-changes-9.09-2
