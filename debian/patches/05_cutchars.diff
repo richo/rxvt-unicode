@@ -1,10 +1,12 @@
 Description: Set default cutchars, fix double-click word selection
- This patch appeared in 9.05-2. It may or may not be kept in future uploads, but
- since it doesn't appear to be doing any harm, it is being left for now.
+ This patch appeared in 9.05-2. 
+ .
+ It was unapplied in 9.10-1 at upstream's request to avoid deviation with
+ upstream urxvt's behavior.
 Author: Decklin Foster <decklin@red-bean.com>
 Origin: vendor
 Bug-Debian: http://bugs.debian.org/377194
-Reviewed-By: Ryan Kavanagh <ryanakca@kubuntu.org>
+Reviewed-By: Unapplied by Ryan Kavanagh <ryanakca@kubuntu.org>
 Last-Update: 2011-03-06
 
 --- rxvt-unicode-9.09.orig/src/perl/selection
