@@ -4,5 +4,6 @@
 05_cutchars.diff
 06_debian_docs.diff
 07_rgb_location.diff
+08_rebuild_docs.diff
 debian-changes-9.09-1
 debian-changes-9.09-2
