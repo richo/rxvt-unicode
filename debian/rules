@@ -46,7 +46,7 @@ conf-unicode:
 	    --enable-combining \
 	    --enable-xft \
 	    --enable-font-styles \
-	    --enable-afterimage \
+	    --enable-pixbuf \
 	    --enable-transparency \
 	    --enable-fading \
 	    --enable-rxvt-scroll \
@@ -67,7 +67,7 @@ conf-unicode-256color:
 	    --enable-xft \
 	    --enable-font-styles \
 	    --enable-256-color \
-	    --enable-afterimage \
+	    --enable-pixbuf \
 	    --enable-transparency \
 	    --enable-fading \
 	    --enable-rxvt-scroll \
@@ -84,7 +84,7 @@ conf-unicode-256color:
 conf-unicode-lite:
 	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
 	    --disable-xft \
-	    --disable-afterimage \
+	    --disable-pixbuf\
 	    --disable-perl \
 	    --disable-iso14755 \
 	    --with-term=rxvt-unicode
