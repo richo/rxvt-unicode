@@ -131,8 +131,8 @@ clean:
 	dh_clean build-stamp
 
 	# Add here commands to clean up after the build process.
-	-$(MAKE) distclean
-	-$(MAKE) -C doc realclean
+	[ ! -f Makefile ] || $(MAKE) distclean
+	[ ! -f Makefile ] || $(MAKE) -C doc realclean
 	rm -f config.guess config.sub config.log
 	# these will be fixed shortly
 	rm -f src/rxvtlib.h
