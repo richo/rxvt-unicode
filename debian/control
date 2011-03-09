@@ -1,7 +1,8 @@
 Source: rxvt-unicode
 Section: x11
 Priority: optional
-Maintainer: Decklin Foster <decklin@red-bean.com>
+Maintainer: Debian rxvt-unicode Maintainers <pkg-urxvt-maintainers@lists.alioth.debian.org>
+Uploaders: Ryan Kavanagh <ryanakca@kubuntu.org>
 Build-Depends: debhelper (>= 7.0.0),
  libxt-dev,
  libxrender-dev,
