@@ -51,7 +51,7 @@ Architecture: any
 Provides: x-terminal-emulator, rxvt-unicode
 Depends: ${shlibs:Depends}, ${misc:Depends},
  base-passwd (>= 2.0.3.4),
- ncurses-term (>= 5.4-7)
+ ncurses-term (>= 5.8-1)
 Recommends: ttf-dejavu,
  ttf-sazanami-gothic
 Conflicts: rxvt-unicode
