@@ -17,6 +17,7 @@ Build-Depends: debhelper (>= 7.0.0),
  libev-dev,
  libgtk2.0-dev
 Standards-Version: 3.9.1
+Homepage: http://software.schmorp.de/pkg/rxvt-unicode.html
 
 Package: rxvt-unicode
 Architecture: any
