@@ -1,6 +1,5 @@
 01_app-defaults.diff
 02_use_dejavu.diff
-03_fix_xterm_scrollbar.diff
 06_debian_docs.diff
 07_rgb_location.diff
 08_rebuild_docs.diff

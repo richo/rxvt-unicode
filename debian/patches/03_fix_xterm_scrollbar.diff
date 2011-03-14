@@ -3,8 +3,8 @@ Description: "Fix" xterm scrollbar border color
 Author: Decklin Foster <decklin@red-bean.com>
 Origin: vendor
 Forwarded: no
-Reviewed-By: Unapproved
-Last-Update: 2011-03-06
+Reviewed-By: Unapplied by Ryan Kavanagh <ryanakca@kubuntu.org>
+Last-Update: 2011-03-14
 --- rxvt-unicode-9.09.orig/src/scrollbar-xterm.C
 +++ rxvt-unicode-9.09/src/scrollbar-xterm.C
 @@ -55,7 +55,7 @@ scrollBar_t::show_xterm (int update)
