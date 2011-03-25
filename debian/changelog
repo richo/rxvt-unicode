@@ -1,14 +1,52 @@
-rxvt-unicode (9.10-1) UNRELEASED; urgency=low
+rxvt-unicode (9.10-1) unstable; urgency=low
 
+  * New maintainer (Closes: #617542)
   * Imported Upstream version 9.10
     - Fixes regression, urxvtd no longer forks when it shouldn't
-     (Closes: #613076)
+      (Closes: #613076)
+    - Dropped 09_binutils_gold.diff, no longer needed
+    - Replace libafterimage-dev with libgtk2.0-dev in B-D
   * Remove a copy of part of Decklin's homedir
   * Bump standards to 3.9.1
-  * Bump debhelper to 7.0.0 in control
-  * Compat 7
+  * Bump compat to 7 and increment debhelper version to 7.0.0
+  * Split up debian-changes-9.01-1 into a series of single patches
+    - Set app-defaults path in 01_app-defaults.diff
+    - Use DejaVu instead of Bitstream Vera in 02_use_dejavu.diff
+    - Dropped xterm scrollbar border color patch, 03_fix_xterm_scrollbar.diff
+    - Dropped patch 04_no_urgency_on_focus.diff
+    - Dropped set default cutchars, fix double-click word selection,
+      05_cutchars.diff
+    - Elide obsolete documentation in 06_debian_docs.diff
+    - Set correct path to file with color names in manpage,
+      07_rgb_location.diff
+    - Rebuild documentation, 08_rebuild_docs.diff
+  * Split debian-changes-9.09-2 into single patches
+    - Link against libfontconfig to fix FTBFS with binutils-gold,
+      09_binutils_gold.diff
+    - Dropped the metabit patch, 10_metabit.diff
+  * In debian/rules:
+     - Don't ignore all make errors on clean
+     - plain-scroll is no longer a configure option, dropped it from our list
+     - Use dh_autotools-dev_* instead of manually replacing config.guess,
+       config.sub
+     - dh_clean should be the last thing called in the clean target
+     - Don't ship empty usr/{bin,share/pixmaps} and etc/X11/app-defaults
+       in rxvt-unicode-ml
+     - Don't install empty directory usr/share/pixmaps in rxvt-unicode-ml
+  * Depend on ncurses-term >= 5.8-1 for rxvt-unicode-256color terminfo
+    (Closes: #613226)
+  * Fix malformed whatis entries (11_fix_lexgrog.diff)
+  * Don't use hyphens as minus signs (12_hyphen_minus_sign.diff)
+  * Added lintian overrides for tables that are too wide in urxvt.7. These are
+    generated manpages and so these man warnings aren't really fixable.
+  * Added homepage to control
+  * rxvt-unicode-ml is a transition package depending on rxvt-unicode, don't
+    install a menu entry since there is no accompanying binary.
+  * Don't reference a symlink of the GPL from copyright file
+  * set -e in maintainer scripts instead of '-e' option on #! line
+  * Added Vcs-* fields
 
- -- Ryan Kavanagh <ryanakca@kubuntu.org>  Wed, 23 Feb 2011 16:13:48 -0500
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Sun, 27 Mar 2011 07:36:20 -0400
 
 rxvt-unicode (9.09-5) unstable; urgency=low
 
