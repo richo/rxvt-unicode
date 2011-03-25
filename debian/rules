@@ -123,6 +123,8 @@ build-stamp: config.status
 		cp debian/app-defaults $$y/etc/X11/app-defaults/URxvt; \
 	done
 
+	rmdir debian/rxvt-unicode-ml/usr/bin
+
 	touch build-stamp
 
 clean:
