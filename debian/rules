@@ -189,6 +189,7 @@ binary-arch: build install
 #	dh_installdebconf
 #	dh_installinfo
 #	dh_link
+	dh_lintian
 	dh_strip
 	dh_compress
 	dh_fixperms
