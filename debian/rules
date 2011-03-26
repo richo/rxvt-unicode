@@ -27,7 +27,6 @@ cfgcommon = \
     --prefix=/usr \
     --mandir=\$${prefix}/share/man \
     --infodir=\$${prefix}/share/info \
-    --enable-plain-scroll \
     --enable-keepscrolling \
     --enable-selectionscrolling \
     --enable-pointer-blank \
