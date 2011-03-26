@@ -123,6 +123,7 @@ build-stamp: config.status
 	# Don't install empty directories
 	rmdir debian/rxvt-unicode-ml/usr/bin
 	rmdir debian/rxvt-unicode-ml/usr/share/pixmaps
+	rm -fr debian/rxvt-unicode-ml/etc/
 
 	touch build-stamp
 
