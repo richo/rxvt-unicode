@@ -129,7 +129,6 @@ build-stamp: config.status
 clean:
 	dh_testdir
 	dh_testroot
-	dh_clean build-stamp
 
 	# Add here commands to clean up after the build process.
 	[ ! -f Makefile ] || $(MAKE) distclean
@@ -139,6 +138,8 @@ clean:
 	# these will be fixed shortly
 	rm -f src/rxvtlib.h
 	rm -f doc/Makefile
+
+	dh_clean build-stamp
 
 # XXX: rewrite all of this and use it; it is untouched.
 install: build
