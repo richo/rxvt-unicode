@@ -120,7 +120,9 @@ build-stamp: config.status
 		cp debian/app-defaults $$y/etc/X11/app-defaults/URxvt; \
 	done
 
+	# Don't install empty directories
 	rmdir debian/rxvt-unicode-ml/usr/bin
+	rmdir debian/rxvt-unicode-ml/usr/share/pixmaps
 
 	touch build-stamp
 
