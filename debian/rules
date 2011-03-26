@@ -35,9 +35,7 @@ cfgcommon = \
     --enable-lastlog
 
 config.status: configure
-	dh_testdir
-	cp -f /usr/share/misc/config.sub config.sub
-	cp -f /usr/share/misc/config.guess config.guess
+	dh_autotools-dev_updateconfig
 
 conf-unicode:
 	CXXFLAGS="$(CXXFLAGS)" ./configure $(cfgcommon) \
@@ -134,7 +132,8 @@ clean:
 	# Add here commands to clean up after the build process.
 	[ ! -f Makefile ] || $(MAKE) distclean
 	[ ! -f Makefile ] || $(MAKE) -C doc realclean
-	rm -f config.guess config.sub config.log
+	rm -f config.log
+	dh_autotools-dev_restoreconfig
 	# these will be fixed shortly
 	rm -f src/rxvtlib.h
 	rm -f doc/Makefile
