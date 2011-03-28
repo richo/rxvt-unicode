@@ -24,8 +24,8 @@ Vcs-Git: git://git.debian.org/pkg-urxvt/pkg-urxvt.git
 Package: rxvt-unicode
 Architecture: any
 Provides: x-terminal-emulator
-Replaces: rxvt-unicode-ml
-Conflicts: rxvt-unicode-ml
+Replaces: rxvt-unicode-ml (<< 9.09-5)
+Conflicts: rxvt-unicode-ml (<< 9.09-5)
 Depends: ${shlibs:Depends}, ${misc:Depends},
  base-passwd (>= 2.0.3.4),
  ncurses-base (>= 5.4-7)
