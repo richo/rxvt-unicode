@@ -45,6 +45,7 @@ rxvt-unicode (9.10-1) unstable; urgency=low
   * Don't reference a symlink of the GPL from copyright file
   * set -e in maintainer scripts instead of '-e' option on #! line
   * Added Vcs-* fields
+  * Upload sponsored by Yaroslav Halchenko <debian@onerussian.com>
 
  -- Ryan Kavanagh <ryanakca@kubuntu.org>  Sun, 27 Mar 2011 07:36:20 -0400
 
