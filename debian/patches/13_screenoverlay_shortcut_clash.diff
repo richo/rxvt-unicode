@@ -1,0 +1,25 @@
+
+Description: Don't have C-M-X shortcuts make urxvt crash when X is accessed
+ through a shift key.
+ .
+ Commited upstream, this patch is to be dropped with 9.11-1.
+Author: Emanuele Giaquinta
+Origin: upstream
+Reviewed-By: Ryan Kavanagh <ryanakca@kubuntu.org>
+Last-Updated: 2011-04-01
+
+Index: rxvt-unicode/src/screen.C
+===================================================================
+--- rxvt-unicode.orig/src/screen.C	2011-02-23 14:52:53.000000000 -0500
++++ rxvt-unicode/src/screen.C	2011-04-01 08:20:36.905279657 -0400
+@@ -163,6 +163,10 @@
+ void
+ rxvt_term::scr_reset ()
+ {
++#if ENABLE_OVERLAY
++  scr_overlay_off ();
++#endif
++
+   view_start = 0;
+   num_scr = 0;
+ 
