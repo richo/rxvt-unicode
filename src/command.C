@@ -3583,6 +3583,10 @@ rxvt_term::process_xterm_seq (int op, char *str, char resp)
             scr_page (op == URxvt_view_up ? UP : DN, lines);
           else
             scr_erase_savelines ();
+
+      case URxvt_paste:
+        selection_request(time(NULL));
+        break;
         }
 
         break;

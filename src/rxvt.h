@@ -451,6 +451,8 @@ enum colour_list {
   Color_Green3,
   Color_Yellow3,
   Color_Blue3,
+  URxvt_paste            = 750,
+
   Color_Magenta3,
   Color_Cyan3,
   maxCOLOR,                   /* minCOLOR + 7 */
