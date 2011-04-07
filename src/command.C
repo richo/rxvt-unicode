@@ -3586,13 +3586,12 @@ rxvt_term::process_xterm_seq (int op, char *str, char resp)
           else
             scr_erase_savelines ();
         }
+        break;
+#endif
 
       case URxvt_paste:
         selection_request(time(NULL));
         break;
-
-        break;
-#endif
 
 #if ENABLE_PERL
       case URxvt_perl:

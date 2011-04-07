@@ -430,6 +430,8 @@ enum {
   URxvt_view_up          = 720,
   URxvt_view_down        = 721,
 
+  URxvt_paste            = 750,
+
   URxvt_perl             = 777,     // for use by perl extensions, starts with "extension-name;"
 };
 
@@ -451,7 +453,6 @@ enum colour_list {
   Color_Green3,
   Color_Yellow3,
   Color_Blue3,
-  URxvt_paste            = 750,
 
   Color_Magenta3,
   Color_Cyan3,
