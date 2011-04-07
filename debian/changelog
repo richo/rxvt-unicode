@@ -1,8 +1,9 @@
 rxvt-unicode (9.10-2) unstable; urgency=low
+
   * Maintained by richo
   * Added an osc code for paste (750)
 
- -- Rich Healey <richo@psych0tik.net> Thu, 07 Apr 2011 11:31:00 +1000
+ -- Rich Healey <richo@psych0tik.net>  Thu, 07 Apr 2011 11:36:20 +1000
 
 rxvt-unicode (9.10-1) unstable; urgency=low
 
