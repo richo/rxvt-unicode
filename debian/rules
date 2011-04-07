@@ -51,7 +51,7 @@ conf-unicode:
 	    --enable-xterm-scroll \
 	    --enable-perl \
 	    --enable-xim \
-	    --enable-iso14755 \
+	    --disable-iso14755 \
 	    --enable-mousewheel \
 	    --enable-slipwheeling \
 	    --enable-smart-resize \
@@ -72,7 +72,7 @@ conf-unicode-256color:
 	    --enable-xterm-scroll \
 	    --enable-perl \
 	    --enable-xim \
-	    --enable-iso14755 \
+	    --disable-iso14755 \
 	    --enable-mousewheel \
 	    --enable-slipwheeling \
 	    --enable-smart-resize \
