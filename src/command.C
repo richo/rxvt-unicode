@@ -62,6 +62,8 @@
 # include <ctime>
 #endif
 
+#include <time.h>
+
 /*----------------------------------------------------------------------*/
 
 #define IS_CONTROL(ch) !((ch) & 0xffffff60UL)
