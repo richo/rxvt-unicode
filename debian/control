@@ -16,7 +16,7 @@ Build-Depends: debhelper (>= 7.0.0),
  libperl-dev,
  libev-dev,
  libgtk2.0-dev
-Standards-Version: 3.9.1
+Standards-Version: 3.9.2
 Homepage: http://software.schmorp.de/pkg/rxvt-unicode.html
 Vcs-Browser: http://git.debian.org/?p=pkg-urxvt/pkg-urxvt.git
 Vcs-Git: git://git.debian.org/pkg-urxvt/pkg-urxvt.git
