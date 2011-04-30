@@ -1,3 +1,14 @@
+rxvt-unicode (9.10-2) unstable; urgency=low
+
+  * Fix the rxvt-unicode <-> rxvt-unicode-ml relationship to fix the
+    depend/conflict cycle, (Closes: #613780)
+  * Don't have C-M-X shortcuts make urxvt crash when X is accessed through a
+    shift key (13_screenoverlay_shortcut_clash.diff)
+  * Clean up files we've been leaving behind. (Closes: #578291)
+  * Bump to standards version 3.9.2
+
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Sat, 30 Apr 2011 14:44:55 -0400
+
 rxvt-unicode (9.10-1) unstable; urgency=low
 
   * New maintainer (Closes: #617542)
