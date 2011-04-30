@@ -24,8 +24,8 @@ Vcs-Git: git://git.debian.org/pkg-urxvt/pkg-urxvt.git
 Package: rxvt-unicode
 Architecture: any
 Provides: x-terminal-emulator
-Replaces: rxvt-unicode-ml (<< 9.09-5)
-Conflicts: rxvt-unicode-ml (<< 9.09-5)
+Replaces: rxvt-unicode-ml (<< 9.10-2)
+Breaks: rxvt-unicode-ml (<< 9.10-2)
 Depends: ${shlibs:Depends}, ${misc:Depends},
  base-passwd (>= 2.0.3.4),
  ncurses-base (>= 5.4-7)
@@ -42,7 +42,7 @@ Description: RXVT-like terminal emulator with Unicode support
 
 Package: rxvt-unicode-ml
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, rxvt-unicode
+Depends: ${shlibs:Depends}, ${misc:Depends}, rxvt-unicode (>= 9.10-2)
 Description: multi-lingual terminal emulator -- transitional package
  This is a transitional package depending on rxvt-unicode. Previously, some
  features were disabled in the regular package because they used more memory
