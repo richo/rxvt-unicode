@@ -3,12 +3,12 @@ rxvt-unicode (9.11-1) unstable; urgency=low
   * New upstream release
     - No longer have selection extension get confused by Unicode cutchars
       (Closes: #616463)
-    - Enable selection of lines with umlauted characters (Closes: #532072)
+    - Enable selection of lines with umlauted characters (Closes: #523072)
     - Document perl urxvt:: functions (Closes: #504817)
     - Set a default PATH_MAX to fix FTBFS on hurd (Closes: #624736)
     - Drop 13_screenoverlay_shortcut_clash.diff, applied upstream
 
- -- Ryan Kavanagh <ryanakca@kubuntu.org>  Mon, 02 May 2011 09:59:54 -0400
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Mon, 02 May 2011 10:16:08 -0400
 
 rxvt-unicode (9.10-2) unstable; urgency=low
 
