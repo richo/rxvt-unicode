@@ -4,7 +4,7 @@
  *
  * Copyright (c) 1997,1998 mj olesen <olesen@me.QueensU.CA>
  * Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
- * Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2004-2006 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -164,9 +164,8 @@ scrollBar_t::show_rxvt (int update)
       botShadowGC = XCreateGC (term->dpy, term->vt, GCForeground, &gcvalue);
       gcvalue.foreground = term->pix_colors[ (term->depth <= 2 ? Color_fg : Color_scroll)];
       scrollbarGC = XCreateGC (term->dpy, term->vt, GCForeground, &gcvalue);
-      if (!term->option (Opt_scrollBar_floating))
+      if (shadow)
         {
-          shadow = SHADOW_WIDTH;
           XSetWindowBackground (term->dpy, win, term->pix_colors_focused[Color_trough]);
           XClearWindow (term->dpy, win);
         }

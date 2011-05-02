@@ -6,7 +6,7 @@
  * Copyright (c) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
  *				- N*XTstep like scrollbars
  * Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
- * Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2004-2006 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,7 +74,7 @@ scrollBar_t::resize ()
     {
       /* create the scrollbar window */
       win = XCreateSimpleWindow (term->dpy,
-                                 term->parent[0],
+                                 term->parent,
                                  window_sb_x, 0,
                                  total_width (),
                                  term->szHint.height,
@@ -193,6 +193,11 @@ scrollBar_t::setup (rxvt_term *term)
   if (style != R_SB_NEXT)	/* dishonour request - for now */
     if (thickness && (i = atoi (thickness)) >= SB_WIDTH_MINIMUM)
       width = min (i, SB_WIDTH_MAXIMUM);
+
+# ifdef RXVT_SCROLLBAR
+  if (! term->option (Opt_scrollBar_floating) && style == R_SB_RXVT)
+    shadow = SHADOW_WIDTH;
+# endif
 
   this->style = style;
   this->width = width;

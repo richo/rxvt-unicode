@@ -12,7 +12,7 @@
  * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  *                              - extensive modifications
- * Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2008 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -145,7 +145,7 @@ rxvt_network_display (const char *display)
 }
 #endif
 
-const char *const def_colorName[] =
+static const char *const def_colorName[] =
   {
     COLOR_FOREGROUND,
     COLOR_BACKGROUND,
@@ -813,24 +813,23 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
     scrollBar.resize ();      /* create and map scrollbar */
 #ifdef HAVE_BG_PIXMAP
   {
-    bgPixmap.set_target (this);
-    bgPixmap.invalidate ();
+    bg_init ();
 
 #ifdef ENABLE_TRANSPARENCY
     if (option (Opt_transparent))
       {
-        bgPixmap.set_transparent ();
+        bg_set_transparent ();
 
         if (rs [Rs_blurradius])
-          bgPixmap.set_blur_radius (rs [Rs_blurradius]);
+          bg_set_blur (rs [Rs_blurradius]);
 
         if (ISSET_PIXCOLOR (Color_tint))
-          bgPixmap.set_tint (pix_colors_focused [Color_tint]);
+          bg_set_tint (pix_colors_focused [Color_tint]);
 
         if (rs [Rs_shade])
-          bgPixmap.set_shade (rs [Rs_shade]);
+          bg_set_shade (rs [Rs_shade]);
 
-        bgPixmap.set_root_pixmap ();
+        bg_set_root_pixmap ();
         XSelectInput (dpy, display->root, PropertyChangeMask);
         rootwin_ev.start (display, display->root);
       }
@@ -844,13 +843,13 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
         if ((p = strchr (p, ';')) != 0)
           {
             p++;
-            bgPixmap.set_geometry (p);
+            bg_set_geometry (p);
           }
         else
-          bgPixmap.set_defaultGeometry ();
+          bg_set_default_geometry ();
 
-        if (bgPixmap.set_file (rs[Rs_backgroundPixmap]))
-          if (!bgPixmap.window_position_sensitive ())
+        if (bg_set_file (rs[Rs_backgroundPixmap]))
+          if (!bg_window_position_sensitive ())
             update_background ();
       }
 #endif
@@ -877,13 +876,13 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
     {
       long info[2] = { 0, XEMBED_MAPPED };
 
-      XChangeProperty (dpy, parent[0], xa[XA_XEMBED_INFO], xa[XA_XEMBED_INFO],
+      XChangeProperty (dpy, parent, xa[XA_XEMBED_INFO], xa[XA_XEMBED_INFO],
                        32, PropModeReplace, (unsigned char *)&info, 2);
     }
 #endif
 
   XMapWindow (dpy, vt);
-  XMapWindow (dpy, parent[0]);
+  XMapWindow (dpy, parent);
 
   refresh_check ();
 }
@@ -892,7 +891,6 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 void
 rxvt_term::init_env ()
 {
-  int i;
   char *val;
 
 #ifdef DISPLAY_IS_IP
@@ -916,12 +914,11 @@ rxvt_term::init_env ()
   if (rs[Rs_display_name] == NULL)
     rs[Rs_display_name] = val;   /* use broken `:0' value */
 
-  i = strlen (val);
-  env_display = (char *)rxvt_malloc (i + 9);
+  env_display = (char *)rxvt_malloc (strlen (val) + 9);
 
   sprintf (env_display, "DISPLAY=%s", val);
 
-  sprintf (env_windowid, "WINDOWID=%lu", (unsigned long)parent[0]);
+  sprintf (env_windowid, "WINDOWID=%lu", (unsigned long)parent);
 
   /* add entries to the environment:
    * @ DISPLAY:   in case we started with -display
@@ -1328,7 +1325,7 @@ rxvt_term::set_icon (const char *file)
       for (unsigned int i = 0; i < w * h; ++i)
         buffer [i + 2] = asbuf [i];
 
-      XChangeProperty (dpy, parent[0], xa[XA_NET_WM_ICON], XA_CARDINAL, 32,
+      XChangeProperty (dpy, parent, xa[XA_NET_WM_ICON], XA_CARDINAL, 32,
                        PropModeReplace, (const unsigned char *) buffer, 2 + w * h);
       free (buffer);
     }
@@ -1385,7 +1382,7 @@ rxvt_term::set_icon (const char *file)
           row += rowstride;
         }
 
-      XChangeProperty (dpy, parent[0], xa[XA_NET_WM_ICON], XA_CARDINAL, 32,
+      XChangeProperty (dpy, parent, xa[XA_NET_WM_ICON], XA_CARDINAL, 32,
                        PropModeReplace, (const unsigned char *) buffer, 2 + w * h);
       free (buffer);
     }
@@ -1397,7 +1394,7 @@ rxvt_term::set_icon (const char *file)
 }
 
 /*----------------------------------------------------------------------*/
-/* rxvt_Create_Windows () - Open and map the window */
+/* Open and map the window */
 void
 rxvt_term::create_windows (int argc, const char *const *argv)
 {
@@ -1453,7 +1450,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   window_calc (0, 0);
 
-  /* sub-window placement & size in rxvt_resize_subwindows () */
+  /* sub-window placement & size in rxvt_term::resize_all_windows () */
   attributes.background_pixel = pix_colors_focused [Color_border];
   attributes.border_pixel     = pix_colors_focused [Color_border];
   attributes.colormap         = cmap;
@@ -1466,7 +1463,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
                        CWColormap | CWBackPixel | CWBorderPixel | CWOverrideRedirect,
                        &attributes);
 
-  this->parent[0] = top;
+  this->parent = top;
 
   old_width = szHint.width;
   old_height = szHint.height;
@@ -1509,7 +1506,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 #endif
   };
 
-  XSetWMProtocols (dpy, top, protocols, sizeof (protocols) / sizeof (protocols[0]));
+  XSetWMProtocols (dpy, top, protocols, ARRAY_LENGTH(protocols));
 
 #if ENABLE_FRILLS
   if (rs[Rs_transient_for])

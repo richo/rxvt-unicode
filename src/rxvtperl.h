@@ -6,15 +6,14 @@
 #define RXVTPERL_H_
 
 #if ENABLE_PERL
-# define SHOULD_INVOKE(htype) \
-    (  (htype) == HOOK_INIT		\
-    || (htype) == HOOK_DESTROY		\
-    || (htype) == HOOK_REFRESH_BEGIN	\
-    || (htype) == HOOK_REFRESH_END	\
-    || perl.should_invoke [htype])
-# define HOOK_INVOKE(args) rxvt_perl.invoke args
 
-#include "rxvt.h"
+#define SHOULD_INVOKE(htype) \
+   (  (htype) == HOOK_INIT		\
+   || (htype) == HOOK_DESTROY		\
+   || (htype) == HOOK_REFRESH_BEGIN	\
+   || (htype) == HOOK_REFRESH_END	\
+   || perl.should_invoke [htype])
+#define HOOK_INVOKE(args) rxvt_perl.invoke args
 
 enum data_type {
   DT_END,     // no further arguments
@@ -50,13 +49,16 @@ struct rxvt_perl_interp
   void init (rxvt_term *term);
   bool invoke (rxvt_term *term, hook_type htype, ...);
   void line_update (rxvt_term *term);
+  void selection_finish (rxvt_selection *sel, char *data, unsigned int len);
 };
 
 extern struct rxvt_perl_interp rxvt_perl;
 
 #else
-# define SHOULD_INVOKE(htype) false
-# define HOOK_INVOKE(args) false
+
+#define SHOULD_INVOKE(htype) false
+#define HOOK_INVOKE(args) false
+
 #endif
 
 #endif

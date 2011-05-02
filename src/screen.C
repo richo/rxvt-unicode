@@ -3,7 +3,7 @@
  *---------------------------------------------------------------------------*
  *
  * Copyright (c) 1997-2001 Geoff Wing <gcw@pobox.com>
- * Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2007 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -40,8 +40,6 @@ fill_text (text_t *start, text_t value, int len)
 }
 
 /* ------------------------------------------------------------------------- */
-#define PROP_SIZE               256*1024
-#define PASTE_SIZE		32768
 #define TABSIZE                 8       /* default tab size */
 
 /* ------------------------------------------------------------------------- *
@@ -163,6 +161,10 @@ rxvt_term::scr_kill_char (line_t &l, int col) const NOTHROW
 void
 rxvt_term::scr_reset ()
 {
+#if ENABLE_OVERLAY
+  scr_overlay_off ();
+#endif
+
   view_start = 0;
   num_scr = 0;
 
@@ -402,7 +404,7 @@ rxvt_term::scr_reset ()
   free (tabs);
   tabs = (char *)rxvt_malloc (ncol);
 
-  for (int col = ncol; --col; )
+  for (int col = ncol; col--; )
     tabs [col] = col % TABSIZE == 0;
 
   CLEAR_ALL_SELECTION ();
@@ -1687,7 +1689,7 @@ rxvt_term::scr_rvideo_mode (bool on) NOTHROW
 
       ::swap (pix_colors[Color_fg], pix_colors[Color_bg]);
 #ifdef HAVE_BG_PIXMAP
-      if (bgPixmap.pixmap == None)
+      if (bg_pixmap == None)
 #endif
           XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
 
@@ -1924,7 +1926,7 @@ rxvt_term::scr_bell () NOTHROW
 #  ifdef MAPALERT_OPTION
   if (option (Opt_mapAlert))
 #  endif
-    XMapWindow (dpy, parent[0]);
+    XMapWindow (dpy, parent);
 # endif
 
 # if ENABLE_FRILLS
@@ -1947,7 +1949,6 @@ rxvt_term::scr_bell () NOTHROW
 }
 
 /* ------------------------------------------------------------------------- */
-/* ARGSUSED */
 void
 rxvt_term::scr_printscreen (int fullhist) NOTHROW
 {
@@ -2033,7 +2034,7 @@ rxvt_term::scr_refresh () NOTHROW
   unsigned int old_screen_flags = screen.flags;
   char have_bg = 0;
 #ifdef HAVE_BG_PIXMAP
-  have_bg = bgPixmap.pixmap != None;
+  have_bg = bg_pixmap != None;
 #endif
   ocrow = oldcursor.row; /* is there an old outline cursor on screen? */
 
@@ -2510,28 +2511,52 @@ rxvt_term::scr_remap_chars () NOTHROW
 }
 
 void
-rxvt_term::scr_recolour () NOTHROW
+rxvt_term::scr_recolour (bool refresh) NOTHROW
 {
-#ifdef HAVE_BG_PIXMAP
-  bgPixmap.apply ();
-#else
+  bool transparent = false;
 
-  XSetWindowBackground (dpy, parent[0], pix_colors[Color_border]);
-  XClearWindow (dpy, parent[0]);
-  XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
+#ifdef HAVE_BG_PIXMAP
+  if (bg_pixmap != None)
+    {
+# ifdef ENABLE_TRANSPARENCY
+      if (bg_flags & BG_IS_TRANSPARENT)
+        {
+          XSetWindowBackgroundPixmap (dpy, parent, bg_pixmap);
+          XSetWindowBackgroundPixmap (dpy, vt, ParentRelative);
+
+          transparent = true;
+        }
+      else
+# endif
+        {
+          XSetWindowBackground (dpy, parent, pix_colors[Color_border]);
+          XSetWindowBackgroundPixmap (dpy, vt, bg_pixmap);
+        }
+    }
+  else
+#endif
+    {
+      XSetWindowBackground (dpy, parent, pix_colors[Color_border]);
+      XSetWindowBackground (dpy, vt, pix_colors[Color_bg]);
+    }
+
+  XClearWindow (dpy, parent);
 
   if (scrollBar.win)
-   {
-     XSetWindowBackground (dpy, scrollBar.win, pix_colors[Color_border]);
-     scrollBar.state = STATE_IDLE;
-     scrollBar.show (0);
-   }
+    {
+      if (transparent)
+        XSetWindowBackgroundPixmap (dpy, scrollBar.win, ParentRelative);
+      else
+        XSetWindowBackground (dpy, scrollBar.win, pix_colors[Color_border]);
+      scrollBar.state = STATE_IDLE;
+      scrollBar.show (0);
+    }
 
-#endif
-
-  /* bgPixmap.apply () does not do the following : */
-  scr_clear ();
-  scr_touch (true);
+  if (refresh)
+    {
+      scr_clear ();
+      scr_touch (true);
+    }
   want_refresh = 1;
 }
 
@@ -2629,7 +2654,7 @@ rxvt_term::scr_dump (int fd) NOTHROW
 {
   int             row, wrote;
   unsigned int    width, towrite;
-  char            r1[] = "\n";
+  const char      r1[] = "\n";
 
   for (row = saveLines + top_row;
        row < saveLines + nrow - 1; row++)
@@ -2712,254 +2737,19 @@ rxvt_term::paste (char *data, unsigned int len) NOTHROW
 
 /* ------------------------------------------------------------------------- */
 /*
- * Respond to a notification that a primary selection has been sent
- * EXT: SelectionNotify
- */
-void
-rxvt_term::selection_paste (Window win, Atom prop, bool delete_prop) NOTHROW
-{
-  if (prop == None)         /* check for failed XConvertSelection */
-    {
-      if ((selection_type & Sel_CompoundText))
-        {
-          int selnum = selection_type & Sel_whereMask;
-
-          selection_type = 0;
-          if (selnum != Sel_direct)
-            selection_request_other (XA_STRING, selnum);
-        }
-
-      if ((selection_type & Sel_UTF8String))
-        {
-          int selnum = selection_type & Sel_whereMask;
-
-          selection_type = Sel_CompoundText;
-          if (selnum != Sel_direct)
-            selection_request_other (xa[XA_COMPOUND_TEXT], selnum);
-          else
-            selection_type = 0;
-        }
-
-      return;
-    }
-
-  unsigned long bytes_after;
-  XTextProperty ct;
-
-  if (XGetWindowProperty (dpy, win, prop,
-                          0, PROP_SIZE / 4,
-                          delete_prop, AnyPropertyType,
-                          &ct.encoding, &ct.format,
-                          &ct.nitems, &bytes_after,
-                          &ct.value) != Success)
-    {
-      ct.value = 0;
-      goto bailout;
-    }
-
-  if (ct.encoding == None)
-    goto bailout;
-
-  if (bytes_after)
-    {
-      // fetch and append remaining data
-      XTextProperty ct2;
-
-      if (XGetWindowProperty (dpy, win, prop,
-                              ct.nitems / 4, (bytes_after + 3) / 4,
-                              delete_prop, AnyPropertyType,
-                              &ct2.encoding, &ct2.format,
-                              &ct2.nitems, &bytes_after,
-                              &ct2.value) != Success)
-        goto bailout;
-
-      // realloc should be compatible to XFree, here, and elsewhere, too
-      ct.value = (unsigned char *)realloc (ct.value, ct.nitems + ct2.nitems + 1);
-      memcpy (ct.value + ct.nitems, ct2.value, ct2.nitems + 1);
-      ct.nitems += ct2.nitems;
-
-      XFree (ct2.value);
-    }
-
-  if (ct.value == 0)
-    goto bailout;
-
-  if (ct.encoding == xa[XA_INCR])
-    {
-      // INCR selection, start handshake
-      if (!delete_prop)
-        XDeleteProperty (dpy, win, prop);
-
-      selection_wait = Sel_incr;
-      incr_buf_fill = 0;
-      incr_ev.start (10);
-
-      goto bailout;
-    }
-
-  if (ct.nitems == 0)
-    {
-      if (selection_wait == Sel_incr)
-        {
-          XFree (ct.value);
-
-          // finally complete, now paste the whole thing
-          selection_wait = Sel_normal;
-          ct.value = (unsigned char *)incr_buf;
-          ct.nitems = incr_buf_fill;
-          incr_buf = 0;
-          incr_buf_size = 0;
-          incr_ev.stop ();
-        }
-      else
-        {
-          if (selection_wait == Sel_normal
-              && (win != display->root || prop != XA_CUT_BUFFER0)) // avoid recursion
-            {
-              /*
-               * pass through again trying CUT_BUFFER0 if we've come from
-               * XConvertSelection () but nothing was presented
-               */
-              selection_paste (display->root, XA_CUT_BUFFER0, False);
-            }
-
-          goto bailout;
-        }
-    }
-  else if (selection_wait == Sel_incr)
-    {
-      incr_ev.start (10);
-
-      while (incr_buf_fill + ct.nitems > incr_buf_size)
-        {
-          incr_buf_size = incr_buf_size ? incr_buf_size * 2 : 128*1024;
-          incr_buf = (char *)realloc (incr_buf, incr_buf_size);
-        }
-
-      memcpy (incr_buf + incr_buf_fill, ct.value, ct.nitems);
-      incr_buf_fill += ct.nitems;
-
-      goto bailout;
-    }
-
-  char **cl;
-  int cr;
-
-#if !ENABLE_MINIMAL
-  // xlib is horribly broken with respect to UTF8_STRING, and nobody cares to fix it
-  // so recode it manually
-  if (ct.encoding == xa[XA_UTF8_STRING])
-    {
-      wchar_t *w = rxvt_utf8towcs ((const char *)ct.value, ct.nitems);
-      char *s = rxvt_wcstombs (w);
-      free (w);
-      // TODO: strlen == only the first element will be converted. well...
-      paste (s, strlen (s));
-      free (s);
-    }
-  else
-#endif
-  if (XmbTextPropertyToTextList (dpy, &ct, &cl, &cr) >= 0
-      && cl)
-    {
-      for (int i = 0; i < cr; i++)
-        paste (cl[i], strlen (cl[i]));
-
-      XFreeStringList (cl);
-    }
-  else
-    paste ((char *)ct.value, ct.nitems); // paste raw
-
-bailout:
-  XFree (ct.value);
-
-  if (selection_wait == Sel_normal)
-    selection_wait = Sel_none;
-}
-
-void
-rxvt_term::incr_cb (ev::timer &w, int revents) NOTHROW
-{
-  selection_wait = Sel_none;
-
-  incr_buf_size = 0;
-  free (incr_buf);
-
-  rxvt_warn ("data loss: timeout on INCR selection paste, ignoring.\n");
-}
-
-void
-rxvt_term::selection_property (Window win, Atom prop) NOTHROW
-{
-  if (prop == None || selection_wait != Sel_incr)
-    return;
-
-  selection_paste (win, prop, true);
-}
-
-/* ------------------------------------------------------------------------- */
-/*
- * Request the current selection:
- * Order: > internal selection if available
- *        > PRIMARY, SECONDARY, CLIPBOARD if ownership is claimed (+)
- *        > CUT_BUFFER0
- * (+) if ownership is claimed but property is empty, rxvt_selection_paste ()
- *     will auto fallback to CUT_BUFFER0
+ * Request PRIMARY, SECONDARY or CLIPBOARD selection.
+ * if the requested selection has no owner or is empty CUT_BUFFER0 is used
+ * as fallback
  * EXT: button 2 release
  */
 void
 rxvt_term::selection_request (Time tm, int selnum) NOTHROW
 {
-  if (selection.text && selnum == Sel_Primary)
+  if (!selection_req)
     {
-      /* internal selection */
-      char *str = rxvt_wcstombs (selection.text, selection.len);
-      paste (str, strlen (str));
-      free (str);
-      return;
+      selection_req = new rxvt_selection (display, selnum, tm, vt, xa[XA_VT_SELECTION], this);
+      selection_req->run ();
     }
-  else
-    {
-      selection_request_time = tm;
-      selection_wait = Sel_normal;
-
-#if X_HAVE_UTF8_STRING
-      selection_type = Sel_UTF8String;
-      if (selection_request_other (xa[XA_UTF8_STRING], selnum))
-        return;
-#else
-      selection_type = Sel_CompoundText;
-      if (selection_request_other (xa[XA_COMPOUND_TEXT], selnum))
-        return;
-#endif
-    }
-
-  selection_wait = Sel_none;       /* don't loop in selection_paste () */
-  selection_paste (display->root, XA_CUT_BUFFER0, false);
-}
-
-int
-rxvt_term::selection_request_other (Atom target, int selnum) NOTHROW
-{
-  Atom sel;
-
-  selection_type |= selnum;
-
-  if (selnum == Sel_Primary)
-    sel = XA_PRIMARY;
-  else if (selnum == Sel_Secondary)
-    sel = XA_SECONDARY;
-  else
-    sel = xa[XA_CLIPBOARD];
-
-  if (XGetSelectionOwner (dpy, sel) != None)
-    {
-      XConvertSelection (dpy, sel, target, xa[XA_VT_SELECTION],
-                         vt, selection_request_time);
-      return 1;
-    }
-
-  return 0;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -3000,7 +2790,7 @@ rxvt_term::selection_clear (bool clipboard) NOTHROW
 void
 rxvt_term::selection_make (Time tm)
 {
-  int i;
+  int size;
   wchar_t *new_selection_text;
   text_t *t;
 
@@ -3026,8 +2816,8 @@ rxvt_term::selection_make (Time tm)
   if (HOOK_INVOKE ((this, HOOK_SEL_MAKE, DT_LONG, (long)tm, DT_END)))
     return;
 
-  i = (selection.end.row - selection.beg.row + 1) * (ncol + 1);
-  new_selection_text = (wchar_t *)rxvt_malloc ((i + 4) * sizeof (wchar_t));
+  size = (selection.end.row - selection.beg.row + 1) * (ncol + 1);
+  new_selection_text = (wchar_t *)rxvt_malloc ((size + 4) * sizeof (wchar_t));
 
   int ofs = 0;
   int extra = 0;
@@ -3043,7 +2833,7 @@ rxvt_term::selection_make (Time tm)
       if (selection.rect)
         {
           col = selection.beg.col;
-          end_col = ncol + 1;
+          end_col = selection.end.col;
         }
       else
 #endif
@@ -3051,11 +2841,7 @@ rxvt_term::selection_make (Time tm)
 
       col = max (col, 0);
 
-      if (row == selection.end.row
-#if !ENABLE_MINIMAL
-          || selection.rect
-#endif
-          )
+      if (row == selection.end.row)
         min_it (end_col, selection.end.col);
 
       t = ROW(row).t + col;
@@ -3073,9 +2859,9 @@ rxvt_term::selection_make (Time tm)
 
               if (extra < 0)
                 {
-                  extra += i;
-                  i += i;
-                  new_selection_text = (wchar_t *)rxvt_realloc (new_selection_text, (i + 4) * sizeof (wchar_t));
+                  extra += size;
+                  size += size;
+                  new_selection_text = (wchar_t *)rxvt_realloc (new_selection_text, (size + 4) * sizeof (wchar_t));
                 }
 
               ofs += rxvt_composite.expand (*t++, new_selection_text + ofs);
@@ -3097,12 +2883,11 @@ rxvt_term::selection_make (Time tm)
         }
       else
 #endif
-        if (!ROW(row).is_longer () && row != selection.end.row)
+        if (!ROW(row).is_longer ()
+            && (row != selection.end.row || end_col != selection.end.col)
+            && (row != selection.beg.row || selection.beg.col < ncol))
           new_selection_text[ofs++] = C0_LF;
     }
-
-  if (end_col != selection.end.col)
-    new_selection_text[ofs++] = C0_LF;
 
   new_selection_text[ofs] = 0;
 
@@ -3618,6 +3403,7 @@ rxvt_term::selection_rotate (int x, int y) NOTHROW
 void
 rxvt_term::selection_send (const XSelectionRequestEvent &rq) NOTHROW
 {
+  Atom property = rq.property == None ? rq.target : rq.property;
   XSelectionEvent ev;
 
   ev.type = SelectionNotify;
@@ -3642,10 +3428,10 @@ rxvt_term::selection_send (const XSelectionRequestEvent &rq) NOTHROW
       *target++ = xa[XA_UTF8_STRING];
 #endif
 
-      XChangeProperty (dpy, rq.requestor, rq.property, XA_ATOM,
+      XChangeProperty (dpy, rq.requestor, property, XA_ATOM,
                        32, PropModeReplace,
                        (unsigned char *)target_list, target - target_list);
-      ev.property = rq.property;
+      ev.property = property;
     }
 #if TODO // TODO
   else if (rq.target == xa[XA_MULTIPLE])
@@ -3655,15 +3441,15 @@ rxvt_term::selection_send (const XSelectionRequestEvent &rq) NOTHROW
 #endif
   else if (rq.target == xa[XA_TIMESTAMP] && rq.selection == XA_PRIMARY && selection.text)
     {
-      XChangeProperty (dpy, rq.requestor, rq.property, rq.target,
+      XChangeProperty (dpy, rq.requestor, property, rq.target,
                        32, PropModeReplace, (unsigned char *)&selection_time, 1);
-      ev.property = rq.property;
+      ev.property = property;
     }
   else if (rq.target == xa[XA_TIMESTAMP] && rq.selection == xa[XA_CLIPBOARD] && selection.clip_text)
     {
-      XChangeProperty (dpy, rq.requestor, rq.property, rq.target,
+      XChangeProperty (dpy, rq.requestor, property, rq.target,
                        32, PropModeReplace, (unsigned char *)&clipboard_time, 1);
-      ev.property = rq.property;
+      ev.property = property;
     }
   else if (rq.target == XA_STRING
            || rq.target == xa[XA_TEXT]
@@ -3744,10 +3530,10 @@ rxvt_term::selection_send (const XSelectionRequestEvent &rq) NOTHROW
           ct.encoding = target;
         }
 
-      XChangeProperty (dpy, rq.requestor, rq.property,
+      XChangeProperty (dpy, rq.requestor, property,
                        ct.encoding, 8, PropModeReplace,
                        ct.value, (int)ct.nitems);
-      ev.property = rq.property;
+      ev.property = property;
 
       if (freect)
         XFree (ct.value);

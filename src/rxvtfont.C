@@ -1,7 +1,7 @@
 /*----------------------------------------------------------------------*
  * File:	rxvtfont.C
  *----------------------------------------------------------------------*
- * Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2008 Marc Lehmann <schmorp@schmorp.de>
  *				- original version.
  *
  * This program is free software; you can redistribute it and/or modify
@@ -41,7 +41,7 @@
     : ((prop)->width * (wcw) * MAX_OVERLAP_ROMAN  + 7) >> 3	\
   ))
 
-const struct rxvt_fallback_font {
+static const struct rxvt_fallback_font {
   codeset cs;
   const char *name;
 } fallback_fonts[] = {
@@ -161,8 +161,6 @@ static uint16_t extent_test_chars[] = {
   0x304c, 0x672c,				// が本
 };
 
-#define NUM_EXTENT_TEST_CHARS (sizeof (extent_test_chars) / sizeof (extent_test_chars[0]))
-
 #define dTermDisplay Display *disp = term->dpy
 #define dTermGC      GC gc = term->gc
 
@@ -245,7 +243,7 @@ rxvt_font::clear_rect (rxvt_drawable &d, int x, int y, int w, int h, int color) 
       Picture dst;
 
 # ifdef HAVE_BG_PIXMAP
-      if (term->bgPixmap.pixmap
+      if (term->bg_pixmap
           && !term->pix_colors[color].is_opaque ()
           && ((dst = XftDrawPicture (d))))
         {
@@ -722,12 +720,12 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
           if (!f)
             return false;
 
-          char *new_name = get_property (f, XA_FONT, name);
+          char *new_name = get_property (f, XA_FONT, 0);
 
           if (new_name)
             set_name (new_name);
           else
-            rxvt_warn ("font '%s' has no FONT property, continuing without.", name);
+            rxvt_warn ("font '%s' has no FONT property, continuing without.\n", name);
 
           XFreeFont (disp, f);
           f = 0;
@@ -794,12 +792,14 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
             diff += 300; // more heavily penalize what looks like scaled bitmap fonts
         }
 
-      if (!set_properties (p, fname))
-        continue;
-
-      if (prop.height != rxvt_fontprop::unset
-          && p.height > prop.height) // weed out too large fonts
-        continue;
+      if (!set_properties (p, fname)
+          // also weed out too large fonts
+          || (prop.height != rxvt_fontprop::unset
+              && p.height > prop.height))
+        {
+          free (fname);
+          continue;
+        }
 
       if (prop.height != rxvt_fontprop::unset) diff += (prop.height - p.height) * 128;
       if (prop.weight != rxvt_fontprop::unset) diff += abs (prop.weight - p.weight);
@@ -866,7 +866,8 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
 
   if (cs == CS_UNKNOWN)
     {
-      const char *charset = get_property (f, XA_FONT, 0);
+      char *value = get_property (f, XA_FONT, 0);
+      const char *charset = value;
 
       if (!charset)
         charset = name;
@@ -879,6 +880,8 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
       cs = codeset_from_name (charset);
       if (cs == CS_UNKNOWN)
         rxvt_warn ("%s: cannot deduce encoding from font name property \"%s\", ignoring font.\n", name, charset);
+
+      free (value);
     }
 
   if (cs == CS_UNKNOWN)
@@ -920,7 +923,7 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
 
   width = 1;
 
-  for (uint16_t *t = extent_test_chars + NUM_EXTENT_TEST_CHARS; t-- > extent_test_chars; )
+  for (uint16_t *t = extent_test_chars + ARRAY_LENGTH(extent_test_chars); t-- > extent_test_chars; )
     {
       if (FROM_UNICODE (cs, *t) == NOCHAR)
         continue;
@@ -966,6 +969,8 @@ rxvt_font_x11::clear ()
 bool
 rxvt_font_x11::has_char (unicode_t unicode, const rxvt_fontprop *prop, bool &careful) const
 {
+  careful = false;
+
   uint32_t ch = FROM_UNICODE (cs, unicode);
 
   if (ch == NOCHAR)
@@ -1217,10 +1222,12 @@ rxvt_font_xft::load (const rxvt_fontprop &prop, bool force_prop)
 
   for (;;)
     {
-      f = XftFontOpenPattern (disp, FcPatternDuplicate (match));
+      p = FcPatternDuplicate (match);
+      f = XftFontOpenPattern (disp, p);
 
       if (!f)
         {
+          FcPatternDestroy (p);
           success = false;
           break;
         }
@@ -1238,7 +1245,7 @@ rxvt_font_xft::load (const rxvt_fontprop &prop, bool force_prop)
 
       int glheight = height;
 
-      for (uint16_t *t = extent_test_chars + NUM_EXTENT_TEST_CHARS; t-- > extent_test_chars; )
+      for (uint16_t *t = extent_test_chars + ARRAY_LENGTH(extent_test_chars); t-- > extent_test_chars; )
         {
           FcChar16 ch = *t;
 
@@ -1403,22 +1410,22 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
 #ifdef HAVE_BG_PIXMAP
           Picture dst = 0; // the only assignment is done conditionally in the following if condition
 
-          if (term->bgPixmap.pixmap
+          if (term->bg_pixmap
               && (bg == Color_transparent || bg == Color_bg
                   || (bg >= 0 && !term->pix_colors[bg].is_opaque () && ((dst = XftDrawPicture (d2))))))
             {
               int src_x = x, src_y = y;
 
-              if (term->bgPixmap.flags & bgPixmap_t::isTransparent)
+              if (term->bg_flags & rxvt_term::BG_IS_TRANSPARENT)
                 {
                   src_x += term->window_vt_x;
                   src_y += term->window_vt_y;
                 }
 
-              if (term->bgPixmap.pmap_width >= src_x + w
-                  && term->bgPixmap.pmap_height >= src_y + h)
+              if (term->bg_pmap_width >= src_x + w
+                  && term->bg_pmap_height >= src_y + h)
                 {
-                  XCopyArea (disp, term->bgPixmap.pixmap, d2, gc,
+                  XCopyArea (disp, term->bg_pixmap, d2, gc,
                              src_x, src_y, w, h, 0, 0);
                 }
               else
@@ -1426,7 +1433,7 @@ rxvt_font_xft::draw (rxvt_drawable &d, int x, int y,
                   XGCValues gcv;
 
                   gcv.fill_style  = FillTiled;
-                  gcv.tile        = term->bgPixmap.pixmap;
+                  gcv.tile        = term->bg_pixmap;
                   gcv.ts_x_origin = -src_x;
                   gcv.ts_y_origin = -src_y;
 
@@ -1611,7 +1618,7 @@ rxvt_fontset::add_fonts (const char *desc)
               push_font (new_font (buf, cs));
             }
           else
-            rxvt_warn ("fontset element too long (>511 bytes), ignored.");
+            rxvt_warn ("fontset element too long (>511 bytes), ignored.\n");
 
           desc = end + 1;
         }

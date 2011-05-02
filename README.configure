@@ -18,7 +18,7 @@ CONFIGURE OPTIONS
         "--disable-everything" and than adding just the "--enable-..."
         arguments you want.
 
-    --enable-xft (default: enabled)
+    --enable-xft (default: on)
         Add support for Xft (anti-aliased, among others) fonts. Xft fonts
         are slower and require lots of memory, but as long as you don't use
         them, you don't pay for them.
@@ -27,7 +27,7 @@ CONFIGURE OPTIONS
         Add support for bold, *italic* and *bold italic* font styles. The
         fonts can be set manually or automatically.
 
-    --with-codesets=NAME,... (default: all)
+    --with-codesets=CS,... (default: all)
         Compile in support for additional codeset (encoding) groups ("eu",
         "vn" are always compiled in, which includes most 8-bit character
         sets). These codeset tables are used for driving X11 core fonts,
@@ -66,7 +66,7 @@ CONFIGURE OPTIONS
         Enable automatic composition of combining characters into composite
         characters. This is required for proper viewing of text where
         accents are encoded as separate unicode characters. This is done by
-        using precomposited characters when available or creating new
+        using precomposed characters when available or creating new
         pseudo-characters when no precomposed form exists.
 
         Without --enable-unicode3, the number of additional precomposed
@@ -80,7 +80,7 @@ CONFIGURE OPTIONS
         forms, but these are not currently used. Bug me if you want these to
         be used (and tell me how these are to be used...).
 
-    --enable-fallback(=CLASS) (default: Rxvt)
+    --enable-fallback[=CLASS] (default: Rxvt)
         When reading resource settings, also read settings for class CLASS.
         To disable resource fallback use --disable-fallback.
 
@@ -118,7 +118,7 @@ CONFIGURE OPTIONS
         footprint may somewhat be lowered if libAfterImage is configured
         without support for SVG.
 
-    --enable-pixbuf (default: off)
+    --enable-pixbuf (default: on)
         Add support for GDK-PixBuf to be used for background images. It adds
         support for many file formats including JPG, PNG, TIFF, GIF, XPM,
         BMP, ICO and TGA.
