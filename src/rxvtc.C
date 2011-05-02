@@ -3,7 +3,7 @@
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -32,8 +32,6 @@
 
 #include "rxvtdaemon.h"
 #include "libptytty.h"
-
-#include "rxvt.h"
 
 #define STATUS_SUCCESS           0
 #define STATUS_FAILURE           1

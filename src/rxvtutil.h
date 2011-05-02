@@ -3,8 +3,11 @@
 
 #include <cstdlib>
 #include <cstring>
+#include <inttypes.h>
 
 using namespace std;
+
+#define ARRAY_LENGTH(v) (sizeof (v) / sizeof ((v)[0]))
 
 #define PP_CONCAT_(a, b) a ## b
 #define PP_CONCAT(a, b) PP_CONCAT_(a, b)
@@ -40,16 +43,18 @@ using namespace std;
 # define THROW(x) throw x
 #endif
 
-extern class byteorder {
-  static unsigned int e; // at least 32 bits
-public:
-  byteorder ();
+namespace byteorder {
+  static unsigned char e ()
+  {
+    const uint32_t u = 0x11223344;
+    return *(unsigned char *)&u;
+  }
 
-  static bool big_endian    () { return e == 0x11223344; };
-  static bool network       () { return e == 0x11223344; };
-  static bool little_endian () { return e == 0x44332211; };
-  static bool vax           () { return e == 0x44332211; };
-} byteorder;
+  static bool big_endian    () { return e () == 0x11;     };
+  static bool network       () { return big_endian ();    };
+  static bool little_endian () { return e () == 0x44;     };
+  static bool vax           () { return little_endian (); };
+};
 
 // various utility functions
 template<typename T, typename U> static inline T    min    (T  a, U b) { return a < (T)b ? a : (T)b; }

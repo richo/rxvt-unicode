@@ -13,7 +13,7 @@
  * Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
  * Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
  *                              - extensive modifications
- * Copyright (c) 2003-2010 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2010 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -98,7 +98,7 @@ text_t rxvt_composite_vec::compose (unicode_t c1, unicode_t c2)
   compose_char *cc;
 
   // break compose chains, as stupid readline really likes to duplicate
-  // composing characters for some reason near the end of a line.
+  // composing characters for some reason, near the end of a line.
   cc = (*this)[c1];
   while (cc)
     {
@@ -108,10 +108,8 @@ text_t rxvt_composite_vec::compose (unicode_t c1, unicode_t c2)
 
   // check to see whether this combination already exists otherwise
   for (cc = v.end (); cc-- > v.begin (); )
-    {
-      if (cc->c1 == c1 && cc->c2 == c2)
-        return COMPOSE_LO + (cc - v.begin ());
-    }
+    if (cc->c1 == c1 && cc->c2 == c2)
+      return COMPOSE_LO + (cc - v.begin ());
 
   // allocate a new combination
   if (v.size () == COMPOSE_HI - COMPOSE_LO + 1)
@@ -119,7 +117,7 @@ text_t rxvt_composite_vec::compose (unicode_t c1, unicode_t c2)
       static int seen;
 
       if (!seen++)
-        fprintf (stderr, "too many unrepresentable composite characters, try --enable-unicode3\n");
+        rxvt_warn ("too many unrepresentable composite characters, try --enable-unicode3\n");
 
       return REPLACEMENT_CHAR;
     }
@@ -191,7 +189,6 @@ rxvt_term::rxvt_term ()
   flush_ev.set            <rxvt_term, &rxvt_term::flush_cb>   (this);
   destroy_ev.set          <rxvt_term, &rxvt_term::destroy_cb> (this);
   pty_ev.set              <rxvt_term, &rxvt_term::pty_cb>     (this);
-  incr_ev.set             <rxvt_term, &rxvt_term::incr_cb>    (this);
   termwin_ev.set          <rxvt_term, &rxvt_term::x_cb>       (this);
   vt_ev.set               <rxvt_term, &rxvt_term::x_cb>       (this);
 
@@ -230,13 +227,7 @@ rxvt_term::~rxvt_term ()
   delete fontset[0];
 
 #ifdef HAVE_BG_PIXMAP
-  bgPixmap.destroy ();
-#endif
-#ifdef HAVE_AFTERIMAGE
-  if (asv)
-    destroy_asvisual (asv, 0);
-  if (asimman)
-    destroy_image_manager (asimman, 0);
+  bg_destroy ();
 #endif
 
   if (display)
@@ -252,8 +243,8 @@ rxvt_term::~rxvt_term ()
 
       delete drawable;
       // destroy all windows
-      if (parent[0])
-        XDestroyWindow (dpy, parent[0]);
+      if (parent)
+        XDestroyWindow (dpy, parent);
 
       for (int i = 0; i < TOTAL_COLORS; i++)
         if (ISSET_PIXCOLOR (i))
@@ -283,7 +274,8 @@ rxvt_term::~rxvt_term ()
   free (env_term);
   free (locale);
   free (v_buffer);
-  free (incr_buf);
+
+  delete selection_req;
 
   delete envv;
   delete argv;
@@ -329,7 +321,6 @@ rxvt_term::destroy ()
 #if ENABLE_TRANSPARENCY || ENABLE_PERL
       rootwin_ev.stop (display);
 #endif
-      incr_ev.stop ();
       termwin_ev.stop (display);
       vt_ev.stop (display);
     }
@@ -396,7 +387,7 @@ print_x_error (Display *dpy, XErrorEvent *event)
     char buffer[BUFSIZ];
     char mesg[BUFSIZ];
     char number[32];
-    char *mtype = "XlibMessage";
+    const char mtype[] = "XlibMessage";
     XGetErrorText(dpy, event->error_code, buffer, BUFSIZ);
     XGetErrorDatabaseText(dpy, mtype, "XError", "X Error", mesg, BUFSIZ);
     rxvt_warn ("An X Error occurred, trying to continue after report.\n");
@@ -746,13 +737,7 @@ rxvt_term::tt_winch ()
 }
 
 /*----------------------------------------------------------------------*/
-/* set_fonts () - load and set the various fonts
- *
- * init = 1   - initialize
- *
- * fontname == FONT_UP  - switch to bigger font
- * fontname == FONT_DN  - switch to smaller font
- */
+/* load and set the various fonts */
 bool
 rxvt_term::set_fonts ()
 {
@@ -819,7 +804,7 @@ rxvt_term::set_fonts ()
 #endif
     }
 
-  if (parent[0])
+  if (parent)
     {
       resize_all_windows (0, 0, 0);
       scr_remap_chars ();
@@ -832,7 +817,7 @@ rxvt_term::set_fonts ()
 void
 rxvt_term::set_string_property (Atom prop, const char *str, int len)
 {
-  XChangeProperty (dpy, parent[0],
+  XChangeProperty (dpy, parent,
                    prop, XA_STRING, 8, PropModeReplace,
                    (const unsigned char *)str, len >= 0 ? len : strlen (str));
 }
@@ -844,7 +829,7 @@ rxvt_term::set_mbstring_property (Atom prop, const char *str, int len)
 
   if (XmbTextListToTextProperty (dpy, (char **)&str, 1, XStdICCTextStyle, &ct) >= 0)
     {
-      XSetTextProperty (dpy, parent[0], &ct, prop);
+      XSetTextProperty (dpy, parent, &ct, prop);
       XFree (ct.value);
     }
 }
@@ -855,7 +840,7 @@ rxvt_term::set_utf8_property (Atom prop, const char *str, int len)
   wchar_t *ws = rxvt_mbstowcs (str, len);
   char *s = rxvt_wcstoutf8 (ws);
 
-  XChangeProperty (dpy, parent[0],
+  XChangeProperty (dpy, parent,
                    prop, xa[XA_UTF8_STRING], 8, PropModeReplace,
                    (const unsigned char *)s, strlen (s));
 
@@ -960,21 +945,20 @@ rxvt_term::set_colorfgbg ()
 {
   unsigned int i;
   const char *xpmb = "";
-  char fstr[sizeof ("default") + 1], bstr[sizeof ("default") + 1];
+  char fstr[] = "default";
+  char bstr[] = "default";
 
-  strcpy (fstr, "default");
-  strcpy (bstr, "default");
   for (i = Color_Black; i <= Color_White; i++)
     if (pix_colors[Color_fg] == pix_colors[i])
       {
-        sprintf (fstr, "%d", (i - Color_Black));
+        sprintf (fstr, "%d", i - Color_Black);
         break;
       }
 
   for (i = Color_Black; i <= Color_White; i++)
     if (pix_colors[Color_bg] == pix_colors[i])
       {
-        sprintf (bstr, "%d", (i - Color_Black));
+        sprintf (bstr, "%d", i - Color_Black);
 #ifdef BG_IMAGE_FROM_FILE
         xpmb = "default;";
 #endif
@@ -1020,7 +1004,7 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
   if (set_hint)
     {
       szHint.flags &= ~(PBaseSize | PResizeInc);
-      XSetWMNormalHints (dpy, parent[0], &szHint);
+      XSetWMNormalHints (dpy, parent, &szHint);
       szHint.flags |= PBaseSize | PResizeInc;
     }
 
@@ -1036,9 +1020,9 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
       unsigned int unused_w1, unused_h1, unused_b1, unused_d1;
       Window unused_cr;
 
-      XTranslateCoordinates (dpy, parent[0], display->root,
+      XTranslateCoordinates (dpy, parent, display->root,
                              0, 0, &x, &y, &unused_cr);
-      XGetGeometry (dpy, parent[0], &unused_cr, &x1, &y1,
+      XGetGeometry (dpy, parent, &unused_cr, &x1, &y1,
                     &unused_w1, &unused_h1, &unused_b1, &unused_d1);
       /*
        * if display->root isn't the parent window, a WM will probably have offset
@@ -1065,15 +1049,15 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
       else if (y == y1)       /* exact center */
         dy /= 2;
 
-      XMoveResizeWindow (dpy, parent[0], x + dx, y + dy,
+      XMoveResizeWindow (dpy, parent, x + dx, y + dy,
                          szHint.width, szHint.height);
 #else
-      XResizeWindow (dpy, parent[0], szHint.width, szHint.height);
+      XResizeWindow (dpy, parent, szHint.width, szHint.height);
 #endif
     }
 
   if (set_hint)
-    XSetWMNormalHints (dpy, parent[0], &szHint);
+    XSetWMNormalHints (dpy, parent, &szHint);
 
   fix_screen = ncol != prev_ncol || nrow != prev_nrow;
 
@@ -1087,19 +1071,13 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
                          width, height);
 
 #ifdef HAVE_BG_PIXMAP
-      if (bgPixmap.window_size_sensitive ())
+      if (bg_window_size_sensitive ())
         update_background ();
 #endif
     }
 
   if (fix_screen || old_height == 0)
     scr_reset ();
-
-#ifdef HAVE_BG_PIXMAP
-//  TODO: this don't seem to have any effect - do we still need it ? If so - in which case exactly ?
-//  if (bgPixmap.pixmap)
-//    scr_touch (false);
-#endif
 
 #ifdef USE_XIM
   IMSetPosition ();
@@ -1192,10 +1170,10 @@ rxvt_term::IMisRunning ()
       win = XGetSelectionOwner (dpy, atom);
 
       if (win != None)
-        return True;
+        return true;
     }
 
-  return False;
+  return false;
 }
 
 void
@@ -1358,7 +1336,7 @@ rxvt_term::IM_get_IC (const char *modifiers)
       if (!p)
         continue;
 
-      s = rxvt_splitcommastring (p);
+      s = rxvt_strsplit (',', p);
 
       for (i = found = 0; !found && s[i]; i++)
         {
@@ -1380,7 +1358,7 @@ rxvt_term::IM_get_IC (const char *modifiers)
           for (j = 0; j < xim_styles->count_styles; j++)
             if (input_style == xim_styles->supported_styles[j])
               {
-                rxvt_freecommastring (s);
+                rxvt_free_strsplit (s);
 
                 found = 1;
                 goto foundpet;
@@ -1388,7 +1366,7 @@ rxvt_term::IM_get_IC (const char *modifiers)
 
         }
 
-      rxvt_freecommastring (s);
+      rxvt_free_strsplit (s);
     }
 
 foundpet:
@@ -1501,7 +1479,7 @@ foundpet:
   Input_Context = XCreateIC (xim,
                              XNInputStyle, input_style,
                              XNClientWindow, vt,
-                             XNFocusWindow, parent[0],
+                             XNFocusWindow, parent,
                              preedit_attr ? XNPreeditAttributes : NULL,
                              preedit_attr,
                              status_attr ? XNStatusAttributes : NULL,
@@ -1554,7 +1532,7 @@ rxvt_term::im_cb ()
     {
       bool found = false;
 
-      s = rxvt_splitcommastring (p);
+      s = rxvt_strsplit (',', p);
 
       for (i = 0; s[i]; i++)
         {
@@ -1570,7 +1548,7 @@ rxvt_term::im_cb ()
             }
         }
 
-      rxvt_freecommastring (s);
+      rxvt_free_strsplit (s);
 
       if (found)
         goto done;
@@ -1640,31 +1618,27 @@ void
 rxvt_term::get_window_origin (int &x, int &y)
 {
   Window cr;
-  XTranslateCoordinates (dpy, parent[0], display->root, 0, 0, &x, &y, &cr);
+  XTranslateCoordinates (dpy, parent, display->root, 0, 0, &x, &y, &cr);
 }
 
 Pixmap
-rxvt_term::get_pixmap_property (int prop_id)
+rxvt_term::get_pixmap_property (Atom property)
 {
   Pixmap pixmap = None;
 
-  if (prop_id > 0 && prop_id < NUM_XA)
-    if (xa[prop_id])
-      {
-        int aformat;
-        unsigned long nitems, bytes_after;
-        Atom atype;
-        unsigned char *prop;
-        int result = XGetWindowProperty (dpy, display->root, xa[prop_id],
-                                         0L, 1L, False, XA_PIXMAP, &atype, &aformat,
-                                         &nitems, &bytes_after, &prop);
-        if (result == Success)
-          {
-            if (atype == XA_PIXMAP)
-              pixmap = *(Pixmap *)prop;
-            XFree (prop);
-          }
-      }
+  int aformat;
+  unsigned long nitems, bytes_after;
+  Atom atype;
+  unsigned char *prop;
+  int result = XGetWindowProperty (dpy, display->root, property,
+                                   0L, 1L, False, XA_PIXMAP, &atype, &aformat,
+                                   &nitems, &bytes_after, &prop);
+  if (result == Success)
+    {
+      if (atype == XA_PIXMAP)
+        pixmap = *(Pixmap *)prop;
+      XFree (prop);
+    }
 
   return pixmap;
 }
@@ -1677,12 +1651,12 @@ rxvt_term::update_background ()
   if (update_background_ev.is_active ())
     return;
 
-  bgPixmap.invalidate ();
+  bg_invalidate ();
 
-  ev_tstamp to_wait = 0.5 - (ev::now () - bgPixmap.valid_since);
+  ev_tstamp to_wait = 0.5 - (ev::now () - bg_valid_since);
 
   if (to_wait <= 0.)
-    bgPixmap.render ();
+    bg_render ();
   else
     update_background_ev.start (to_wait);
 }
@@ -1693,7 +1667,7 @@ rxvt_term::update_background_cb (ev::timer &w, int revents)
   make_current ();
 
   update_background_ev.stop ();
-  bgPixmap.render ();
+  bg_render ();
   refresh_check ();
 }
 

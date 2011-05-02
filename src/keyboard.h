@@ -4,7 +4,7 @@
  *
  * All portions of code are copyright by their respective author/s.
  * Copyright (c) 2005      WU Fengguang
- * Copyright (c) 2005-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2005-2006 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -47,17 +47,11 @@
 #endif
 
 struct rxvt_term;
-struct keysym_t;
-
-typedef void (keyevent_handler) (rxvt_term *rt,
-                                 keysym_t *key,
-                                 KeySym keysym,
-                                 unsigned int state);
 
 struct keysym_t
 {
   enum keysym_type {
-    STRING, LIST, BUILTIN,
+    STRING, BUILTIN,
   };
 
   KeySym      keysym;
@@ -65,7 +59,6 @@ struct keysym_t
   /* the higher bits are preserved for Meta/NumLock keys */
   /* which are mapped to corresponding lower bits at register time */
   uint16_t    state;    /* indicates each modifiers' DOWN/UP status         */
-  uint16_t    range;    /* =1: single keysym; >1: a of range keysyms        */
   keysym_type type;
   const char  *str;      /* would normally be a keycode translation in UTF-8 */
 };
