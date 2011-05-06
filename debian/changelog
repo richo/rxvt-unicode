@@ -7,8 +7,10 @@ rxvt-unicode (9.11-1) unstable; urgency=low
     - Document perl urxvt:: functions (Closes: #504817)
     - Set a default PATH_MAX to fix FTBFS on hurd (Closes: #624736)
     - Drop 13_screenoverlay_shortcut_clash.diff, applied upstream
+  * This build will build against the latest perl (5.12) in unstable.
+    (Closes: #625823, #625827)
 
- -- Ryan Kavanagh <ryanakca@kubuntu.org>  Mon, 02 May 2011 10:16:08 -0400
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Fri, 06 May 2011 07:19:52 -0400
 
 rxvt-unicode (9.10-2) unstable; urgency=low
 
