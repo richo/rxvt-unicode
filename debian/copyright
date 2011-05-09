@@ -1,6 +1,5 @@
 This package was debianized by Eduard Bloch <blade@debian.org> on Tue,
-24 Feb 2004 09:03:51 +0100. It is currently maintained by Decklin Foster
-<decklin@red-bean.com>.
+24 Feb 2004 09:03:51 +0100.
 
 It was downloaded from <http://dist.schmorp.de/rxvt-unicode/>.
 
@@ -149,5 +148,13 @@ Copyright:
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+The Debian packaging is:
+
+    Copyright (C) 2004-2006  Eduard Bloch <blade@debian.org>
+    Copyright (C) 2006-2011  Decklin Foster <decklin@red-bean.com>
+    Copyright (C) 2011       Ryan Kavanagh <ryanakca@kubuntu.org>
+
+and is licensed under the GPLv2, see above.
 
 On Debian systems, see "/usr/share/common-licenses/GPL-2" for details.

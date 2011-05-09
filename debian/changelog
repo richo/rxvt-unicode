@@ -1,3 +1,23 @@
+rxvt-unicode (9.11-1.1) unstable; urgency=low
+
+  * richo's patchset
+
+ -- Rich Healey <richo@psych0tik.net>  Tue, 10 May 2011 10:00:52 +1000
+
+rxvt-unicode (9.11-1) unstable; urgency=low
+
+  * New upstream release
+    - No longer have selection extension get confused by Unicode cutchars
+      (Closes: #616463)
+    - Enable selection of lines with umlauted characters (Closes: #523072)
+    - Document perl urxvt:: functions (Closes: #504817)
+    - Set a default PATH_MAX to fix FTBFS on hurd (Closes: #624736)
+    - Drop 13_screenoverlay_shortcut_clash.diff, applied upstream
+  * This build will build against the latest perl (5.12) in unstable.
+    (Closes: #625823, #625827)
+
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Fri, 06 May 2011 07:19:52 -0400
+
 rxvt-unicode (9.10-4) unstable; urgency=low
 
   * Updated for new perl5.12 release
@@ -12,10 +32,14 @@ rxvt-unicode (9.10-3) unstable; urgency=low
 
 rxvt-unicode (9.10-2) unstable; urgency=low
 
-  * Maintained by richo
-  * Added an osc code for paste (750)
+  * Fix the rxvt-unicode <-> rxvt-unicode-ml relationship to fix the
+    depend/conflict cycle, (Closes: #613780)
+  * Don't have C-M-X shortcuts make urxvt crash when X is accessed through a
+    shift key (13_screenoverlay_shortcut_clash.diff)
+  * Clean up files we've been leaving behind. (Closes: #578291)
+  * Bump to standards version 3.9.2
 
- -- Rich Healey <richo@psych0tik.net>  Thu, 07 Apr 2011 11:36:20 +1000
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Sat, 30 Apr 2011 14:44:55 -0400
 
 rxvt-unicode (9.10-1) unstable; urgency=low
 

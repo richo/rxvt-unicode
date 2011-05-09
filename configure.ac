@@ -95,6 +95,7 @@ support_scroll_rxvt=yes
 support_scroll_next=yes
 support_scroll_xterm=yes
 support_xim=yes
+support_pixbuf=yes
 support_afterimage=yes
 support_xft=yes
 support_unicode3=no
@@ -130,6 +131,7 @@ AC_ARG_ENABLE(everything,
        support_utmp=no
        support_wtmp=no
        support_xim=no
+       support_pixbuf=no
        support_afterimage=no
        support_xft=no
        support_unicode3=no
@@ -157,6 +159,7 @@ AC_ARG_ENABLE(everything,
        support_utmp=yes
        support_wtmp=yes
        support_xim=yes
+       support_pixbuf=yes
        support_afterimage=yes
        support_xft=yes
        support_unicode3=yes
@@ -516,12 +519,6 @@ AC_CHECK_HEADERS( \
 	cwchar \
 )
 
-AC_CACHE_CHECK([for XPointer], rxvt_cv_xpointer,
-[AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <X11/Xlib.h>]], [[XPointer dummy;]])],[rxvt_cv_xpointer=yes],[rxvt_cv_xpointer=no])])
-if test x$rxvt_cv_xpointer = xyes; then
-  AC_DEFINE(HAVE_XPOINTER, 1, Define if you have XPointer typedef)
-fi
-
 AC_CACHE_CHECK([for XLIB_ILLEGAL_ACCESS], rxvt_cv_xlib_illegal_access,
 [AC_COMPILE_IFELSE(
    [AC_LANG_PROGRAM([
@@ -568,20 +565,21 @@ CFLAGS="$CFLAGS $X_CFLAGS"
 LIBS="$LIBS $X_LIBS $X_EXTRA_LIBS -lX11"
 if test x$support_xim = xyes; then
   AC_CACHE_CHECK(for working Xlocale, rxvt_cv_func_xlocale,
-  [AC_RUN_IFELSE([AC_LANG_SOURCE([[#include <X11/Xlib.h>
+  [AC_RUN_IFELSE([AC_LANG_SOURCE([[
+  #include <X11/Xlib.h>
   #include <stdlib.h>
-  main() {
-  char *p;
-  if ((p = XSetLocaleModifiers("@im=none")) != NULL && *p)
-  exit (XSupportsLocale() ? 0 : 1);
-  else
-  exit (1);}]])],[dnl
-    rxvt_cv_func_xlocale=yes],[rxvt_cv_func_xlocale=no],[dnl
-    :])])
+  int main() {
+    char *p;
+    if ((p = XSetLocaleModifiers("@im=none")) != NULL && *p)
+      exit (XSupportsLocale() ? 0 : 1);
+    else
+      exit (1);
+  }
+  ]])],[rxvt_cv_func_xlocale=yes],[rxvt_cv_func_xlocale=no],[:])])
   if test x$rxvt_cv_func_xlocale = xyes; then
     AC_DEFINE(USE_XIM, 1, Define if you want to have XIM (X Input Method) protocol support - required for multibyte characters input)
     AC_CACHE_CHECK(for broken XIM callback, rxvt_cv_broken_ximcb,
-    [AC_COMPILE_IFELSE([
+    [AC_COMPILE_IFELSE([AC_LANG_SOURCE([[
     #include <X11/Xlib.h>
 
     void im_destroy_cb (XIC unused1, XPointer client_data, XPointer unused3);
@@ -590,7 +588,7 @@ if test x$support_xim = xyes; then
       XIMCallback cb;
       cb.callback = im_destroy_cb;
     }
-    ],rxvt_cv_broken_ximcb=yes,rxvt_cv_broken_ximcb=no)])
+    ]])],rxvt_cv_broken_ximcb=yes,rxvt_cv_broken_ximcb=no)])
 
     if test x$rxvt_cv_broken_ximcb = xyes; then
        AC_DEFINE(XIMCB_PROTO_BROKEN, 1, Define if your XIMCallback specifies XIC as first type.)

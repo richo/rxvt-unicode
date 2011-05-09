@@ -1,19 +1,19 @@
 /*
  * libev event processing core, watcher management
  *
- * Copyright (c) 2007,2008,2009,2010 Marc Alexander Lehmann <libev@schmorp.de>
+ * Copyright (c) 2007,2008,2009,2010,2011 Marc Alexander Lehmann <libev@schmorp.de>
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
- * 
+ *
  *   1.  Redistributions of source code must retain the above copyright notice,
  *       this list of conditions and the following disclaimer.
- * 
+ *
  *   2.  Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
  * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
@@ -44,6 +44,12 @@
 # else
 #  include "config.h"
 # endif
+
+#if HAVE_FLOOR
+# ifndef EV_USE_FLOOR
+#  define EV_USE_FLOOR 1
+# endif
+#endif
 
 # if HAVE_CLOCK_SYSCALL
 #  ifndef EV_USE_CLOCK_SYSCALL
@@ -158,7 +164,6 @@
  
 #endif
 
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -232,6 +237,10 @@ EV_CPP(extern "C" {)
 /* to make it compile regardless, just remove the above line, */
 /* but consider reporting it, too! :) */
 # define EV_NSIG 65
+#endif
+
+#ifndef EV_USE_FLOOR
+# define EV_USE_FLOOR 0
 #endif
 
 #ifndef EV_USE_CLOCK_SYSCALL
@@ -378,7 +387,8 @@ EV_CPP(extern "C" {)
 #endif
 
 #if !EV_USE_NANOSLEEP
-# ifndef _WIN32
+/* hp-ux has it in sys/time.h, which we unconditionally include above */
+# if !defined(_WIN32) && !defined(__hpux)
 #  include <sys/select.h>
 # endif
 #endif
@@ -444,14 +454,11 @@ struct signalfd_siginfo
 #endif
 
 /*
- * This is used to avoid floating point rounding problems.
- * It is added to ev_rt_now when scheduling periodics
- * to ensure progress, time-wise, even when rounding
- * errors are against us.
+ * This is used to work around floating point rounding problems.
  * This value is good at least till the year 4000.
- * Better solutions welcome.
  */
-#define TIME_EPSILON  0.0001220703125 /* 1/8192 */
+#define MIN_INTERVAL  0.0001220703125 /* 1/2**13, good till 4000 */
+/*#define MIN_INTERVAL  0.00000095367431640625 /* 1/2**20, good till 2200 */
 
 #define MIN_TIMEJUMP  1. /* minimum timejump that gets detected (if monotonic clock available) */
 #define MAX_BLOCKTIME 59.743 /* never wait longer than this time (to detect time jumps) */
@@ -520,6 +527,54 @@ static EV_ATOMIC_T have_monotonic; /* did clock_gettime (CLOCK_MONOTONIC) work? 
 
 #ifdef _WIN32
 # include "ev_win32.c"
+#endif
+
+/*****************************************************************************/
+
+/* define a suitable floor function (only used by periodics atm) */
+
+#if EV_USE_FLOOR
+# include <math.h>
+# define ev_floor(v) floor (v)
+#else
+
+#include <float.h>
+
+/* a floor() replacement function, should be independent of ev_tstamp type */
+static ev_tstamp noinline
+ev_floor (ev_tstamp v)
+{
+  /* the choice of shift factor is not terribly important */
+#if FLT_RADIX != 2 /* assume FLT_RADIX == 10 */
+  const ev_tstamp shift = sizeof (unsigned long) >= 8 ? 10000000000000000000. : 1000000000.;
+#else
+  const ev_tstamp shift = sizeof (unsigned long) >= 8 ? 18446744073709551616. : 4294967296.;
+#endif
+
+  /* argument too large for an unsigned long? */
+  if (expect_false (v >= shift))
+    {
+      ev_tstamp f;
+
+      if (v == v - 1.)
+        return v; /* very large number */
+
+      f = shift * ev_floor (v * (1. / shift));
+      return f + ev_floor (v - f);
+    }
+
+  /* special treatment for negative args? */
+  if (expect_false (v < 0.))
+    {
+      ev_tstamp f = -ev_floor (-v);
+
+      return f - (f == v ? 0 : 1);
+    }
+
+  /* fits into an unsigned long */
+  return (unsigned long)v;
+}
+
 #endif
 
 /*****************************************************************************/
@@ -817,6 +872,14 @@ ev_sleep (ev_tstamp delay)
     }
 }
 
+inline_speed int
+ev_timeout_to_ms (ev_tstamp timeout)
+{
+  int ms = timeout * 1000. + .999999;
+
+  return expect_true (ms) ? ms : timeout < 1e-6 ? 0 : 1;
+}
+
 /*****************************************************************************/
 
 #define MALLOC_ROUND 4096 /* prefer to allocate in chunks of this size, must be 2**n and >> 4 longs */
@@ -967,6 +1030,31 @@ fd_reify (EV_P)
 {
   int i;
 
+#if EV_SELECT_IS_WINSOCKET || EV_USE_IOCP
+  for (i = 0; i < fdchangecnt; ++i)
+    {
+      int fd = fdchanges [i];
+      ANFD *anfd = anfds + fd;
+
+      if (anfd->reify & EV__IOFDSET && anfd->head)
+        {
+          SOCKET handle = EV_FD_TO_WIN32_HANDLE (fd);
+
+          if (handle != anfd->handle)
+            {
+              unsigned long arg;
+
+              assert (("libev: only socket fds supported in this configuration", ioctlsocket (handle, FIONREAD, &arg) == 0));
+
+              /* handle changed, but fd didn't - we need to do it in two steps */
+              backend_modify (EV_A_ fd, anfd->events, 0);
+              anfd->events = 0;
+              anfd->handle = handle;
+            }
+        }
+    }
+#endif
+
   for (i = 0; i < fdchangecnt; ++i)
     {
       int fd = fdchanges [i];
@@ -977,16 +1065,6 @@ fd_reify (EV_P)
       unsigned char o_reify  = anfd->reify;
 
       anfd->reify  = 0;
-
-#if EV_SELECT_IS_WINSOCKET || EV_USE_IOCP
-      if (o_reify & EV__IOFDSET)
-        {
-          unsigned long arg;
-          anfd->handle = EV_FD_TO_WIN32_HANDLE (fd);
-          assert (("libev: only socket fds supported in this configuration", ioctlsocket (anfd->handle, FIONREAD, &arg) == 0));
-          printf ("oi %d %x\n", fd, anfd->handle);//D
-        }
-#endif
 
       /*if (expect_true (o_reify & EV_ANFD_REIFY)) probably a deoptimisation */
         {
@@ -1345,14 +1423,16 @@ pipecb (EV_P_ ev_io *iow, int revents)
       read (evpipe [0], &dummy, 1);
     }
 
+#if EV_SIGNAL_ENABLE
   if (sig_pending)
-    {    
+    {
       sig_pending = 0;
 
       for (i = EV_NSIG - 1; i--; )
         if (expect_false (signals [i].pending))
           ev_feed_signal_event (EV_A_ i + 1);
     }
+#endif
 
 #if EV_ASYNC_ENABLE
   if (async_pending)
@@ -1371,19 +1451,28 @@ pipecb (EV_P_ ev_io *iow, int revents)
 
 /*****************************************************************************/
 
-static void
-ev_sighandler (int signum)
+void
+ev_feed_signal (int signum)
 {
 #if EV_MULTIPLICITY
   EV_P = signals [signum - 1].loop;
-#endif
 
-#ifdef _WIN32
-  signal (signum, ev_sighandler);
+  if (!EV_A)
+    return;
 #endif
 
   signals [signum - 1].pending = 1;
   evpipe_write (EV_A_ &sig_pending);
+}
+
+static void
+ev_sighandler (int signum)
+{
+#ifdef _WIN32
+  signal (signum, ev_sighandler);
+#endif
+
+  ev_feed_signal (signum);
 }
 
 void noinline
@@ -1645,6 +1734,8 @@ loop_init (EV_P_ unsigned int flags)
 {
   if (!backend)
     {
+      origflags = flags;
+
 #if EV_USE_REALTIME
       if (!have_realtime)
         {
@@ -1699,7 +1790,7 @@ loop_init (EV_P_ unsigned int flags)
       sigfd             = flags & EVFLAG_SIGNALFD  ? -2 : -1;
 #endif
 
-      if (!(flags & 0x0000ffffU))
+      if (!(flags & EVBACKEND_MASK))
         flags |= ev_recommended_backends ();
 
 #if EV_USE_IOCP
@@ -2102,9 +2193,6 @@ ev_invoke_pending (EV_P)
       {
         ANPENDING *p = pendings [pri] + --pendingcnt [pri];
 
-        /*assert (("libev: non-pending watcher on pending list", p->w->pending));*/
-        /* ^ this is no longer true, as pending_w could be here */
-
         p->w->pending = 0;
         EV_CB_INVOKE (p->w, p->events);
         EV_FREQUENT_CHECK;
@@ -2175,6 +2263,31 @@ timers_reify (EV_P)
 }
 
 #if EV_PERIODIC_ENABLE
+
+static void noinline
+periodic_recalc (EV_P_ ev_periodic *w)
+{
+  ev_tstamp interval = w->interval > MIN_INTERVAL ? w->interval : MIN_INTERVAL;
+  ev_tstamp at = w->offset + interval * ev_floor ((ev_rt_now - w->offset) / interval);
+
+  /* the above almost always errs on the low side */
+  while (at <= ev_rt_now)
+    {
+      ev_tstamp nat = at + w->interval;
+
+      /* when resolution fails us, we use ev_rt_now */
+      if (expect_false (nat == at))
+        {
+          at = ev_rt_now;
+          break;
+        }
+
+      at = nat;
+    }
+
+  ev_at (w) = at;
+}
+
 /* make periodics pending */
 inline_size void
 periodics_reify (EV_P)
@@ -2203,20 +2316,7 @@ periodics_reify (EV_P)
             }
           else if (w->interval)
             {
-              ev_at (w) = w->offset + ceil ((ev_rt_now - w->offset) / w->interval) * w->interval;
-              /* if next trigger time is not sufficiently in the future, put it there */
-              /* this might happen because of floating point inexactness */
-              if (ev_at (w) - ev_rt_now < TIME_EPSILON)
-                {
-                  ev_at (w) += w->interval;
-
-                  /* if interval is unreasonably low we might still have a time in the past */
-                  /* so correct this. this will make the periodic very inexact, but the user */
-                  /* has effectively asked to get triggered more often than possible */
-                  if (ev_at (w) < ev_rt_now)
-                    ev_at (w) = ev_rt_now;
-                }
-
+              periodic_recalc (EV_A_ w);
               ANHE_at_cache (periodics [HEAP0]);
               downheap (periodics, periodiccnt, HEAP0);
             }
@@ -2247,7 +2347,7 @@ periodics_reschedule (EV_P)
       if (w->reschedule_cb)
         ev_at (w) = w->reschedule_cb (w, ev_rt_now);
       else if (w->interval)
-        ev_at (w) = w->offset + ceil ((ev_rt_now - w->offset) / w->interval) * w->interval;
+        periodic_recalc (EV_A_ w);
 
       ANHE_at_cache (periodics [i]);
     }
@@ -2304,9 +2404,12 @@ time_update (EV_P_ ev_tstamp max_block)
        */
       for (i = 4; --i; )
         {
+          ev_tstamp diff;
           rtmn_diff = ev_rt_now - mn_now;
 
-          if (expect_true (fabs (odiff - rtmn_diff) < MIN_TIMEJUMP))
+          diff = odiff - rtmn_diff;
+
+          if (expect_true ((diff < 0. ? -diff : diff) < MIN_TIMEJUMP))
             return; /* all is well */
 
           ev_rt_now = ev_time ();
@@ -2749,8 +2852,7 @@ ev_periodic_start (EV_P_ ev_periodic *w)
   else if (w->interval)
     {
       assert (("libev: ev_periodic_start called with negative interval value", w->interval >= 0.));
-      /* this formula differs from the one in periodic_reify because we do not always round up */
-      ev_at (w) = w->offset + ceil ((ev_rt_now - w->offset) / w->interval) * w->interval;
+      periodic_recalc (EV_A_ w);
     }
   else
     ev_at (w) = w->offset;
@@ -2881,9 +2983,12 @@ ev_signal_start (EV_P_ ev_signal *w)
         sa.sa_flags = SA_RESTART; /* if restarting works we save one iteration */
         sigaction (w->signum, &sa, 0);
 
-        sigemptyset (&sa.sa_mask);
-        sigaddset (&sa.sa_mask, w->signum);
-        sigprocmask (SIG_UNBLOCK, &sa.sa_mask, 0);
+        if (origflags & EVFLAG_NOSIGMASK)
+          {
+            sigemptyset (&sa.sa_mask);
+            sigaddset (&sa.sa_mask, w->signum);
+            sigprocmask (SIG_UNBLOCK, &sa.sa_mask, 0);
+          }
 #endif
       }
 
@@ -3034,7 +3139,7 @@ infy_add (EV_P_ ev_stat *w)
 
               *pend = 0;
               w->wd = inotify_add_watch (fs_fd, path, mask);
-            } 
+            }
           while (w->wd < 0 && (errno == ENOENT || errno == EACCES));
         }
     }

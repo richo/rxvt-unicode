@@ -20,14 +20,58 @@ TODO: decrqm http://ue.tst.eu/71d7dbd1fcfeaa7d2a4b96eb957d570c.txt
 TODO: perl-shell-window? perl-unix-socket?
 TODO: command line editing when icanon?
 
+9.11 Mon May  2 10:34:46 CEST 2011
+        - fix compilation on GNU/Hurd, debian bug #624736.
+        - remove 'list' syntax for keysym resources, as it serves no useful purpose.
+          If you need it, poke us and provide a use case.
+        - fix alpha channel support. Premultiply alpha in colours if the visual
+          supports an alpha channel, as xrender expects premultiplied alpha
+          (Emanuele Giaquinta).
+        - fix reply to a selection request sent by an obsolete client
+          such as syncterm (patch by Marcin Cieslak).
+	- fix crash when the window is resized and the overlay is active
+	  (Emanuele Giaquinta, reported by Ryan Kavanagh).
+        - match character-wise rather than byte-wise in selection
+          extension again. perl 5.8.9+ is required to avoid extreme
+          slowdowns. Fixes debian bugs #523072, #616463.
+        - fix a possible crash if the INCR transfer process for a
+          selection property timeouts and at least one chunk is
+          received. (Emanuele Giaquinta)
+	- work around a memory corruption bug in xorg's XrmSetDatabase (apparently
+          broken since http://lists.freedesktop.org/archives/xorg-commit-diffs/2004-March/000239.html).
+        - fix memory corruption bug when custom command sequences bound to keys
+          were injected into an already-full pty input buffer.
+        - gdk-pixbuf is autodetected by default and preferred over libafterimage.
+        - do not prepend a newline to the selection text when the starting line
+          of the selection is not highlighted (Emanuele Giaquinta).
+	- don't swap perl env with real env, save and restore it, just in case
+          we ever get recursive perl invocations. also saves a bit of codespace
+          with gcc.
+        - fix various memory leaks (Emanuele Giaquinta).
+        - fix typo in kIC terminfo capability, debian bug #446444.
+        - document 'thickness' resource.
+        - fix debian bug #504817, to the extent possible.
+	- try to detect byte order at compile time, saves a couple of
+          hundred bytes, if your compiler is smart enough.
+        - add support for previewing the pasted data in confirm-paste
+          (Emanuele Giaquinta).
+        - added "newlines to spaces" option in selection-popup.
+        - actually enabled solaris event ports backend (was disabled by accident).
+        - revert to 38400 baud max., mission accomplished.
+        - no longer create scary "pty_fill: PLEASE REPORT" message, instead,
+          silently drain the input (problem is well understood now).
+        - no longer swallow rob nation's own graphics mode commands.
+
 9.10 Mon Dec 13 17:43:52 CET 2010
 	- the "schmorp=north korea dickey=south korea" release.
+        - INCOMPATIBLE CHANGE: make OSC 20 simpler and more correct
+          (Emanuele Giaquinta).
 	- if options were compiled out, this could lead to the option
           count to be defined wrongly. This is likely behind the
           failures with gcc 4.5.
         - explicitly depend on fontconfig and xrender when xft support
           is enabled. Although the public Xft api uses types from
-          both, in recent Xft releases these libs are private
+          both, in Xft 2.2.0 these libs are private
           dependencies only thanks to an idiotic behaviour of
           pkg-config that was added to workaround cases like this one.
           Fixes linking when using GNU ld with --as-needed or GNU gold
@@ -35,8 +79,6 @@ TODO: command line editing when icanon?
         - fix minor memory leaks in urxvt and urxvtd.
         - fix regression in urxvtd that prevented options from being correctly
           set (reported by Michal Vaner).
-        - INCOMPATIBLE CHANGE: make OSC 20 simpler and more correct
-          (Emanuele Giaquinta).
 	- implement xterm's horribly broken 1005 mouse reporting mode,
           and an alternative 1015 mode that works in non-utf-8 locales
           and has fewer limitations.

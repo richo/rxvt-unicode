@@ -560,10 +560,10 @@ distribution do also load settings from the B<~/.Xresources> file when X
 starts. @@RXVT_NAME@@ will consult the following files/resources in order,
 with later settings overwriting earlier ones:
 
-  1. system-wide app-defaults file, either locale-dependent OR global
-  2. app-defaults file in $XAPPLRESDIR
-  3. RESOURCE_MANAGER property on root-window OR $HOME/.Xdefaults
-  4. SCREEN_RESOURCES for the current screen
+  1. app-defaults file in $XAPPLRESDIR
+  2. $HOME/.Xdefaults
+  3. RESOURCE_MANAGER property on root-window of screen 0
+  4. SCREEN_RESOURCES property on root-window of the current screen
   5. $XENVIRONMENT file OR $HOME/.Xdefaults-<nodename>
   6. resources specified via -xrm on the commandline
 
@@ -905,6 +905,10 @@ every time you hit C<Print>.
 Set scrollbar style to B<rxvt>, B<plain>, B<next> or B<xterm>. B<plain> is
 the author's favourite.
 
+=item B<thickness:> I<number>
+
+Set the scrollbar width in pixels.
+
 =item B<scrollBar:> I<boolean>
 
 B<True>: enable the scrollbar [default]; option B<-sb>. B<False>:
@@ -1158,20 +1162,6 @@ performed in an exact manner; however, the closest match is assured.
 
 I<string> may contain escape values (C<\n>: newline, C<\000>: octal
 number), see RESOURCES in C<man 7 X> for further details.
-
-You can define a range of keysyms in one shot by providing a I<string>
-with pattern B<list/PREFIX/MIDDLE/SUFFIX>, where the delimiter `/'
-should be a character not used by the strings.
-
-Its usage can be demonstrated by an example:
-
-  URxvt.keysym.M-C-0x61:    list|\033<M-C-|abc|>
-
-The above line is equivalent to the following three lines:
-
-  URxvt.keysym.Meta-Control-0x61:    \033<M-C-a>
-  URxvt.keysym.Meta-Control-0x62:    \033<M-C-b>
-  URxvt.keysym.Meta-Control-0x63:    \033<M-C-c>
 
 If I<string> takes the form of C<command:STRING>, the specified B<STRING>
 is interpreted and executed as @@RXVT_NAME@@'s control sequence. For
@@ -1611,7 +1601,7 @@ The shell to be used for command execution, defaults to C</bin/sh>.
 The unix domain socket path used by @@RXVT_NAME@@c(1) and
 @@RXVT_NAME@@d(1).
 
-Default F<<< $HOME/.rxvt-unicode-I<< <nodename >> >>>.
+Default F<<< $HOME/.rxvt-unicode-I<< <nodename> >> >>>.
 
 =item B<HOME>
 
@@ -1621,7 +1611,7 @@ C<.Xdefaults>)
 
 =item B<XAPPLRESDIR>
 
-Directory where various X resource files are being located.
+Directory where application-specific X resource files are located.
 
 =item B<XENVIRONMENT>
 

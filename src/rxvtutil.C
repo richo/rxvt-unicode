@@ -3,7 +3,7 @@
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2004-2006 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -25,25 +25,6 @@
 #include <inttypes.h>
 
 #include "rxvtutil.h"
-
-class byteorder byteorder;
-
-unsigned int byteorder::e;
-
-byteorder::byteorder ()
-{
-  union {
-    uint32_t u;
-    uint8_t b[4];
-  } w;
-
-  w.b[0] = 0x11;
-  w.b[1] = 0x22;
-  w.b[2] = 0x33;
-  w.b[3] = 0x44;
-
-  e = w.u;
-}
 
 #if !HAVE_GCC_BUILTINS
 int rxvt_ctz (unsigned int x) CONST
@@ -95,7 +76,8 @@ rxvt_temp_buf (int len)
 {
   if (len > temp_len)
     {
-      temp_buf = realloc (temp_buf, len);
+      free (temp_buf);
+      temp_buf = malloc (len);
       temp_len = len;
     }
 

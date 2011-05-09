@@ -3,7 +3,7 @@
  *----------------------------------------------------------------------*
  *
  * All portions of code are copyright by their respective author/s.
- * Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
+ * Copyright (c) 2003-2006 Marc Lehmann <schmorp@schmorp.de>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -23,11 +23,12 @@
 #include "../config.h"
 
 #include "encoding.h"
+#include "rxvtutil.h"
 
 #include <cstdlib>
 #include <cstring>
 
-const struct n2cs {
+static const struct n2cs {
   const char *name;
   codeset cs;
 } n2cs[] = {
@@ -287,7 +288,7 @@ unicode_t
 rxvt_compose (unicode_t c1, unicode_t c2)
 {
   int l = 0;
-  int r = sizeof (rxvt_compose_table) / sizeof (rxvt_compose_entry) - 1;
+  int r = ARRAY_LENGTH(rxvt_compose_table) - 1;
   int m;
 
   while (r >= l)

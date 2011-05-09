@@ -140,6 +140,20 @@ clean:
 	rm -f src/rxvtlib.h
 	rm -f doc/Makefile
 
+	# Remove various extra files we create during build
+	set -e; \
+	for x in unicode unicode-256color unicode-lite; do \
+	    rm -f debian/rxvt-$$x.preinst; \
+	    rm -f debian/rxvt-$$x.postinst; \
+	    rm -f debian/rxvt-$$x.prerm; \
+	    rm -f debian/rxvt-$$x.docs; \
+	done
+
+	rm -f doc/*.txt.in
+	rm -f doc/README.*.in
+	rm -f doc/pod2*.tmp
+	rm -fr tmp
+
 	dh_clean build-stamp
 
 # XXX: rewrite all of this and use it; it is untouched.

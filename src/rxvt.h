@@ -30,6 +30,8 @@
 
 using namespace std;
 
+// we assume that Xlib.h defines XPointer, and it does since at least 1994...
+
 extern "C" {
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -74,6 +76,20 @@ typedef  int32_t tlen_t_; // specifically for use in the line_t structure
 #include <X11/keysymdef.h>
 #include <X11/Xatom.h>
 
+#ifdef HAVE_AFTERIMAGE
+# include <afterimage.h>
+# undef min
+# undef max
+#endif
+
+#ifdef HAVE_PIXBUF
+# include <gdk-pixbuf/gdk-pixbuf.h>
+#endif
+
+#if defined(BG_IMAGE_FROM_FILE) || defined(ENABLE_TRANSPARENCY)
+# define HAVE_BG_PIXMAP 1
+#endif
+
 #include "encoding.h"
 #include "rxvtutil.h"
 #include "rxvtfont.h"
@@ -100,13 +116,7 @@ typedef  int32_t tlen_t_; // specifically for use in the line_t structure
  *****************************************************************************
  */
 
-#ifndef HAVE_XPOINTER
-typedef char *XPointer;
-#endif
-
 #include <termios.h>
-
-#include "background.h"
 
 #ifndef STDIN_FILENO
 # define STDIN_FILENO   0
@@ -117,10 +127,6 @@ typedef char *XPointer;
 #ifndef EXIT_SUCCESS            /* missing from <stdlib.h> */
 # define EXIT_SUCCESS           0       /* exit function success */
 # define EXIT_FAILURE           1       /* exit function failure */
-#endif
-
-#ifndef PATH_MAX
-# define PATH_MAX 16384
 #endif
 
 /****************************************************************************/
@@ -157,8 +163,14 @@ void             rxvt_fatal                       (const char *fmt, ...) THROW (
 void             rxvt_exit_failure                () THROW ((class rxvt_failure_exception)) NORETURN;
 
 char           * rxvt_strtrim                     (char *str) NOTHROW;
-char          ** rxvt_splitcommastring            (const char *cs) NOTHROW;
-void             rxvt_freecommastring             (char **cs) NOTHROW;
+char          ** rxvt_strsplit                    (char delim, const char *str) NOTHROW;
+
+static inline void
+rxvt_free_strsplit (char **ptr) NOTHROW
+{
+  free (ptr[0]);
+  free (ptr);
+}
 
 void           * rxvt_malloc                      (size_t size);
 void           * rxvt_calloc                      (size_t number, size_t size);
@@ -191,6 +203,22 @@ set_environ (char **envv)
 #endif
     environ = envv;
 }
+
+struct localise_env
+{
+  char **orig_env;
+
+  localise_env (char **new_env)
+  {
+    orig_env = environ;
+    environ = new_env;
+  }
+
+  ~localise_env ()
+  {
+    environ = orig_env;
+  }
+};
 
 /*
  *****************************************************************************
@@ -278,33 +306,28 @@ enum {
 # define NSCREENS               1
 #endif
 
-/* special (internal) prefix for font commands */
-#define FONT_CMD                '#'
-#define FONT_DN                 "#-"
-#define FONT_UP                 "#+"
-
-/* flags for rxvt_scr_gotorc () */
+/* flags for rxvt_term::scr_gotorc () */
 enum {
   C_RELATIVE = 1,       /* col movement is relative */
   R_RELATIVE = 2,       /* row movement is relative */
   RELATIVE   = C_RELATIVE | R_RELATIVE,
 };
 
-/* modes for rxvt_scr_insdel_chars (), rxvt_scr_insdel_lines () */
+/* modes for rxvt_term::scr_insdel_chars (), rxvt_term::scr_insdel_lines () */
 enum {
   INSERT = -1,				/* don't change these values */
   DELETE = +1,
   ERASE  = +2,
 };
 
-/* modes for rxvt_scr_page () - scroll page. used by scrollbar window */
+/* modes for rxvt_term::scr_page () - scroll page. used by scrollbar window */
 enum page_dirn {
   UP,
   DN,
   NO_DIR,
 };
 
-/* arguments for rxvt_scr_change_screen () */
+/* arguments for rxvt_term::scr_change_screen () */
 enum {
   PRIMARY = 0,
   SECONDARY,
@@ -356,17 +379,6 @@ enum {
 
 #define DEFAULT_RSTYLE  (RS_None | (Color_fg    << RS_fgShift) | (Color_bg     << RS_bgShift))
 #define OVERLAY_RSTYLE  (RS_None | (Color_Black << RS_fgShift) | (Color_Yellow << RS_bgShift))
-
-#define Sel_none                0       /* Not waiting */
-#define Sel_normal              0x01    /* normal selection */
-#define Sel_incr                0x02    /* incremental selection */
-#define Sel_direct              0x00
-#define Sel_Primary             0x01
-#define Sel_Secondary           0x02
-#define Sel_Clipboard           0x03
-#define Sel_whereMask           0x0f
-#define Sel_CompoundText        0x10    /* last request was COMPOUND_TEXT */
-#define Sel_UTF8String          0x20    /* last request was UTF8_STRING */
 
 enum {
   C0_NUL = 0x00,
@@ -881,7 +893,7 @@ struct TermWin_t
   int            term_start;    /* term lines start here                    */
   int            view_start;    /* scrollback view starts here              */
   int            top_row;       /* topmost row index of scrollback          */
-  Window         parent[6];     /* parent identifiers - we're parent[0]     */
+  Window         parent;        /* parent identifier                        */
   Window         vt;            /* vt100 window                             */
   GC             gc;            /* GC for drawing                           */
   Pixmap         pixmap;
@@ -1025,10 +1037,8 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 
   unsigned char   refresh_type,
 #ifdef META8_OPTION
-                  meta_char,            /* Alt-key prefix */
+                  meta_char;            /* Alt-key prefix */
 #endif
-                  selection_wait,
-                  selection_type;
 /* ---------- */
   bool            rvideo_state, rvideo_mode;
 #ifndef NO_BELL
@@ -1074,20 +1084,109 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   Atom            *xa;
 /* ---------- */
   Time            selection_time,
-                  selection_request_time,
                   clipboard_time;
+  rxvt_selection *selection_req;
   pid_t           cmd_pid;    /* process id of child */
-  char *          incr_buf;
-  size_t          incr_buf_size, incr_buf_fill;
 /* ---------- */
   struct mouse_event MEvent;
   XComposeStatus  compose;
   static struct termios def_tio;
   row_col_t       oldcursor;
 #ifdef HAVE_BG_PIXMAP
-  bgPixmap_t      bgPixmap;
+  void bg_init ();
+  void bg_destroy ();
+
+  enum {
+    //subset returned by make_transparency_pixmap
+    BG_IS_VALID          = 1 <<  0,
+    BG_NEEDS_TINT        = 1 <<  1,
+    BG_NEEDS_BLUR        = 1 <<  2,
+
+    BG_EFFECTS_FLAGS     = BG_NEEDS_TINT | BG_NEEDS_BLUR,
+
+    BG_PROP_SCALE        = 1 <<  3,
+    BG_ROOT_ALIGN        = 1 <<  4,
+    BG_GEOMETRY_FLAGS    = BG_PROP_SCALE | BG_ROOT_ALIGN,
+
+    BG_TINT_SET          = 1 <<  5,
+    BG_TINT_BITAND       = 1 <<  6,
+    BG_TINT_FLAGS        = BG_NEEDS_TINT | BG_TINT_BITAND,
+
+    BG_HAS_RENDER        = 1 <<  7,
+    BG_HAS_RENDER_CONV   = 1 <<  8,
+    BG_CLIENT_RENDER     = 1 <<  9,
+
+    BG_IS_TRANSPARENT    = 1 << 10,
+    BG_NEEDS_REFRESH     = 1 << 11,
+    BG_IS_SIZE_SENSITIVE = 1 << 12,
+    BG_IS_FROM_FILE      = 1 << 13,
+  };
+
+  unsigned int bg_flags;
+
+# ifdef BG_IMAGE_FROM_FILE
+  void get_image_geometry (int image_width, int image_height, int &w, int &h, int &x, int &y);
+  bool render_image (unsigned long tr_flags);
+
+  enum {
+    noScale = 0,
+    windowScale = 100,
+    defaultScale = windowScale,
+    centerAlign = 50,
+    defaultAlign = centerAlign,
+  };
+
+  unsigned int h_scale, v_scale; /* percents of the window size */
+  int h_align, v_align;          /* percents of the window size:
+                                    0 - left align, 50 - center, 100 - right */
+
+  bool bg_set_geometry (const char *geom, bool update = false);
+  void bg_set_default_geometry ()
+  {
+    h_scale = v_scale = defaultScale;
+    h_align = v_align = defaultAlign;
+  }
+
+  bool bg_set_file (const char *file);
+# endif
+
+# ifdef ENABLE_TRANSPARENCY
+  Pixmap      root_pixmap; /* current root pixmap set */
+  rxvt_color  tint;
+  int         shade;
+  int         h_blurRadius, v_blurRadius;
+
+  bool bg_set_transparent ();
+  void bg_set_root_pixmap ();
+  void set_tint_shade_flags ();
+  bool bg_set_tint (rxvt_color &new_tint);
+  bool bg_set_shade (const char *shade_str);
+  bool bg_set_blur (const char *geom);
+
+  bool blur_pixmap (Pixmap pixmap, Visual *visual, int width, int height);
+  bool tint_pixmap (Pixmap pixmap, Visual *visual, int width, int height);
+  unsigned long make_transparency_pixmap ();
+# endif
+
+  ev_tstamp bg_valid_since;
+
+  Pixmap bg_pixmap;
+  unsigned int bg_pmap_width, bg_pmap_height;
+
+  int target_x;
+  int target_y;
+  bool bg_set_position (int x, int y);
+  bool bg_window_size_sensitive ();
+  bool bg_window_position_sensitive ();
+
+  bool bg_render ();
+  void bg_invalidate ()
+  {
+    bg_flags &= ~BG_IS_VALID;
+  }
 #endif
 #ifdef HAVE_AFTERIMAGE
+  ASImage        *original_asim;
   ASVisual       *asv;
   ASImageManager *asimman;
 
@@ -1096,6 +1195,12 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
     if (!asv)
       asv = create_asvisual_for_id (dpy, display->screen, depth, XVisualIDFromVisual (visual), cmap, NULL);
   }
+#endif
+#ifdef HAVE_PIXBUF
+  GdkPixbuf *pixbuf;
+  bool pixbuf_to_pixmap (GdkPixbuf *pixbuf, Pixmap pixmap, GC gc,
+                         int src_x, int src_y, int dst_x, int dst_y,
+                         unsigned int width, unsigned int height);
 #endif
 
 #if ENABLE_OVERLAY
@@ -1180,9 +1285,10 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void refresh_check ();
   void flush ();
   void flush_cb (ev::timer &w, int revents); ev::timer flush_ev;
+  void cmdbuf_reify ();
+  void cmdbuf_append (const char *str, size_t count);
   bool pty_fill ();
   void pty_cb (ev::io &w, int revents); ev::io pty_ev;
-  void incr_cb (ev::timer &w, int revents) NOTHROW; ev::timer incr_ev;
 
 #ifdef CURSOR_BLINK
   void cursor_blink_cb (ev::timer &w, int revents); ev::timer cursor_blink_ev;
@@ -1249,7 +1355,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   // command.C
   void key_press (XKeyEvent &ev);
   void key_release (XKeyEvent &ev);
-  unsigned int cmd_write (const char *str, unsigned int count);
 
   wchar_t next_char () NOTHROW;
   wchar_t cmd_getc () THROW ((class out_of_input));
@@ -1286,7 +1391,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   int privcases (int mode, unsigned long bit);
   void process_terminal_mode (int mode, int priv, unsigned int nargs, const int *arg);
   void process_sgr_mode (unsigned int nargs, const int *arg);
-  void process_graphics ();
   // init.C
   void init_vars ();
   const char **init_resources (int argc, const char *const *argv);
@@ -1323,7 +1427,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void alias_color (int dst, int src);
   void set_widthheight (unsigned int newwidth, unsigned int newheight);
   void get_window_origin (int &x, int &y);
-  Pixmap get_pixmap_property (int prop_id);
+  Pixmap get_pixmap_property (Atom property);
 
   // screen.C
 
@@ -1418,7 +1522,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 #endif
   void scr_touch (bool refresh) NOTHROW;
   void scr_expose (int x, int y, int width, int height, bool refresh) NOTHROW;
-  void scr_recolour () NOTHROW;
+  void scr_recolour (bool refresh = true) NOTHROW;
   void scr_remap_chars () NOTHROW;
   void scr_remap_chars (line_t &l) NOTHROW;
 
@@ -1463,10 +1567,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void scr_dump (int fd) NOTHROW;
 
   void selection_check (int check_more) NOTHROW;
-  void selection_paste (Window win, Atom prop, bool delete_prop) NOTHROW;
-  void selection_property (Window win, Atom prop) NOTHROW;
   void selection_request (Time tm, int selnum = Sel_Primary) NOTHROW;
-  int selection_request_other (Atom target, int selnum) NOTHROW;
   void selection_clear (bool clipboard = false) NOTHROW;
   void selection_make (Time tm);
   bool selection_grab (Time tm, bool clipboard = false) NOTHROW;
