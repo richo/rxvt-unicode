@@ -1,3 +1,9 @@
+rxvt-unicode (9.10-4) unstable; urgency=low
+
+  * Updated for new perl5.12 release
+
+ -- Rich Healey <richo@psych0tik.net>  Mon, 09 May 2011 08:56:20 +1000
+
 rxvt-unicode (9.10-3) unstable; urgency=low
 
   * Fixed a few stupid typos that caused segfaults
