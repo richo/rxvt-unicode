@@ -5,10 +5,10 @@ Forwarded: no
 Reviewed-By: Ryan Kavanagh <ryanakca@kubuntu.org>
 Last-Update: 2011-03-06
 
-Index: rxvt-unicode/doc/rxvt.7.pod
+Index: pkg-urxvt/doc/rxvt.7.pod
 ===================================================================
---- rxvt-unicode.orig/doc/rxvt.7.pod	2011-03-06 19:26:24.547756000 -0500
-+++ rxvt-unicode/doc/rxvt.7.pod	2011-03-06 19:30:10.059756001 -0500
+--- pkg-urxvt.orig/doc/rxvt.7.pod	2011-06-22 07:29:11.082612902 -0400
++++ pkg-urxvt/doc/rxvt.7.pod	2011-06-22 07:29:59.826854614 -0400
 @@ -546,12 +546,9 @@
  
  =head3 My numerical keypad acts weird and generates differing output?
@@ -25,7 +25,7 @@ Index: rxvt-unicode/doc/rxvt.7.pod
  
  =head3 My Compose (Multi_key) key is no longer working.
  
-@@ -923,25 +920,6 @@
+@@ -911,25 +908,6 @@
  
  to your C<.profile> or C<.bashrc>.
  
@@ -51,7 +51,7 @@ Index: rxvt-unicode/doc/rxvt.7.pod
  
  =head2 Encoding / Locale / Input Method Issues
  
-@@ -1100,14 +1078,12 @@
+@@ -1088,14 +1066,12 @@
  
  =head3 I am using Debian GNU/Linux and have a problem...
  
