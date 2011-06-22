@@ -1,3 +1,11 @@
+rxvt-unicode (9.11-2) unstable; urgency=low
+
+  * Fix paste in 9.11, 13_fix_paste.diff (Closes: #631264)
+  * Added missing build-arch and build-indep targets to rules
+  * Turn on DM-Upload-Allowed
+
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Thu, 23 Jun 2011 08:08:46 -0400
+
 rxvt-unicode (9.11-1) unstable; urgency=low
 
   * New upstream release
