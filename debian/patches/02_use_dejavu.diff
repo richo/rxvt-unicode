@@ -9,12 +9,12 @@ Bug-Debian: http://bugs.debian.org/461289
 Forwarded: no
 Reviewed-By: Ryan Kavanagh <ryanakca@kubuntu.org>
 Last-Update: 2011-02-24
-Index: rxvt-unicode/src/rxvtfont.C
+Index: pkg-urxvt/src/rxvtfont.C
 ===================================================================
---- rxvt-unicode.orig/src/rxvtfont.C	2011-02-23 14:58:29.008968002 -0500
-+++ rxvt-unicode/src/rxvtfont.C	2011-02-24 11:57:30.884893000 -0500
-@@ -137,7 +137,7 @@
-   { CS_UNICODE,      "-*-lucidatypewriter-*-*-*-*-*-*-*-*-m-*-iso10646-1" },
+--- pkg-urxvt.orig/src/rxvtfont.C	2011-07-19 14:40:16.136549809 -0400
++++ pkg-urxvt/src/rxvtfont.C	2011-07-19 14:40:19.120564605 -0400
+@@ -136,7 +136,7 @@
+ 
    //{ CS_UNICODE,      "-*-unifont-*-*-*-*-*-*-*-*-c-*-iso10646-1"   }, // this gem of a font has actual dotted circles within the combining character glyphs.
  #if XFT
 -  { CS_UNICODE,      "xft:Bitstream Vera Sans Mono:antialias=false:autohint=true" },
