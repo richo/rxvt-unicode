@@ -134,7 +134,6 @@ static const struct rxvt_fallback_font {
 # endif
 #endif
 
-  { CS_UNICODE,      "-*-lucidatypewriter-*-*-*-*-*-*-*-*-m-*-iso10646-1" },
   //{ CS_UNICODE,      "-*-unifont-*-*-*-*-*-*-*-*-c-*-iso10646-1"   }, // this gem of a font has actual dotted circles within the combining character glyphs.
 #if XFT
   { CS_UNICODE,      "xft:Bitstream Vera Sans Mono:antialias=false:autohint=true" },
@@ -526,12 +525,16 @@ struct rxvt_font_overflow : rxvt_font {
              const text_t *text, int len,
              int fg, int bg)
   {
-    while (len--)
+    while (len)
       {
         int fid = fs->find_font_idx (*text);
-        (*fs)[fid]->draw (d, x, y, text, 1, fg, bg);
-        ++text;
-        x += term->fwidth;
+        int w = 1;
+        while (w < len && text[w] == NOCHAR)
+          w++;
+        (*fs)[fid]->draw (d, x, y, text, w, fg, bg);
+        text += w;
+        len -= w;
+        x += term->fwidth * w;
       }
   }
 };
@@ -923,7 +926,7 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
 
   width = 1;
 
-  for (uint16_t *t = extent_test_chars + ARRAY_LENGTH(extent_test_chars); t-- > extent_test_chars; )
+  for (uint16_t *t = extent_test_chars + ecb_array_length (extent_test_chars); t-- > extent_test_chars; )
     {
       if (FROM_UNICODE (cs, *t) == NOCHAR)
         continue;
@@ -1245,7 +1248,7 @@ rxvt_font_xft::load (const rxvt_fontprop &prop, bool force_prop)
 
       int glheight = height;
 
-      for (uint16_t *t = extent_test_chars + ARRAY_LENGTH(extent_test_chars); t-- > extent_test_chars; )
+      for (uint16_t *t = extent_test_chars + ecb_array_length (extent_test_chars); t-- > extent_test_chars; )
         {
           FcChar16 ch = *t;
 

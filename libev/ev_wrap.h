@@ -10,7 +10,7 @@
 #define activecnt ((loop)->activecnt)
 #define loop_done ((loop)->loop_done)
 #define backend_fd ((loop)->backend_fd)
-#define backend_fudge ((loop)->backend_fudge)
+#define backend_mintime ((loop)->backend_mintime)
 #define backend_modify ((loop)->backend_modify)
 #define backend_poll ((loop)->backend_poll)
 #define anfds ((loop)->anfds)
@@ -25,6 +25,8 @@
 #define evfd ((loop)->evfd)
 #define evpipe ((loop)->evpipe)
 #define pipe_w ((loop)->pipe_w)
+#define pipe_write_wanted ((loop)->pipe_write_wanted)
+#define pipe_write_skipped ((loop)->pipe_write_skipped)
 #define curpid ((loop)->curpid)
 #define postfork ((loop)->postfork)
 #define vec_ri ((loop)->vec_ri)
@@ -107,7 +109,7 @@
 #undef activecnt
 #undef loop_done
 #undef backend_fd
-#undef backend_fudge
+#undef backend_mintime
 #undef backend_modify
 #undef backend_poll
 #undef anfds
@@ -122,6 +124,8 @@
 #undef evfd
 #undef evpipe
 #undef pipe_w
+#undef pipe_write_wanted
+#undef pipe_write_skipped
 #undef curpid
 #undef postfork
 #undef vec_ri
