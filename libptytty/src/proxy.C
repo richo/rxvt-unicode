@@ -71,8 +71,8 @@ struct ptytty_proxy : ptytty
 };
 
 #if PTYTTY_REENTRANT
-# define NEED_TOKEN do { char ch; read  (lock_fd, &ch, 1); } while (0)
-# define GIVE_TOKEN do { char ch; write (lock_fd, &ch, 1); } while (0)
+# define NEED_TOKEN read  (lock_fd, &lock_fd, 1)
+# define GIVE_TOKEN write (lock_fd, &lock_fd, 1)
 #else
 # define NEED_TOKEN (void)0
 # define GIVE_TOKEN (void)0
@@ -90,7 +90,7 @@ ptytty_proxy::get ()
   write (sock_fd, &cmd, sizeof (cmd));
 
   if (read (sock_fd, &id, sizeof (id)) != sizeof (id))
-    ptytty_fatal ("protocol error while creating pty using helper process, aborting.\n");
+    PTYTTY_FATAL ("protocol error while creating pty using helper process, aborting.\n");
 
   if (!id)
     {
@@ -100,7 +100,7 @@ ptytty_proxy::get ()
 
   if ((pty = recv_fd (sock_fd)) < 0
       || (tty = recv_fd (sock_fd)) < 0)
-    ptytty_fatal ("protocol error while reading pty/tty fds from helper process, aborting.\n");
+    PTYTTY_FATAL ("protocol error while reading pty/tty fds from helper process, aborting.\n");
 
   GIVE_TOKEN;
   return true;
@@ -231,19 +231,19 @@ ptytty::use_helper ()
   int sv[2];
 
   if (socketpair (AF_UNIX, SOCK_STREAM, 0, sv))
-    ptytty_fatal ("could not create socket to communicate with pty/sessiondb helper, aborting.\n");
+    PTYTTY_FATAL ("could not create socket to communicate with pty/sessiondb helper, aborting.\n");
 
-#ifdef PTYTTY_REENTRANT
+#if PTYTTY_REENTRANT
   int lv[2];
 
   if (socketpair (AF_UNIX, SOCK_STREAM, 0, lv))
-    ptytty_fatal ("could not create socket to communicate with pty/sessiondb helper, aborting.\n");
+    PTYTTY_FATAL ("could not create socket to communicate with pty/sessiondb helper, aborting.\n");
 #endif
 
   helper_pid = fork ();
 
   if (helper_pid < 0)
-    ptytty_fatal ("could not create pty/sessiondb helper process, aborting.\n");
+    PTYTTY_FATAL ("could not create pty/sessiondb helper process, aborting.\n");
 
   if (helper_pid)
     {
@@ -251,7 +251,7 @@ ptytty::use_helper ()
       sock_fd = sv[0];
       close (sv[1]);
       fcntl (sock_fd, F_SETFD, FD_CLOEXEC);
-#ifdef PTYTTY_REENTRANT
+#if PTYTTY_REENTRANT
       lock_fd = lv[0];
       close (lv[1]);
       fcntl (lock_fd, F_SETFD, FD_CLOEXEC);
@@ -261,7 +261,7 @@ ptytty::use_helper ()
     {
       // server, pty-helper
       sock_fd = sv[1];
-#ifdef PTYTTY_REENTRANT
+#if PTYTTY_REENTRANT
       lock_fd = lv[1];
 #endif
 
@@ -332,7 +332,7 @@ ptytty::init ()
 #if PTYTTY_HELPER
       use_helper ();
 #else
-      ptytty_warn ("running setuid/setgid without pty helper compiled in, continuing unprivileged.\n", 0);
+      PTYTTY_WARN ("running setuid/setgid without pty helper compiled in, continuing unprivileged.\n", 0);
 #endif
 
       drop_privileges ();
@@ -361,6 +361,6 @@ ptytty::drop_privileges ()
 
   if (uid != geteuid ()
       || gid != getegid ())
-    ptytty_fatal ("unable to drop privileges, aborting.\n");
+    PTYTTY_FATAL ("unable to drop privileges, aborting.\n");
 }
 

@@ -6684,102 +6684,101 @@ if test "x$ac_cv_header_utmp_h" = x""yes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_UTMP_H 1
 _ACEOF
- { $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct utmp" >&5
-$as_echo_n "checking for struct utmp... " >&6; }
-if test "${pt_cv_struct_utmp+set}" = set; then :
+ ac_fn_cxx_check_type "$LINENO" "struct utmp" "ac_cv_type_struct_utmp" "
+#include <sys/types.h>
+#include <utmp.h>
+
+"
+if test "x$ac_cv_type_struct_utmp" = x""yes; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_STRUCT_UTMP 1
+_ACEOF
+
+
+fi
+
+
+
+# ac_fn_cxx_check_member LINENO AGGR MEMBER VAR INCLUDES
+# ------------------------------------------------------
+# Tries to find if the field MEMBER exists in type AGGR, after including
+# INCLUDES, setting cache variable VAR accordingly.
+ac_fn_cxx_check_member ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $2.$3" >&5
+$as_echo_n "checking for $2.$3... " >&6; }
+if eval "test \"\${$4+set}\"" = set; then :
   $as_echo_n "(cached) " >&6
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#include <sys/types.h>
-#include <utmp.h>
+$5
 int
 main ()
 {
-struct utmp ut;
+static $2 ac_aggr;
+if (ac_aggr.$3)
+return 0;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_cxx_try_compile "$LINENO"; then :
-  pt_cv_struct_utmp=yes
-else
-  pt_cv_struct_utmp=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_struct_utmp" >&5
-$as_echo "$pt_cv_struct_utmp" >&6; }
-if test x$pt_cv_struct_utmp = xyes; then
-
-$as_echo "#define HAVE_STRUCT_UTMP 1" >>confdefs.h
-
-fi
-
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ut_host in utmp struct" >&5
-$as_echo_n "checking for ut_host in utmp struct... " >&6; }
-if test "${pt_cv_struct_utmp_host+set}" = set; then :
-  $as_echo_n "(cached) " >&6
+  eval "$4=yes"
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#include <sys/types.h>
-#include <utmp.h>
+$5
 int
 main ()
 {
-struct utmp ut; ut.ut_host;
+static $2 ac_aggr;
+if (sizeof ac_aggr.$3)
+return 0;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_cxx_try_compile "$LINENO"; then :
-  pt_cv_struct_utmp_host=yes
+  eval "$4=yes"
 else
-  pt_cv_struct_utmp_host=no
+  eval "$4=no"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_struct_utmp_host" >&5
-$as_echo "$pt_cv_struct_utmp_host" >&6; }
-if test x$pt_cv_struct_utmp_host = xyes; then
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
+eval ac_res=\$$4
+	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+$as_echo "$ac_res" >&6; }
+  eval $as_lineno_stack; test "x$as_lineno_stack" = x && { as_lineno=; unset as_lineno;}
+
+} # ac_fn_cxx_check_member
+ac_fn_cxx_check_member "$LINENO" "struct utmp" "ut_host" "ac_cv_member_struct_utmp_ut_host" "
+#include <sys/types.h>
+#include <utmp.h>
+
+"
+if test "x$ac_cv_member_struct_utmp_ut_host" = x""yes; then :
 
 $as_echo "#define HAVE_UTMP_HOST 1" >>confdefs.h
 
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ut_pid in utmp struct" >&5
-$as_echo_n "checking for ut_pid in utmp struct... " >&6; }
-if test "${pt_cv_struct_utmp_pid+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+
+ac_fn_cxx_check_member "$LINENO" "struct utmp" "ut_pid" "ac_cv_member_struct_utmp_ut_pid" "
 #include <sys/types.h>
 #include <utmp.h>
-int
-main ()
-{
-struct utmp ut; ut.ut_pid;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_compile "$LINENO"; then :
-  pt_cv_struct_utmp_pid=yes
-else
-  pt_cv_struct_utmp_pid=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_struct_utmp_pid" >&5
-$as_echo "$pt_cv_struct_utmp_pid" >&6; }
-if test x$pt_cv_struct_utmp_pid = xyes; then
+
+"
+if test "x$ac_cv_member_struct_utmp_ut_pid" = x""yes; then :
 
 $as_echo "#define HAVE_UTMP_PID 1" >>confdefs.h
 
 fi
+
 
 fi
 
@@ -6793,178 +6792,84 @@ if test "x$ac_cv_header_utmpx_h" = x""yes; then :
   cat >>confdefs.h <<_ACEOF
 #define HAVE_UTMPX_H 1
 _ACEOF
- { $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct utmpx" >&5
-$as_echo_n "checking for struct utmpx... " >&6; }
-if test "${pt_cv_struct_utmpx+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+ ac_fn_cxx_check_type "$LINENO" "struct utmpx" "ac_cv_type_struct_utmpx" "
 #include <sys/types.h>
 #include <utmpx.h>
-int
-main ()
-{
-struct utmpx ut;
-  ;
-  return 0;
-}
+
+"
+if test "x$ac_cv_type_struct_utmpx" = x""yes; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_STRUCT_UTMPX 1
 _ACEOF
-if ac_fn_cxx_try_compile "$LINENO"; then :
-  pt_cv_struct_utmpx=yes
-else
-  pt_cv_struct_utmpx=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_struct_utmpx" >&5
-$as_echo "$pt_cv_struct_utmpx" >&6; }
-if test x$pt_cv_struct_utmpx = xyes; then
 
-$as_echo "#define HAVE_STRUCT_UTMPX 1" >>confdefs.h
 
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for host in utmpx struct" >&5
-$as_echo_n "checking for host in utmpx struct... " >&6; }
-if test "${pt_cv_struct_utmpx_host+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+ac_fn_cxx_check_member "$LINENO" "struct utmpx" "ut_host" "ac_cv_member_struct_utmpx_ut_host" "
 #include <sys/types.h>
 #include <utmpx.h>
-int
-main ()
-{
-struct utmpx utx; utx.ut_host;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_compile "$LINENO"; then :
-  pt_cv_struct_utmpx_host=yes
-else
-  pt_cv_struct_utmpx_host=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_struct_utmpx_host" >&5
-$as_echo "$pt_cv_struct_utmpx_host" >&6; }
-if test x$pt_cv_struct_utmpx_host = xyes; then
+
+"
+if test "x$ac_cv_member_struct_utmpx_ut_host" = x""yes; then :
 
 $as_echo "#define HAVE_UTMPX_HOST 1" >>confdefs.h
 
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for session in utmpx struct" >&5
-$as_echo_n "checking for session in utmpx struct... " >&6; }
-if test "${pt_cv_struct_utmpx_session+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+
+ac_fn_cxx_check_member "$LINENO" "struct utmpx" "ut_session" "ac_cv_member_struct_utmpx_ut_session" "
 #include <sys/types.h>
 #include <utmpx.h>
-int
-main ()
-{
-struct utmpx utx; utx.ut_session;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_cxx_try_compile "$LINENO"; then :
-  pt_cv_struct_utmpx_session=yes
-else
-  pt_cv_struct_utmpx_session=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_struct_utmpx_session" >&5
-$as_echo "$pt_cv_struct_utmpx_session" >&6; }
-if test x$pt_cv_struct_utmpx_session = xyes; then
+
+"
+if test "x$ac_cv_member_struct_utmpx_ut_session" = x""yes; then :
 
 $as_echo "#define HAVE_UTMPX_SESSION 1" >>confdefs.h
 
 fi
 
+
 fi
 
 done
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct lastlog" >&5
-$as_echo_n "checking for struct lastlog... " >&6; }
-if test "${pt_cv_struct_lastlog+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+ac_fn_cxx_check_type "$LINENO" "struct lastlog" "ac_cv_type_struct_lastlog" "
 #include <sys/types.h>
 #include <utmp.h>
 #ifdef HAVE_LASTLOG_H
 #include <lastlog.h>
 #endif
 
-int
-main ()
-{
-struct lastlog ll;
-  ;
-  return 0;
-}
+"
+if test "x$ac_cv_type_struct_lastlog" = x""yes; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_STRUCT_LASTLOG 1
 _ACEOF
-if ac_fn_cxx_try_compile "$LINENO"; then :
-  pt_cv_struct_lastlog=yes
-else
-  pt_cv_struct_lastlog=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_struct_lastlog" >&5
-$as_echo "$pt_cv_struct_lastlog" >&6; }
-if test x$pt_cv_struct_lastlog = xyes; then
 
-$as_echo "#define HAVE_STRUCT_LASTLOG 1" >>confdefs.h
 
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for struct lastlogx" >&5
-$as_echo_n "checking for struct lastlogx... " >&6; }
-if test "${pt_cv_struct_lastlogx+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
+
+ac_fn_cxx_check_type "$LINENO" "struct lastlogx" "ac_cv_type_struct_lastlogx" "
 #include <sys/types.h>
 #include <utmpx.h>
 #ifdef HAVE_LASTLOG_H
 #include <lastlog.h>
 #endif
 
-int
-main ()
-{
-struct lastlogx ll;
-  ;
-  return 0;
-}
+"
+if test "x$ac_cv_type_struct_lastlogx" = x""yes; then :
+
+cat >>confdefs.h <<_ACEOF
+#define HAVE_STRUCT_LASTLOGX 1
 _ACEOF
-if ac_fn_cxx_try_compile "$LINENO"; then :
-  pt_cv_struct_lastlogx=yes
-else
-  pt_cv_struct_lastlogx=no
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_struct_lastlogx" >&5
-$as_echo "$pt_cv_struct_lastlogx" >&6; }
-if test x$pt_cv_struct_lastlogx = xyes; then
 
-$as_echo "#define HAVE_STRUCT_LASTLOGX 1" >>confdefs.h
 
 fi
+
 
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking where utmp is located" >&5
@@ -6973,37 +6878,37 @@ if test "${pt_cv_path_utmp+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
   if test "$cross_compiling" = yes; then :
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define UTMP_FILE in config.h manually" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define UTMP_FILE in config.h manually" >&5
 $as_echo "$as_me: WARNING: Define UTMP_FILE in config.h manually" >&2;}
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+
 #include <sys/types.h>
 #include <utmp.h>
-#include <errno.h>
+
 int main()
 {
-    char **u, *utmplist[] = {
-    "/var/run/utmp", "/var/adm/utmp", "/etc/utmp", "/usr/etc/utmp", "/usr/adm/utmp", NULL };
-    FILE *a, *f=fopen("conftestval", "w");
-    if (!f) exit(1);
+    char **path, *list[] = { "/var/run/utmp", "/var/adm/utmp", "/etc/utmp", "/usr/etc/utmp", "/usr/adm/utmp", NULL };
+    FILE *f = fopen("conftestval", "w");
+    if (!f) return 1;
 #ifdef UTMP_FILE
     fprintf(f, "%s\n", UTMP_FILE);
-    exit(0);
-#endif
-#ifdef _PATH_UTMP
+#elif defined(_PATH_UTMP)
     fprintf(f, "%s\n", _PATH_UTMP);
-    exit(0);
-#endif
-    for (u = utmplist; *u; u++) {
-	if ((a = fopen(*u, "r")) != NULL || errno == EACCES) {
-	    fprintf(f, "%s\n", *u);
-	    exit(0);
-	}
+#else
+    for (path = list; *path; path++) {
+        struct stat st;
+        if (stat(*path, &st) == 0) {
+            fprintf(f, "%s\n", *path);
+            break;
+        }
     }
-    exit(0);
+#endif
+    return fclose(f) != 0;
 }
 _ACEOF
 if ac_fn_cxx_try_run "$LINENO"; then :
@@ -7033,39 +6938,39 @@ if test "${pt_cv_path_wtmp+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
   if test "$cross_compiling" = yes; then :
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define WTMP_FILE in config.h manually" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define WTMP_FILE in config.h manually" >&5
 $as_echo "$as_me: WARNING: Define WTMP_FILE in config.h manually" >&2;}
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+
 #include <sys/types.h>
 #ifdef HAVE_UTMP_H
 #include <utmp.h>
 #endif
-#include <errno.h>
+
 int main()
 {
-    char **w, *wtmplist[] = {
-    "/var/log/wtmp", "/var/adm/wtmp", "/etc/wtmp", "/usr/etc/wtmp", "/usr/adm/wtmp", NULL };
-    FILE *a, *f=fopen("conftestval", "w");
-    if (!f) exit(1);
+    char **path, *list[] = { "/var/log/wtmp", "/var/adm/wtmp", "/etc/wtmp", "/usr/etc/wtmp", "/usr/adm/wtmp", NULL };
+    FILE *f = fopen("conftestval", "w");
+    if (!f) return 1;
 #ifdef WTMP_FILE
     fprintf(f, "%s\n", WTMP_FILE);
-    exit(0);
-#endif
-#ifdef _PATH_WTMP
+#elif defined(_PATH_WTMP)
     fprintf(f, "%s\n", _PATH_WTMP);
-    exit(0);
-#endif
-    for (w = wtmplist; *w; w++) {
-	if ((a = fopen(*w, "r")) != NULL || errno == EACCES) {
-	    fprintf(f, "%s\n", *w);
-	    exit(0);
-	}
+#else
+    for (path = list; *path; path++) {
+        struct stat st;
+        if (stat(*path, &st) == 0) {
+            fprintf(f, "%s\n", *path);
+            break;
+        }
     }
-    exit(0);
+#endif
+    return fclose(f) != 0;
 }
 _ACEOF
 if ac_fn_cxx_try_run "$LINENO"; then :
@@ -7094,38 +6999,38 @@ if test "${pt_cv_path_wtmpx+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
   if test "$cross_compiling" = yes; then :
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define WTMPX_FILE in config.h manually" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define WTMPX_FILE in config.h manually" >&5
 $as_echo "$as_me: WARNING: Define WTMPX_FILE in config.h manually" >&2;}
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>
 #endif
-#include <errno.h>
+
 int main()
 {
-    char **w, *wtmplist[] = {
-    "/var/log/wtmpx", "/var/adm/wtmpx", NULL };
-    FILE *a, *f=fopen("conftestval", "w");
-    if (!f) exit(1);
+    char **path, *list[] = { "/var/log/wtmpx", "/var/adm/wtmpx", NULL };
+    FILE *f = fopen("conftestval", "w");
+    if (!f) return 1;
 #ifdef WTMPX_FILE
     fprintf(f, "%s\n", WTMPX_FILE);
-    exit(0);
-#endif
-#ifdef _PATH_WTMPX
+#elif defined(_PATH_WTMPX)
     fprintf(f, "%s\n", _PATH_WTMPX);
-    exit(0);
-#endif
-    for (w = wtmplist; *w; w++) {
-	if ((a = fopen(*w, "r")) != NULL || errno == EACCES) {
-	    fprintf(f, "%s\n", *w);
-	    exit(0);
-	}
+#else
+    for (path = list; *path; path++) {
+        struct stat st;
+        if (stat(*path, &st) == 0) {
+            fprintf(f, "%s\n", *path);
+            break;
+        }
     }
-    exit(0);
+#endif
+    return fclose(f) != 0;
 }
 _ACEOF
 if ac_fn_cxx_try_run "$LINENO"; then :
@@ -7154,43 +7059,42 @@ if test "${pt_cv_path_lastlog+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
   if test "$cross_compiling" = yes; then :
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define LASTLOG_FILE in config.h manually" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define LASTLOG_FILE in config.h manually" >&5
 $as_echo "$as_me: WARNING: Define LASTLOG_FILE in config.h manually" >&2;}
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+
 #include <sys/types.h>
-#ifdef HAVE_UTMPX_H
-#include <utmpx.h>
-#elif defined(HAVE_UTMP_H)
+#ifdef HAVE_UTMP_H
 #include <utmp.h>
 #endif
 #ifdef HAVE_LASTLOG_H
 #include <lastlog.h>
 #endif
-#include <errno.h>
+
 int main()
 {
-    char **w, *lastloglist[] = { "/var/log/lastlog", NULL };
-    FILE *a, *f=fopen("conftestval", "w");
-    if (!f) exit(1);
+    char **path, *list[] = { "/var/log/lastlog", NULL };
+    FILE *f = fopen("conftestval", "w");
+    if (!f) return 1;
 #ifdef LASTLOG_FILE
     fprintf(f, "%s\n", LASTLOG_FILE);
-    exit(0);
-#endif
-#ifdef _PATH_LASTLOG
+#elif defined(_PATH_LASTLOG)
     fprintf(f, "%s\n", _PATH_LASTLOG);
-    exit(0);
-#endif
-    for (w = lastloglist; *w; w++) {
-	if ((a = fopen(*w, "r")) != NULL || errno == EACCES) {
-	    fprintf(f, "%s\n", *w);
-	    exit(0);
-	}
+#else
+    for (path = list; *path; path++) {
+        struct stat st;
+        if (stat(*path, &st) == 0) {
+            fprintf(f, "%s\n", *path);
+            break;
+        }
     }
-    exit(0);
+#endif
+    return fclose(f) != 0;
 }
 _ACEOF
 if ac_fn_cxx_try_run "$LINENO"; then :
@@ -7219,37 +7123,38 @@ if test "${pt_cv_path_lastlogx+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
   if test "$cross_compiling" = yes; then :
-    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define LASTLOGX_FILE in config.h manually" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define LASTLOGX_FILE in config.h manually" >&5
 $as_echo "$as_me: WARNING: Define LASTLOGX_FILE in config.h manually" >&2;}
 else
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
+
 #ifdef HAVE_UTMPX_H
 #include <utmpx.h>
 #endif
-#include <errno.h>
+
 int main()
 {
-    char **w, *wtmplist[] = { "/var/log/lastlogx", "/var/adm/lastlogx", NULL };
-    FILE *a, *f=fopen("conftestval", "w");
-    if (!f) exit(1);
+    char **path, *list[] = { "/var/log/lastlogx", "/var/adm/lastlogx", NULL };
+    FILE *f = fopen("conftestval", "w");
+    if (!f) return 1;
 #ifdef LASTLOGX_FILE
     fprintf(f, "%s\n", LASTLOGX_FILE);
-    exit(0);
-#endif
-#ifdef _PATH_LASTLOGX
+#elif defined(_PATH_LASTLOGX)
     fprintf(f, "%s\n", _PATH_LASTLOGX);
-    exit(0);
-#endif
-    for (w = wtmplist; *w; w++) {
-	if ((a = fopen(*w, "r")) != NULL || errno == EACCES) {
-	    fprintf(f, "%s\n", *w);
-	    exit(0);
-	}
+#else
+    for (path = list; *path; path++) {
+        struct stat st;
+        if (stat(*path, &st) == 0) {
+            fprintf(f, "%s\n", *path);
+            break;
+        }
     }
-    exit(0);
+#endif
+    return fclose(f) != 0;
 }
 _ACEOF
 if ac_fn_cxx_try_run "$LINENO"; then :

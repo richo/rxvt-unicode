@@ -64,7 +64,7 @@
  */
 #if defined(HAVE_STRUCT_UTMP) && !defined(HAVE_UTMP_PID)
 static int
-write_bsd_utmp (int utmp_pos, struct utmp *wu)
+write_bsd_utmp (int utmp_pos, struct utmp *ut)
 {
   int             fd;
 
@@ -72,7 +72,7 @@ write_bsd_utmp (int utmp_pos, struct utmp *wu)
     return 0;
 
   if (lseek (fd, (off_t) (utmp_pos * sizeof (struct utmp)), SEEK_SET) != -1)
-    write (fd, wu, sizeof (struct utmp));
+    write (fd, ut, sizeof (struct utmp));
   close (fd);
   return 1;
 }
@@ -84,7 +84,7 @@ write_bsd_utmp (int utmp_pos, struct utmp *wu)
  */
 #if defined(WTMP_SUPPORT) && !defined(HAVE_UPDWTMP) && defined(HAVE_STRUCT_UTMP)
 static void
-update_wtmp (const char *fname, const struct utmp *putmp)
+update_wtmp (const char *fname, const struct utmp *ut)
 {
   int             fd, gotlock, retry;
   struct flock    lck;	/* fcntl locking scheme */
@@ -114,7 +114,7 @@ update_wtmp (const char *fname, const struct utmp *putmp)
       return;
     }
   if (fstat (fd, &sbuf) == 0)
-    if (write (fd, putmp, sizeof (struct utmp)) != sizeof (struct utmp))
+    if (write (fd, ut, sizeof (struct utmp)) != sizeof (struct utmp))
       ftruncate (fd, sbuf.st_size);	/* remove bad writes */
 
   lck.l_type = F_UNLCK;	/* unlocking the file */
@@ -126,7 +126,7 @@ update_wtmp (const char *fname, const struct utmp *putmp)
 /* ------------------------------------------------------------------------- */
 #ifdef LASTLOG_SUPPORT
 static void
-update_lastlog (const char *fname, const char *pty, const char *host)
+update_lastlog (const char *pty, const char *host)
 {
 # if defined(HAVE_STRUCT_LASTLOGX) && defined(HAVE_UPDLASTLOGX)
   struct lastlogx llx;
@@ -152,7 +152,7 @@ update_lastlog (const char *fname, const char *pty, const char *host)
   pwent = getpwuid (getuid ());
   if (!pwent)
     {
-      ptytty_warn ("no entry in password file, not updating lastlog.\n", 0);
+      PTYTTY_WARN ("no entry in password file, not updating lastlog.\n", 0);
       return;
     }
 
@@ -160,11 +160,11 @@ update_lastlog (const char *fname, const char *pty, const char *host)
   ll.ll_time = time (NULL);
   strncpy (ll.ll_line, pty, sizeof (ll.ll_line));
   strncpy (ll.ll_host, host, sizeof (ll.ll_host));
-  if (stat (fname, &st) != 0)
+  if (stat (LASTLOG_FILE, &st) != 0)
     return;
   if (S_ISDIR (st.st_mode))
     {
-      snprintf (lastlogfile, sizeof (lastlogfile), "%s/%s", fname,
+      snprintf (lastlogfile, sizeof (lastlogfile), "%s/%s", LASTLOG_FILE,
                (!pwent->pw_name || pwent->pw_name[0] == '\0') ? "unknown"
                : pwent->pw_name);
       if ((fd = open (lastlogfile, O_WRONLY | O_CREAT, 0644)) >= 0)
@@ -174,7 +174,7 @@ update_lastlog (const char *fname, const char *pty, const char *host)
         }
     }
   else if (S_ISREG (st.st_mode))
-    if ((fd = open (fname, O_RDWR)) != -1)
+    if ((fd = open (LASTLOG_FILE, O_RDWR)) != -1)
       {
         if (lseek (fd, (off_t) ((long)pwent->pw_uid * sizeof (ll)),
                    SEEK_SET) != -1)
@@ -184,6 +184,63 @@ update_lastlog (const char *fname, const char *pty, const char *host)
 # endif /* HAVE_STRUCT_LASTLOG */
 }
 #endif /* LASTLOG_SUPPORT */
+
+#ifdef HAVE_STRUCT_UTMP
+static void
+fill_utmp (struct utmp *ut, bool login, int pid, const char *id, const char *line, const char *user, const char *host)
+{
+  memset (ut, 0, sizeof (struct utmp));
+
+  strncpy (ut->ut_line, line, sizeof (ut->ut_line));
+# ifdef HAVE_UTMP_PID
+  strncpy (ut->ut_id, id, sizeof (ut->ut_id));
+  ut->ut_pid = pid;
+  ut->ut_type = login ? USER_PROCESS : DEAD_PROCESS;
+# endif
+  ut->ut_time = time (NULL);
+
+  if (login)
+    {
+# ifdef HAVE_UTMP_PID
+      strncpy (ut->ut_user, user, sizeof (ut->ut_user));
+# else
+      strncpy (ut->ut_name, user, sizeof (ut->ut_name));
+# endif
+# ifdef HAVE_UTMP_HOST
+      strncpy (ut->ut_host, host, sizeof (ut->ut_host));
+# endif
+    }
+}
+#endif
+
+#ifdef HAVE_STRUCT_UTMPX
+static void
+fill_utmpx (struct utmpx *utx, bool login, int pid, const char *id, const char *line, const char *user, const char *host)
+{
+  memset (utx, 0, sizeof (struct utmpx));
+
+  // posix says that ut_line is not meaningful for DEAD_PROCESS
+  // records, but most implementations of last use ut_line to
+  // associate records in wtmp file
+  strncpy (utx->ut_line, line, sizeof (utx->ut_line));
+  strncpy (utx->ut_id, id, sizeof (utx->ut_id));
+  utx->ut_pid = pid;
+  utx->ut_type = login ? USER_PROCESS : DEAD_PROCESS;
+  utx->ut_tv.tv_sec = time (NULL);
+  utx->ut_tv.tv_usec = 0;
+# if HAVE_UTMPX_SESSION
+  utx->ut_session = getsid (0);
+# endif
+
+  if (login)
+    {
+      strncpy (utx->ut_user, user, sizeof (utx->ut_user));
+# ifdef HAVE_UTMPX_HOST
+      strncpy (utx->ut_host, host, sizeof (utx->ut_host));
+# endif
+    }
+}
+#endif
 
 /* ------------------------------------------------------------------------- */
 
@@ -209,7 +266,7 @@ ptytty_unix::login (int cmd_pid, bool login_shell, const char *hostname)
 #endif
   int i;
   struct passwd *pwent = getpwuid (getuid ());
-  const char *name = (pwent && pwent->pw_name) ? pwent->pw_name : "?";
+  const char *user = (pwent && pwent->pw_name) ? pwent->pw_name : "?";
 
   if (!strncmp (pty, "/dev/", 5))
     pty += 5;		/* skip /dev/ prefix */
@@ -221,89 +278,41 @@ ptytty_unix::login (int cmd_pid, bool login_shell, const char *hostname)
     sprintf (ut_id, "vt%02x", (i & 0xff));	/* sysv naming */
   else
     {
-      ptytty_warn ("can't parse tty name \"%s\", not adding utmp entry.\n", pty);
+      PTYTTY_WARN ("can't parse tty name \"%s\", not adding utmp entry.\n", pty);
       return;
     }
 #endif
 
 #ifdef HAVE_STRUCT_UTMP
-  memset (ut, 0, sizeof (struct utmp));
-# ifdef HAVE_UTMP_PID
-  setutent ();
-  strncpy (ut->ut_id, ut_id, sizeof (ut->ut_id));
-  ut->ut_type = DEAD_PROCESS;
-  getutid (ut);		/* position to entry in utmp file */
-# endif
+  fill_utmp (ut, true, cmd_pid, ut_id, pty, user, hostname);
 #endif
 
 #ifdef HAVE_STRUCT_UTMPX
-  memset (utx, 0, sizeof (struct utmpx));
-  setutxent ();
-  strncpy (utx->ut_id, ut_id, sizeof (utx->ut_id));
-  utx->ut_type = DEAD_PROCESS;
-  getutxid (utx);		/* position to entry in utmp file */
+  fill_utmpx (utx, true, cmd_pid, ut_id, pty, user, hostname);
 #endif
 
 #ifdef HAVE_STRUCT_UTMP
-  strncpy (ut->ut_line, pty, sizeof (ut->ut_line));
-# ifdef HAVE_UTMP_HOST
-  strncpy (ut->ut_host, hostname, sizeof (ut->ut_host));
-# endif
-  ut->ut_time = time (NULL);
 # ifdef HAVE_UTMP_PID
-  strncpy (ut->ut_user, name, sizeof (ut->ut_user));
-  strncpy (ut->ut_id, ut_id, sizeof (ut->ut_id));
-  ut->ut_pid = cmd_pid;
-  ut->ut_type = USER_PROCESS;
+  setutent ();
   pututline (ut);
-  endutent ();			/* close the file */
-  utmp_pos = 0;
+  endutent ();
 # else
-  strncpy (ut->ut_name, name, sizeof (ut->ut_name));
+  int fd_stdin = dup (STDIN_FILENO);
+  dup2 (tty, STDIN_FILENO);
+
+  utmp_pos = ttyslot ();
+  if (!write_bsd_utmp (utmp_pos, ut))
+    utmp_pos = 0;
+
+  dup2 (fd_stdin, STDIN_FILENO);
+  close (fd_stdin);
 # endif
 #endif
 
 #ifdef HAVE_STRUCT_UTMPX
-  strncpy (utx->ut_line, pty, sizeof (utx->ut_line));
-  strncpy (utx->ut_user, name, sizeof (utx->ut_user));
-  strncpy (utx->ut_id, ut_id, sizeof (utx->ut_id));
-# if HAVE_UTMPX_SESSION
-  utx->ut_session = getsid (0);
-# endif
-  utx->ut_tv.tv_sec = time (NULL);
-  utx->ut_tv.tv_usec = 0;
-  utx->ut_pid = cmd_pid;
-# ifdef HAVE_UTMPX_HOST
-  strncpy (utx->ut_host, hostname, sizeof (utx->ut_host));
-#  if 0
-  {
-    char           *colon;
-
-    if ((colon = strrchr (ut->ut_host, ':')) != NULL)
-      *colon = '\0';
-  }
-#  endif
-# endif
-  utx->ut_type = USER_PROCESS;
+  setutxent ();
   pututxline (utx);
-  endutxent ();		/* close the file */
-  utmp_pos = 0;
-#endif
-
-#if defined(HAVE_STRUCT_UTMP) && !defined(HAVE_UTMP_PID)
-  {
-# if 1
-    int fdstdin = dup (STDIN_FILENO);
-    dup2 (tty, STDIN_FILENO);
-
-    i = ttyslot ();
-    if (write_bsd_utmp (i, ut))
-      utmp_pos = i;
-
-    dup2 (fdstdin, STDIN_FILENO);
-    close (fdstdin);
-# endif
-  }
+  endutxent ();
 #endif
 
 #ifdef WTMP_SUPPORT
@@ -323,11 +332,11 @@ ptytty_unix::login (int cmd_pid, bool login_shell, const char *hostname)
 # endif
     }
 #endif
-#if defined(LASTLOG_SUPPORT) && defined(LASTLOG_FILE)
+#ifdef LASTLOG_SUPPORT
 #ifdef LOG_ONLY_ON_LOGIN
   if (login_shell)
 #endif
-    update_lastlog (LASTLOG_FILE, pty, hostname);
+    update_lastlog (pty, hostname);
 #endif
 }
 
@@ -341,6 +350,11 @@ ptytty_unix::logout ()
   if (!cmd_pid)
     return;
 
+  const char *pty = name;
+
+  if (!strncmp (pty, "/dev/", 5))
+    pty += 5;
+
 #ifdef HAVE_STRUCT_UTMP
   struct utmp *tmput, *ut = &this->ut;
 #endif
@@ -349,36 +363,11 @@ ptytty_unix::logout ()
 #endif
 
 #ifdef HAVE_STRUCT_UTMP
-# ifdef HAVE_UTMP_PID
-  memset (ut, 0, sizeof (struct utmp));
-  setutent ();
-  strncpy (ut->ut_id, this->ut_id, sizeof (ut->ut_id));
-  ut->ut_type = USER_PROCESS;
-  if ((tmput = getutid (ut)))		/* position to entry in utmp file */
-    ut = tmput;
-  ut->ut_type = DEAD_PROCESS;
-# else
-  memset (ut->ut_name, 0, sizeof (ut->ut_name));
-#  ifdef HAVE_UTMP_HOST
-  memset (ut->ut_host, 0, sizeof (ut->ut_host));
-#  endif
-# endif
-  ut->ut_time = time (NULL);
+  fill_utmp (ut, false, cmd_pid, ut_id, pty, 0, 0);
 #endif
 
 #ifdef HAVE_STRUCT_UTMPX
-  memset (utx, 0, sizeof (struct utmpx));
-  setutxent ();
-  strncpy (utx->ut_id, this->ut_id, sizeof (utx->ut_id));
-  utx->ut_type = USER_PROCESS;
-  if ((tmputx = getutxid (utx)))	/* position to entry in utmp file */
-    utx = tmputx;
-  utx->ut_type = DEAD_PROCESS;
-# if HAVE_UTMPX_SESSION
-  utx->ut_session = getsid (0);
-# endif
-  utx->ut_tv.tv_sec = time (NULL);
-  utx->ut_tv.tv_usec = 0;
+  fill_utmpx (utx, false, cmd_pid, ut_id, pty, 0, 0);
 #endif
 
   /*
@@ -407,16 +396,19 @@ ptytty_unix::logout ()
    */
 #ifdef HAVE_STRUCT_UTMP
 # ifdef HAVE_UTMP_PID
-  if (ut->ut_pid == cmd_pid)
+  setutent ();
+  tmput = getutid (ut);
+  if (tmput && tmput->ut_pid == cmd_pid)
     pututline (ut);
   endutent ();
 # else
-  memset (ut, 0, sizeof (struct utmp));
   write_bsd_utmp (utmp_pos, ut);
 # endif
 #endif
 #ifdef HAVE_STRUCT_UTMPX
-  if (utx->ut_pid == cmd_pid)
+  setutxent ();
+  tmputx = getutxid (utx);
+  if (tmputx && tmputx->ut_pid == cmd_pid)
     pututxline (utx);
   endutxent ();
 #endif
