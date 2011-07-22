@@ -451,7 +451,7 @@ bool rxvt_display::ref_init ()
   screen = DefaultScreen     (dpy);
   root   = DefaultRootWindow (dpy);
 
-  assert (ARRAY_LENGTH(xa_names) == NUM_XA);
+  assert (ecb_array_length (xa_names) == NUM_XA);
   XInternAtoms (dpy, (char **)xa_names, NUM_XA, False, xa);
 
   XrmSetDatabase (dpy, get_resources (false));
@@ -705,13 +705,11 @@ rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
       c.color.blue  = color.b;
       c.color.alpha = alpha;
 
-      // ARGB visuals use premultiplied alpha
-      if (format->direct.alphaMask)
-        {
-          c.color.red   = c.color.red   * alpha / 0xffff;
-          c.color.green = c.color.green * alpha / 0xffff;
-          c.color.blue  = c.color.blue  * alpha / 0xffff;
-        }
+      // Xft wants premultiplied alpha, but abuses the alpha channel
+      // as blend factor, and doesn't allow us to set the alpha channel
+      c.color.red   = c.color.red   * alpha / 0xffff;
+      c.color.green = c.color.green * alpha / 0xffff;
+      c.color.blue  = c.color.blue  * alpha / 0xffff;
 
       c.pixel = insert_component (c.color.red  , format->direct.redMask  , format->direct.red  )
               | insert_component (c.color.green, format->direct.greenMask, format->direct.green)
@@ -738,9 +736,9 @@ rxvt_color::alloc (rxvt_screen *screen, const rgba &color)
 
   if (screen->visual->c_class == TrueColor)
     {
-      c.pixel = (color.r >> (16 - rxvt_popcount (screen->visual->red_mask  )) << rxvt_ctz (screen->visual->red_mask  ))
-              | (color.g >> (16 - rxvt_popcount (screen->visual->green_mask)) << rxvt_ctz (screen->visual->green_mask))
-              | (color.b >> (16 - rxvt_popcount (screen->visual->blue_mask )) << rxvt_ctz (screen->visual->blue_mask ));
+      c.pixel = (color.r >> (16 - ecb_popcount32 (screen->visual->red_mask  )) << ecb_ctz32 (screen->visual->red_mask  ))
+              | (color.g >> (16 - ecb_popcount32 (screen->visual->green_mask)) << ecb_ctz32 (screen->visual->green_mask))
+              | (color.b >> (16 - ecb_popcount32 (screen->visual->blue_mask )) << ecb_ctz32 (screen->visual->blue_mask ));
 
       return true;
     }
@@ -1181,8 +1179,7 @@ rxvt_selection::x_cb (XEvent &xev)
 
       case SelectionNotify:
         if (selection_wait == Sel_normal
-            && xev.xselection.time == request_time
-            && xev.xselection.property == request_prop)
+            && xev.xselection.time == request_time)
           {
             timer_ev.stop ();
             handle_selection (xev.xselection.requestor, xev.xselection.property, true);

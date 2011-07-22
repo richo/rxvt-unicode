@@ -86,7 +86,9 @@ conf-unicode-lite:
 	    --disable-iso14755 \
 	    --with-term=rxvt-unicode
 
-build: build-stamp
+build: build-arch build-indep
+build-arch: build-stamp
+build-indep: build-stamp
 build-stamp: config.status
 	dh_testdir
 
