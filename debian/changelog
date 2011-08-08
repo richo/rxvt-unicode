@@ -424,6 +424,13 @@ rxvt-unicode (5.7-1) unstable; urgency=low
 
  -- Eduard Bloch <blade@debian.org>  Sat, 01 Oct 2005 01:08:13 +0200
 
+rxvt-unicode (5.6-1.0.1) unstable; urgency=low
+
+  * Binary-only non-maintainer upload for hppa; no source changes.
+  * Rebuild for libgcc1 -> libgcc2 transition
+
+ -- Aurelien Jarno <aurel32@debian.org>  Thu, 14 Jul 2005 17:59:35 +0200
+
 rxvt-unicode (5.6-1) unstable; urgency=low
 
   * New upstream release
