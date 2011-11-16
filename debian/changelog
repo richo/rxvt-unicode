@@ -1,3 +1,9 @@
+rxvt-unicode (9.12-3) unstable; urgency=low
+
+  * Bump for perl 5.14
+
+ -- Rich Healey <richo@psych0tik.net>  Wed, 16 Nov 2011 15:38:01 +1100
+
 rxvt-unicode (9.12-2) unstable; urgency=low
 
   * richo's patchset
@@ -423,7 +429,7 @@ rxvt-unicode (6.3-1) unstable; urgency=low
     + From upstream changelog: - meta8 support was forcefully enabled in most
       configurations.  restored configurability of this (useless) feature
       (reported by Mikachu). (closes: #346150, reopen if it doesn't)
-    
+
  -- Eduard Bloch <blade@debian.org>  Fri,  6 Jan 2006 01:11:00 +0100
 
 rxvt-unicode (6.2-1) unstable; urgency=low
@@ -503,7 +509,7 @@ rxvt-unicode (5.2-2) unstable; urgency=medium
 rxvt-unicode (5.2-1) unstable; urgency=low
 
   * New upstream release
-  * disabled all Debian specific patches (except of docs changes), 
+  * disabled all Debian specific patches (except of docs changes),
     new version seems to work smooth again
   * set the default font to more concrete default, not allowing X to provide
     bad bitmap fonts
@@ -531,7 +537,7 @@ rxvt-unicode (4.8-1) unstable; urgency=medium
     version 4.7 and bad non-Xft font drawing in 4.8
   * 08_correct_debian_rand.dpatch: correcting the anti-Debian rants in the
     manpage with a reference to README.Debian.gz, also updated README.Debian.gz
-    with a howto for installation of the alternative terminfo data 
+    with a howto for installation of the alternative terminfo data
   * README.devenagari: documented problems and hints for devenagari usage
     (closes: #269891)
 
