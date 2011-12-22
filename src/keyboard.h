@@ -59,7 +59,7 @@ struct keysym_t
   /* which are mapped to corresponding lower bits at register time */
   uint16_t    state;    /* indicates each modifiers' DOWN/UP status         */
   keysym_type type;
-  const char  *str;      /* would normally be a keycode translation in UTF-8 */
+  char        *str;      /* the key's definition encoded in UTF-8 */
 };
 
 class keyboard_manager
@@ -68,15 +68,11 @@ public:
   keyboard_manager ();
   ~keyboard_manager ();
 
-  void clear ();
-  void register_user_translation (KeySym keysym, unsigned int state, const char *trans);
-  void register_translation (KeySym keysym, unsigned int state, char *translation);
-  void register_done ();        // call this to make newly registered keymaps take effect
+  void register_user_translation (KeySym keysym, unsigned int state, const wchar_t *ws);
+  void register_done ();        // call this to make newly registered key bindings take effect
   bool dispatch (rxvt_term *term, KeySym keysym, unsigned int state);
 
 private:
-  void register_keymap (keysym_t *key);
-  void setup_hash ();
   int find_keysym (KeySym keysym, unsigned int state);
 
 private:

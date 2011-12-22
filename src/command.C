@@ -778,13 +778,28 @@ rxvt_term::key_press (XKeyEvent &ev)
           if (newlen)
             len = strlen (kbuf);
 
-          /*
-           * Pass meta for all function keys, if 'meta' option set
-           */
+          if (len > 0)
+            {
+              /*
+               * pass Shift/Control indicators for function keys ending with `~'
+               *
+               * eg,
+               *   Prior = "ESC[5~"
+               *   Shift+Prior = "ESC[5$"
+               *   Ctrl+Prior = "ESC[5^"
+               *   Ctrl+Shift+Prior = "ESC[5@"
+               */
+              if (kbuf[0] == C0_ESC && kbuf[1] == '[' && kbuf[len - 1] == '~')
+                kbuf[len - 1] = (shft ? (ctrl ? '@' : '$') : (ctrl ? '^' : '~'));
+
+              /*
+               * Pass meta for all function keys, if 'meta' option set
+               */
 #ifdef META8_OPTION
-          if (meta && (meta_char == 0x80) && len > 0)
-            kbuf[len - 1] |= 0x80;
+              if (meta && (meta_char == 0x80))
+                kbuf[len - 1] |= 0x80;
 #endif
+            }
 
         }
       else if (ctrl && keysym == XK_minus)
@@ -827,20 +842,6 @@ rxvt_term::key_press (XKeyEvent &ev)
         view_start = 0;
         want_refresh = 1;
       }
-
-  /*
-   * these modifications only affect the static keybuffer
-   * pass Shift/Control indicators for function keys ending with `~'
-   *
-   * eg,
-   *   Prior = "ESC[5~"
-   *   Shift+Prior = "ESC[5$"
-   *   Ctrl+Prior = "ESC[5^"
-   *   Ctrl+Shift+Prior = "ESC[5@"
-   * Meta adds an Escape prefix (with META8_OPTION, if meta == <escape>).
-   */
-  if (kbuf[0] == C0_ESC && kbuf[1] == '[' && kbuf[len - 1] == '~')
-    kbuf[len - 1] = (shft ? (ctrl ? '@' : '$') : (ctrl ? '^' : '~'));
 
   /* escape prefix */
   if (meta
@@ -989,7 +990,7 @@ rxvt_term::flush ()
       scr_refresh ();
       scrollBar.show (1);
 #ifdef USE_XIM
-      IMSendSpot ();
+      im_send_spot ();
 #endif
     }
 
@@ -1044,8 +1045,8 @@ rxvt_term::text_blink_cb (ev::timer &w, int revents)
 void
 rxvt_term::cont_scroll_cb (ev::timer &w, int revents)
 {
-  if ((scrollBar.state == STATE_UP || scrollBar.state == STATE_DOWN)
-      && scr_page (scrollBar.state == STATE_UP ? UP : DN, 1))
+  if ((scrollBar.state == SB_STATE_UP || scrollBar.state == SB_STATE_DOWN)
+      && scr_page (scrollBar.state == SB_STATE_UP ? UP : DN, 1))
     {
       want_refresh = 1;
       refresh_check ();
@@ -1475,12 +1476,7 @@ rxvt_term::x_cb (XEvent &ev)
               {
 #ifdef HAVE_BG_PIXMAP
                 if (moved)
-                  {
-                    if (mapped)
-                      update_background ();
-                    else
-                      bg_invalidate ();
-                  }
+                  update_background ();
 #endif
               }
 
@@ -1564,7 +1560,7 @@ rxvt_term::x_cb (XEvent &ev)
 
             if (scrollBar.state && ev.xany.window == scrollBar.win)
               {
-                scrollBar.state = STATE_IDLE;
+                scrollBar.state = SB_STATE_IDLE;
                 scrollBar.show (0);
               }
           }
@@ -1662,7 +1658,7 @@ rxvt_term::x_cb (XEvent &ev)
 #endif
               }
           }
-        else if (scrollBar.state == STATE_MOTION && ev.xany.window == scrollBar.win)
+        else if (scrollBar.state == SB_STATE_MOTION && ev.xany.window == scrollBar.win)
           {
             while (XCheckTypedWindowEvent (dpy, scrollBar.win,
                                            MotionNotify, &ev))
@@ -1673,7 +1669,7 @@ rxvt_term::x_cb (XEvent &ev)
                           &unused_root_x, &unused_root_y,
                           &ev.xbutton.x, &ev.xbutton.y,
                           &unused_mask);
-            scr_move_to (scrollbar_position (ev.xbutton.y) - csrO,
+            scr_move_to (scrollBar.position (ev.xbutton.y) - csrO,
                          scrollBar.size ());
             want_refresh = 1;
             scrollBar.show (1);
@@ -1723,6 +1719,7 @@ rxvt_term::set_urgency (bool enable)
       h->flags = h->flags & ~XUrgencyHint | (enable ? XUrgencyHint : 0);
       XSetWMHints (dpy, parent, h);
       urgency_hint = enable;
+      XFree (h);
     }
 }
 #endif
@@ -1738,7 +1735,7 @@ rxvt_term::focus_in ()
 #if USE_XIM
       if (Input_Context != NULL)
         {
-          IMSetPosition ();
+          im_set_position ();
           XSetICFocus (Input_Context);
         }
 #endif
@@ -1979,7 +1976,7 @@ rxvt_term::button_press (XButtonEvent &ev)
       else if (scrollBar.dnButton (ev.y))
         direction = DN;  /* down */
 
-      scrollBar.state = STATE_IDLE;
+      scrollBar.state = SB_STATE_IDLE;
       /*
        * Rxvt-style scrollbar:
        * move up if mouse is above slider
@@ -2028,9 +2025,9 @@ rxvt_term::button_press (XButtonEvent &ev)
               if (scr_page (direction, 1))
                 {
                   if (direction == UP)
-                    scrollBar.state = STATE_UP;
+                    scrollBar.state = SB_STATE_UP;
                   else
-                    scrollBar.state = STATE_DOWN;
+                    scrollBar.state = SB_STATE_DOWN;
                 }
             }
           else
@@ -2039,53 +2036,53 @@ rxvt_term::button_press (XButtonEvent &ev)
                 case Button2:
                   switch (scrollBar.align)
                     {
-                      case R_SB_ALIGN_TOP:
+                      case SB_ALIGN_TOP:
                         csrO = 0;
                         break;
-                      case R_SB_ALIGN_CENTRE:
+                      case SB_ALIGN_CENTRE:
                         csrO = (scrollBar.bot - scrollBar.top) / 2;
                         break;
-                      case R_SB_ALIGN_BOTTOM:
+                      case SB_ALIGN_BOTTOM:
                         csrO = scrollBar.bot - scrollBar.top;
                         break;
                     }
 
-                  if (scrollBar.style == R_SB_XTERM
-                      || scrollbar_above_slider (ev.y)
-                      || scrollbar_below_slider (ev.y))
-                    scr_move_to (scrollbar_position (ev.y) - csrO, scrollBar.size ());
+                  if (scrollBar.style == SB_STYLE_XTERM
+                      || scrollBar.above_slider (ev.y)
+                      || scrollBar.below_slider (ev.y))
+                    scr_move_to (scrollBar.position (ev.y) - csrO, scrollBar.size ());
 
-                  scrollBar.state = STATE_MOTION;
+                  scrollBar.state = SB_STATE_MOTION;
                   break;
 
                 case Button1:
-                  if (scrollBar.align == R_SB_ALIGN_CENTRE)
+                  if (scrollBar.align == SB_ALIGN_CENTRE)
                     csrO = ev.y - scrollBar.top;
                   /* FALLTHROUGH */
 
                 case Button3:
-                  if (scrollBar.style != R_SB_XTERM)
+                  if (scrollBar.style != SB_STYLE_XTERM)
                     {
-                      if (scrollbar_above_slider (ev.y))
+                      if (scrollBar.above_slider (ev.y))
 # ifdef RXVT_SCROLL_FULL
                         scr_page (UP, nrow - 1);
 # else
                         scr_page (UP, nrow / 4);
 # endif
-                      else if (scrollbar_below_slider (ev.y))
+                      else if (scrollBar.below_slider (ev.y))
 # ifdef RXVT_SCROLL_FULL
                         scr_page (DN, nrow - 1);
 # else
                         scr_page (DN, nrow / 4);
 # endif
                       else
-                        scrollBar.state = STATE_MOTION;
+                        scrollBar.state = SB_STATE_MOTION;
                     }
                   else
                     {
                       scr_page ((ev.button == Button1 ? DN : UP),
                                 (nrow
-                                 * scrollbar_position (ev.y)
+                                 * scrollBar.position (ev.y)
                                  / scrollBar.size ()));
                     }
 
@@ -2106,9 +2103,9 @@ rxvt_term::button_release (XButtonEvent &ev)
   if (!bypass_keystate)
     reportmode = !! (priv_modes & PrivMode_mouse_report);
 
-  if (scrollBar.state == STATE_UP || scrollBar.state == STATE_DOWN)
+  if (scrollBar.state == SB_STATE_UP || scrollBar.state == SB_STATE_DOWN)
     {
-      scrollBar.state = STATE_IDLE;
+      scrollBar.state = SB_STATE_IDLE;
       scrollBar.show (0);
     }
 
@@ -2597,7 +2594,7 @@ rxvt_term::process_escape_vt52 (unicode_t ch)
         tt_printf ("\033/Z");	/* I am a VT100 emulating a VT52 */
         break;
       case '<':		/* turn off VT52 mode */
-        set_privmode (PrivMode_vt52, 0);
+        priv_modes &= ~PrivMode_vt52;
         break;
       case 'F':     	/* use special graphics character set */
       case 'G':           /* use regular character set */
@@ -2658,9 +2655,12 @@ rxvt_term::process_escape_seq ()
         scr_forwardindex ();
         break;
 #endif
+      // DECPAM/DECPNM
       case '=':
+        priv_modes |= PrivMode_aplKP;
+        break;
       case '>':
-        set_privmode (PrivMode_aplKP, ch == '=');
+        priv_modes &= ~PrivMode_aplKP;
         break;
 
       case C1_40:
@@ -2889,11 +2889,11 @@ rxvt_term::process_csi_seq ()
 #endif
 
       case CSI_CUU:		/* 8.3.22: (1) CURSOR UP */
-      case CSI_VPR:		/* 8.3.161: (1) LINE POSITION FORWARD */
+      case CSI_VPB:		/* 8.3.160: (1) LINE POSITION BACKWARD */
         arg[0] = -arg[0];
         /* FALLTHROUGH */
       case CSI_CUD:		/* 8.3.19: (1) CURSOR DOWN */
-      case CSI_VPB:		/* 8.3.160: (1) LINE POSITION BACKWARD */
+      case CSI_VPR:		/* 8.3.161: (1) LINE POSITION FORWARD */
         scr_gotorc (arg[0], 0, RELATIVE);
         break;
 
@@ -3454,25 +3454,18 @@ rxvt_term::process_xterm_seq (int op, char *str, char resp)
           }
         else
           {
-            int changed = 0;
+            bool changed = false;
 
             if (*str != ';')
               {
                 if (bg_set_file (str))	/* change pixmap */
-                  {
-                    changed++;
-                    str = strchr (str, ';');
-                    if (str == NULL)
-                      bg_set_default_geometry ();
-                    else
-                      bg_set_geometry (str+1);
-                  }
+                  changed = true;
               }
             else
               {
                 str++;
                 if (bg_set_geometry (str, true))
-                  changed++;
+                  changed = true;
               }
 
             if (changed)
@@ -3598,7 +3591,10 @@ rxvt_term::privcases (int mode, unsigned long bit)
       else
         state = (mode == 't') ? ! (priv_modes & bit) : mode;
 
-      set_privmode (bit, state);
+      if (state)
+        priv_modes |= bit;
+      else
+        priv_modes &= ~bit;
     }
 
   return state;
@@ -3617,7 +3613,7 @@ rxvt_term::process_terminal_mode (int mode, int priv ecb_unused, unsigned int na
     const unsigned long bit;
   } argtopriv[] = {
                   { 1, PrivMode_aplCUR },       // DECCKM
-                  { 2, PrivMode_vt52 },
+                  { 2, PrivMode_vt52 },         // DECANM
                   { 3, PrivMode_132 },          // DECCOLM
                   { 4, PrivMode_smoothScroll }, // DECSCLM
                   { 5, PrivMode_rVideo },       // DECSCNM
@@ -3627,7 +3623,7 @@ rxvt_term::process_terminal_mode (int mode, int priv ecb_unused, unsigned int na
                   { 9, PrivMode_MouseX10 },
                  // 18 end FF to printer after print screen
                  // 19 Print screen prints full screen/scroll region
-                  { 25, PrivMode_VisibleCursor }, // cnorm/cvvis/civis
+                  { 25, PrivMode_VisibleCursor }, // DECTCEM cnorm/cvvis/civis
 #ifdef scrollBar_esc
                   { scrollBar_esc, PrivMode_scrollBar },
 #endif
@@ -3638,7 +3634,7 @@ rxvt_term::process_terminal_mode (int mode, int priv ecb_unused, unsigned int na
                  // 45 margin bell NYI
                  // 46 start logging
                   { 47, PrivMode_Screen },
-                  { 66, PrivMode_aplKP },       // DECPAM/DECPNM
+                  { 66, PrivMode_aplKP },       // DECNKM
 #ifndef NO_BACKSPACE_KEY
                   { 67, PrivMode_BackSpace },   // DECBKM
 #endif
@@ -3713,7 +3709,7 @@ rxvt_term::process_terminal_mode (int mode, int priv ecb_unused, unsigned int na
                * parameter.  Return from VT52 mode with an ESC < from
                * within VT52 mode
                */
-              set_privmode (PrivMode_vt52, 1);
+              priv_modes |= PrivMode_vt52;
               break;
             case 3:			/* 80/132 */
               if (priv_modes & PrivMode_132OK)
@@ -3738,11 +3734,9 @@ rxvt_term::process_terminal_mode (int mode, int priv ecb_unused, unsigned int na
               break;
 #ifdef scrollBar_esc
             case scrollBar_esc:
-              if (scrollBar.map (state))
-                {
-                  resize_all_windows (0, 0, 0);
-                  scr_touch (true);
-                }
+              scrollBar.map (state);
+              resize_all_windows (0, 0, 0);
+              scr_touch (true);
               break;
 #endif
             case 25:		/* visible/invisible cursor */

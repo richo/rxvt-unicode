@@ -27,31 +27,14 @@
 #include <cstring>
 
 int
-main (int argc, const char *const *argv)
+main (int argc, char *argv[])
 try
   {
     ptytty::init ();
     rxvt_init ();
 
     rxvt_term *t = new rxvt_term;
-
-#if ENABLE_PERL
-    stringvec *args = new stringvec;
-    stringvec *envv = new stringvec;
-
-    for (int i = 0; i < argc; i++)
-      args->push_back (strdup (argv [i]));
-
-    for (char **var = environ; *var; var++)
-      envv->push_back (strdup (*var));
-
-    envv->push_back (0);
-
-    t->init (args, envv);
-#else
-    t->init (argc, argv, 0);
-#endif
-
+    t->init (argc, argv, environ);
     ev_run ();
 
     return EXIT_SUCCESS;

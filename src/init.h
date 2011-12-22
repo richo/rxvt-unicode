@@ -34,7 +34,7 @@
 # define CQUIT		'\034'	/* ^\ */
 #endif
 #ifndef CERASE
-# ifdef linux
+# ifdef __linux__
 #  define CERASE	'\177'	/* ^? */
 # else
 #  define CERASE	'\010'	/* ^H */
@@ -83,9 +83,6 @@
 # endif
 #endif
 
-#ifndef O_NOCTTY
-# define O_NOCTTY	0
-#endif
 #ifndef ONLCR
 # define ONLCR		0
 #endif

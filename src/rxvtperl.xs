@@ -369,6 +369,7 @@ rxvt_perl_interp::init (rxvt_term *term)
       // runs outside of perls ENV
       term->perl.self = (void *)newSVptr ((void *)term, "urxvt::term");
       hv_store ((HV *)SvRV ((SV *)term->perl.self), "_overlay", 8, newRV_noinc ((SV *)newAV ()), 0);
+      hv_store ((HV *)SvRV ((SV *)term->perl.self), "_selection", 10, newRV_noinc ((SV *)newAV ()), 0);
     }
 }
 
@@ -398,6 +399,16 @@ rxvt_perl_interp::invoke (rxvt_term *term, hook_type htype, ...)
 
       for (int i = 0; i <= AvFILL (av); i++)
         ((overlay *)SvIV (*av_fetch (av, i, 0)))->swap ();
+    }
+  else if (htype == HOOK_DESTROY)
+    {
+      AV *av = (AV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)term->perl.self), "_selection", 10, 0));
+
+      for (int i = AvFILL (av); i >= 0; i--)
+        {
+          rxvt_selection *req = (rxvt_selection *)SvIV (*av_fetch (av, i, 0));
+          delete req;
+        }
     }
 
   bool event_consumed;
@@ -790,8 +801,8 @@ BOOT:
 #   endif
   };
 
-  for (civ = const_iv + ecb_array_length (const_iv); civ-- > const_iv; )
-    newCONSTSUB (stash, (char *)civ->name, newSViv (civ->iv));
+  for (civ = const_iv + ecb_array_length (const_iv); civ > const_iv; civ--)
+    newCONSTSUB (stash, (char *)civ[-1].name, newSViv (civ[-1].iv));
 }
 
 void
@@ -878,6 +889,8 @@ _new_selection_request (rxvt_term *term, int selnum, Time tm, Window win, Atom p
 	CODE:
         rxvt_selection *req = new rxvt_selection (term->display, selnum, tm, win, prop, term);
         req->cb_sv = newSVsv (cb);
+        AV *av = (AV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)term->perl.self), "_selection", 10, 0));
+        av_push (av, newSViv ((IV)req));
         RETVAL = (IV)req;
 	OUTPUT:
         RETVAL
@@ -886,6 +899,18 @@ void
 _delete_selection_request (IV req_)
 	CODE:
         rxvt_selection *req = (rxvt_selection *)req_;
+        AV *av = (AV *)SvRV (*hv_fetch ((HV *)SvRV ((SV *)req->term->perl.self), "_selection", 10, 0));
+        int i;
+
+        for (i = AvFILL (av); i >= 0; i--)
+          if (SvIV (*av_fetch (av, i, 1)) == req_)
+            break;
+
+        for (; i < AvFILL (av); i++)
+          av_store (av, i, SvREFCNT_inc (*av_fetch (av, i + 1, 0)));
+
+        av_pop (av);
+
         delete req;
 
 MODULE = urxvt             PACKAGE = urxvt::term
@@ -897,15 +922,12 @@ _new (AV *env, AV *arg)
         rxvt_term *term = new rxvt_term;
 
 	stringvec *argv = new stringvec;
-	stringvec *envv = new stringvec;
-
         for (int i = 0; i <= AvFILL (arg); i++)
           argv->push_back (strdup (SvPVbyte_nolen (*av_fetch (arg, i, 1))));
 
+	stringvec *envv = new stringvec;
         for (int i = AvFILL (env) + 1; i--; )
           envv->push_back (strdup (SvPVbyte_nolen (*av_fetch (env, i, 1))));
-
-        envv->push_back (0);
 
         try
           {
@@ -955,11 +977,6 @@ void
 rxvt_term::XUngrabKey (int keycode, U32 modifiers, Window window = THIS->vt)
 	CODE:
 	XUngrabKey (THIS->dpy, keycode, modifiers, window);
-
-void
-rxvt_term::XUngrabKeyboard (Time eventtime)
-	CODE:
-	XUngrabKeyboard (THIS->dpy, eventtime);
 
 bool
 rxvt_term::grab (Time eventtime, int sync = 0)
@@ -1241,6 +1258,9 @@ rxvt_term::view_start (int newval = 1)
 }
         OUTPUT:
 	RETVAL
+
+void
+rxvt_term::set_urgency (bool enable)
 
 void
 rxvt_term::focus_in ()
@@ -1565,6 +1585,13 @@ rxvt_term::parse_keysym (char *keysym, char *str)
         THIS->keyboard->register_done ();
 	OUTPUT:
         RETVAL
+
+void
+rxvt_term::register_command (int keysym, unsigned int state, SV *str)
+        CODE:
+        wchar_t *wstr = sv2wcs (str);
+        THIS->keyboard->register_user_translation (keysym, state, wstr);
+        free (wstr);
 
 void
 rxvt_term::screen_cur (...)

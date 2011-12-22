@@ -983,7 +983,7 @@ struct rxvt_vars : TermWin_t
   XSizeHints      szHint;
   rxvt_color     *pix_colors;
   Cursor          TermWin_cursor;       /* cursor for vt window */
-  line_t         *row_buf;      // all lines, scrollback + terminal, circular, followed by temp_buf
+  line_t         *row_buf;      // all lines, scrollback + terminal, circular
   line_t         *drawn_buf;    // text on screen
   line_t         *swap_buf;     // lines for swap buffer
   char           *tabs;         /* per location: 1 == tab-stop               */
@@ -1101,9 +1101,10 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 
     BG_EFFECTS_FLAGS     = BG_NEEDS_TINT | BG_NEEDS_BLUR,
 
-    BG_PROP_SCALE        = 1 <<  3,
+    BG_KEEP_ASPECT       = 1 <<  3,
     BG_ROOT_ALIGN        = 1 <<  4,
-    BG_GEOMETRY_FLAGS    = BG_PROP_SCALE | BG_ROOT_ALIGN,
+    BG_TILE              = 1 << 14,
+    BG_GEOMETRY_FLAGS    = BG_KEEP_ASPECT | BG_ROOT_ALIGN | BG_TILE,
 
     BG_TINT_SET          = 1 <<  5,
     BG_TINT_BITAND       = 1 <<  6,
@@ -1317,12 +1318,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void tt_write (const char *data, unsigned int len);
   void pty_write ();
 
-  void init (stringvec *argv, stringvec *envv)
-  {
-    this->argv = argv;
-    init (argv->size (), argv->begin (), envv);
-  }
-
   void make_current () const // make this the "currently active" urxvt instance
   {
     SET_R (this);
@@ -1343,10 +1338,10 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void im_set_color (unsigned long &fg, unsigned long &bg);
   void im_set_preedit_area (XRectangle &preedit_rect, XRectangle &status_rect, const XRectangle &needed_rect);
 
-  bool IMisRunning ();
-  void IMSendSpot ();
-  bool IM_get_IC (const char *modifiers);
-  void IMSetPosition ();
+  bool im_is_running ();
+  void im_send_spot ();
+  bool im_get_ic (const char *modifiers);
+  void im_set_position ();
 #endif
 
   // command.C
@@ -1389,9 +1384,11 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void process_terminal_mode (int mode, int priv, unsigned int nargs, const int *arg);
   void process_sgr_mode (unsigned int nargs, const int *arg);
   // init.C
+  void init (stringvec *argv, stringvec *envv);
+  void init (int argc, const char *const *argv, const char *const *envv);
+  void init2 (int argc, const char *const *argv);
   void init_vars ();
   const char **init_resources (int argc, const char *const *argv);
-  void init (int argc, const char *const *argv, stringvec *envv);
   void init_env ();
   void set_locale (const char *locale);
   void init_xlocale ();
@@ -1464,7 +1461,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 # if ENABLE_STYLES
         && option (Opt_intensityStyles)
 # endif
-        && IN_RANGE_INC (base, minCOLOR, minBrightCOLOR))
+        && IN_RANGE_EXC (base, minCOLOR, minBrightCOLOR))
       base += minBrightCOLOR - minCOLOR;
 #endif
     return base;
@@ -1478,7 +1475,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 # if ENABLE_STYLES
         && option (Opt_intensityStyles)
 # endif
-        && IN_RANGE_INC (base, minCOLOR, minBrightCOLOR))
+        && IN_RANGE_EXC (base, minCOLOR, minBrightCOLOR))
       base += minBrightCOLOR - minCOLOR;
 #endif
     return base;
@@ -1490,14 +1487,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   }
 
   void set_option (uint8_t opt, bool set = true) NOTHROW;
-
-  void set_privmode (unsigned bit, int set) NOTHROW
-  {
-    if (set)
-      priv_modes |= bit;
-    else
-      priv_modes &= ~bit;
-  }
 
   // modifies first argument(!)
   void tt_paste (char *data, unsigned int len) NOTHROW;
@@ -1578,10 +1567,11 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void selection_rotate (int x, int y) NOTHROW;
 
   // xdefaults.C
-  void get_options (int argc, const char *const *argv);
+  const char **get_options (int argc, const char *const *argv);
   int parse_keysym (const char *str, const char *arg);
   const char *x_resource (const char *name);
   void extract_resources ();
+  void extract_keysym_resources ();
 };
 
 #endif /* _RXVT_H_ */

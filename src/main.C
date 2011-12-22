@@ -107,7 +107,7 @@ text_t rxvt_composite_vec::compose (unicode_t c1, unicode_t c2)
     }
 
   // check to see whether this combination already exists otherwise
-  for (cc = v.end (); cc-- > v.begin (); )
+  for (cc = v.begin (); cc < v.end (); cc++)
     if (cc->c1 == c1 && cc->c2 == c2)
       return COMPOSE_LO + (cc - v.begin ());
 
@@ -708,6 +708,15 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
 
   ncol = width  / fwidth;
   nrow = height / fheight;
+
+  // When the size of the vt window is not a multiple of the cell
+  // size, i.e., when the wm does not honour our size hints, there are
+  // extra areas not covered by the terminal screen. Such gaps, when a
+  // bg pixmap is set, would have to be cleared manually to properly
+  // refresh the background. We take the simpler route and shrink the
+  // vt window so as to avoid creating gaps.
+  width  = ncol * fwidth;
+  height = nrow * fheight;
 }
 
 /*----------------------------------------------------------------------*/
@@ -1080,7 +1089,7 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
     scr_reset ();
 
 #ifdef USE_XIM
-  IMSetPosition ();
+  im_set_position ();
 #endif
 }
 
@@ -1151,7 +1160,7 @@ rxvt_term::im_set_preedit_area (XRectangle &preedit_rect,
 
 /* Checking whether input method is running. */
 bool
-rxvt_term::IMisRunning ()
+rxvt_term::im_is_running ()
 {
   Atom atom;
   Window win;
@@ -1177,7 +1186,7 @@ rxvt_term::IMisRunning ()
 }
 
 void
-rxvt_term::IMSendSpot ()
+rxvt_term::im_send_spot ()
 {
   XPoint nspot;
   XVaNestedList preedit_attr;
@@ -1293,7 +1302,7 @@ xim_preedit_caret (XIC ic, XPointer client_data, XIMPreeditCaretCallbackStruct *
  * open a suitable preedit type
  */
 bool
-rxvt_term::IM_get_IC (const char *modifiers)
+rxvt_term::im_get_ic (const char *modifiers)
 {
   int i, j, found;
   XIM xim;
@@ -1303,9 +1312,6 @@ rxvt_term::IM_get_IC (const char *modifiers)
   const char *p;
   char **s;
   XIMStyles *xim_styles;
-#ifdef ENABLE_XIM_ONTHESPOT
-  XIMCallback xcb[4];
-#endif
 
   set_environ (envv);
 
@@ -1455,6 +1461,8 @@ foundpet:
 #if ENABLE_XIM_ONTHESPOT
   else if (input_style & XIMPreeditCallbacks)
     {
+      XIMCallback xcb[4];
+
       im_set_position (spot);
 
       xcb[0].client_data = (XPointer)this; xcb[0].callback = (XIMProc)xim_preedit_start;
@@ -1502,7 +1510,7 @@ foundpet:
     vt_select_input ();
 #endif
 
-  IMSetPosition ();
+  im_set_position ();
 
   return true;
 }
@@ -1540,7 +1548,7 @@ rxvt_term::im_cb ()
             {
               strcpy (buf, "@im=");
               strncat (buf, s[i], IMBUFSIZ - 5);
-              if (IM_get_IC (buf))
+              if (im_get_ic (buf))
                 {
                   found = true;
                   break;
@@ -1555,11 +1563,11 @@ rxvt_term::im_cb ()
     }
 
   /* try with XMODIFIERS env. var. */
-  if (IM_get_IC (""))
+  if (im_get_ic (""))
     goto done;
 
   /* try with no modifiers base IF the user didn't specify an IM */
-  if (IM_get_IC ("@im=none"))
+  if (im_get_ic ("@im=none"))
     goto done;
 
 done:
@@ -1570,7 +1578,7 @@ done:
 }
 
 void
-rxvt_term::IMSetPosition ()
+rxvt_term::im_set_position ()
 {
   XRectangle preedit_rect, status_rect, *needed_rect;
   XVaNestedList preedit_attr, status_attr;
@@ -1578,7 +1586,7 @@ rxvt_term::IMSetPosition ()
   if (!Input_Context
       || !focus
       || !(input_style & (XIMPreeditArea | XIMPreeditPosition))
-      || !IMisRunning ())
+      || !im_is_running ())
     return;
 
   if (input_style & XIMPreeditPosition)
@@ -1652,6 +1660,9 @@ rxvt_term::update_background ()
     return;
 
   bg_invalidate ();
+
+  if (!mapped)
+    return;
 
   ev_tstamp to_wait = 0.5 - (ev::now () - bg_valid_since);
 

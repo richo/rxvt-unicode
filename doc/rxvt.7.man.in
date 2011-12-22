@@ -124,7 +124,7 @@
 .\" ========================================================================
 .\"
 .IX Title "@@RXVT_NAME@@ 7"
-.TH @@RXVT_NAME@@ 7 "2011-06-29" "@@RXVT_VERSION@@" "RXVT-UNICODE"
+.TH @@RXVT_NAME@@ 7 "2011-12-18" "@@RXVT_VERSION@@" "RXVT-UNICODE"
 .\" For nroff, turn off justification.  Always turn off hyphenation; it makes
 .\" way too many mistakes in technical documents.
 .if n .ad l
@@ -1709,8 +1709,8 @@ Move forward \fB\f(CB\*(C`Ps\*(C'\fB\fR tab stops [default: 1]
 Erase in Display (\s-1ED\s0)
 .TS
 l l .
-Ps = 0	Clear Below (default)
-Ps = 1	Clear Above
+Ps = 0	Clear Right and Below (default)
+Ps = 1	Clear Left and Above
 Ps = 2	Clear All
 .TE
 .ie n .IP "\fB\fB""ESC [ Ps K""\fB\fR" 4
@@ -2539,8 +2539,8 @@ option requires \-\-enable\-utmp to also be specified.
 Write user and tty to lastlog file (used by programs like
 \&\fIlastlogin\fR) at start of rxvt execution.  This option requires
 \&\-\-enable\-utmp to also be specified.
-.IP "\-\-enable\-afterimage (default: on)" 4
-.IX Item "--enable-afterimage (default: on)"
+.IP "\-\-enable\-afterimage (default: off)" 4
+.IX Item "--enable-afterimage (default: off)"
 Add support for libAfterImage to be used for background
 images. It adds support for many file formats including \s-1JPG\s0, \s-1PNG\s0,
 \&\s-1SVG\s0, \s-1TIFF\s0, \s-1GIF\s0, \s-1XPM\s0, \s-1BMP\s0, \s-1ICO\s0, \s-1XCF\s0, \s-1TGA\s0 and AfterStep image \s-1XML\s0
@@ -2555,6 +2555,10 @@ lowered if libAfterImage is configured without support for \s-1SVG\s0.
 Add support for GDK-PixBuf to be used for background images.
 It adds support for many file formats including \s-1JPG\s0, \s-1PNG\s0,
 \&\s-1TIFF\s0, \s-1GIF\s0, \s-1XPM\s0, \s-1BMP\s0, \s-1ICO\s0 and \s-1TGA\s0.
+.IP "\-\-enable\-startup\-notification (default: on)" 4
+.IX Item "--enable-startup-notification (default: on)"
+Add support for freedesktop startup notifications. This allows window managers
+to display some kind of progress indicator during startup.
 .IP "\-\-enable\-transparency (default: on)" 4
 .IX Item "--enable-transparency (default: on)"
 Add support for using the root pixmap as background to simulate transparency.
