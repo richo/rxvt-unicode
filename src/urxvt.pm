@@ -261,14 +261,16 @@ C<matcher.pattern.0> resource, and additional patterns can be specified
 with numbered patterns, in a manner similar to the "selection" extension.
 The launcher can also be overridden on a per-pattern basis.
 
-It is possible to activate the most recently seen match from the keyboard.
-Simply bind a keysym to "perl:matcher" as seen in the example below.
+It is possible to activate the most recently seen match or a list of matches
+from the keyboard.  Simply bind a keysym to "perl:matcher:last" or
+"perl:matcher:list" as seen in the example below.
 
 Example configuration:
 
     URxvt.perl-ext:           default,matcher
     URxvt.urlLauncher:        sensible-browser
-    URxvt.keysym.C-Delete:    perl:matcher
+    URxvt.keysym.C-Delete:    perl:matcher:last
+    URxvt.keysym.M-Delete:    perl:matcher:list
     URxvt.matcher.button:     1
     URxvt.matcher.pattern.1:  \\bwww\\.[\\w-]+\\.[\\w./?&@#-]*[\\w/-]
     URxvt.matcher.pattern.2:  \\B(/\\S+?):(\\d+)(?=:|$)
@@ -400,6 +402,14 @@ overlays or changes.
 Displays a confirmation dialog when a paste containing at least a full
 line is detected.
 
+=item bell-command
+
+Runs the command specified by the C<URxvt.bell-command> resource when
+a bell event occurs. For example, the following pops up a notification
+bubble with the text "Beep, Beep" using notify-send:
+
+   URxvt.bell-command: notify-send "Beep, Beep"
+
 =back
 
 =head1 API DOCUMENTATION
@@ -438,12 +448,18 @@ encoding (often locale-specific) and binary data.
 Either binary data or - more common - a text string encoded in a
 locale-specific way.
 
+=item $keysym
+
+an integer that is a valid X11 keysym code. You can convert a string
+into a keysym and viceversa by using C<XStringToKeysym> and
+C<XKeysymToString>.
+
 =back
 
 =head2 Extension Objects
 
 Every perl extension is a perl class. A separate perl object is created
-for each terminal, and each terminal has its own set of extenion objects,
+for each terminal, and each terminal has its own set of extension objects,
 which are passed as the first parameter to hooks. So extensions can use
 their C<$self> object without having to think about clashes with other
 extensions or other terminals, with the exception of methods and members
@@ -658,6 +674,13 @@ resource in the @@RXVT_NAME@@(1) manpage).
 The event is simply the action string. This interface is assumed to change
 slightly in the future.
 
+=item on_register_command $term, $keysym, $modifiermask, $string
+
+Called after parsing a keysym resource but before registering the
+associated binding. If this hook returns TRUE the binding is not
+registered. It can be used to modify a binding by calling
+C<register_command>.
+
 =item on_resize_all_windows $term, $new_width, $new_height
 
 Called just after the new window size has been calculated, but before
@@ -821,7 +844,7 @@ Messages have a size limit of 1023 bytes currently.
 Returns all urxvt::term objects that exist in this process, regardless of
 whether they are started, being destroyed etc., so be careful. Only term
 objects that have perl extensions attached will be returned (because there
-is no urxvt::term objet associated with others).
+is no urxvt::term object associated with others).
 
 =item $time = urxvt::NOW
 
@@ -967,7 +990,7 @@ sub invoke {
    my $htype = shift;
 
    if ($htype == 0) { # INIT
-      my @dirs = ((split /:/, $TERM->resource ("perl_lib")), "$LIBDIR/perl");
+      my @dirs = ((split /:/, $TERM->resource ("perl_lib")), "$ENV{HOME}/.urxvt/ext", "$LIBDIR/perl");
 
       my %ext_arg;
 
@@ -1209,6 +1232,7 @@ sub DESTROY {
    $_[0][1]->stop;
 }
 
+# only needed for AnyEvent < 6 compatibility
 sub one_event {
    Carp::croak "AnyEvent->one_event blocking wait unsupported in urxvt, use a non-blocking API";
 }
@@ -1310,12 +1334,13 @@ C<%urxvt::OPTION>. Options not enabled in this binary are not in the hash.
 Here is a likely non-exhaustive list of option names, please see the
 source file F</src/optinc.h> to see the actual list:
 
- borderLess console cursorBlink cursorUnderline hold iconic insecure
- intensityStyles jumpScroll loginShell mapAlert meta8 mouseWheelScrollPage
- override-redirect pastableTabs pointerBlank reverseVideo scrollBar
- scrollBar_floating scrollBar_right scrollTtyKeypress scrollTtyOutput
- scrollWithBuffer secondaryScreen secondaryScroll skipBuiltinGlyphs
- transparent tripleclickwords utmpInhibit visualBell
+ borderLess buffered console cursorBlink cursorUnderline hold iconic
+ insecure intensityStyles iso14755 iso14755_52 jumpScroll loginShell
+ mapAlert meta8 mouseWheelScrollPage override_redirect pastableTabs
+ pointerBlank reverseVideo scrollBar scrollBar_floating scrollBar_right
+ scrollTtyKeypress scrollTtyOutput scrollWithBuffer secondaryScreen
+ secondaryScroll skipBuiltinGlyphs skipScroll transparent tripleclickwords
+ urgentOnBell utmpInhibit visualBell
 
 =item $value = $term->resource ($name[, $newval])
 
@@ -1338,19 +1363,20 @@ Here is a likely non-exhaustive list of resource names, not all of which
 are supported in every build, please see the source file F</src/rsinc.h>
 to see the actual list:
 
-  answerbackstring backgroundPixmap backspace_key boldFont boldItalicFont
-  borderLess chdir color cursorBlink cursorUnderline cutchars delete_key
-  display_name embed ext_bwidth fade font geometry hold iconName
-  imFont imLocale inputMethod insecure int_bwidth intensityStyles
-  italicFont jumpScroll lineSpace letterSpace loginShell mapAlert meta8
-  modifier mouseWheelScrollPage name override_redirect pastableTabs path
-  perl_eval perl_ext_1 perl_ext_2 perl_lib pointerBlank pointerBlankDelay
+  answerbackstring backgroundPixmap backspace_key blendtype blurradius
+  boldFont boldItalicFont borderLess buffered chdir color cursorBlink
+  cursorUnderline cutchars delete_key depth display_name embed ext_bwidth
+  fade font geometry hold iconName iconfile imFont imLocale inputMethod
+  insecure int_bwidth intensityStyles iso14755 iso14755_52 italicFont
+  jumpScroll letterSpace lineSpace loginShell mapAlert meta8 modifier
+  mouseWheelScrollPage name override_redirect pastableTabs path perl_eval
+  perl_ext_1 perl_ext_2 perl_lib pointerBlank pointerBlankDelay
   preeditType print_pipe pty_fd reverseVideo saveLines scrollBar
   scrollBar_align scrollBar_floating scrollBar_right scrollBar_thickness
   scrollTtyKeypress scrollTtyOutput scrollWithBuffer scrollstyle
-  secondaryScreen secondaryScroll shade term_name title
-  transient_for transparent transparent_all tripleclickwords utmpInhibit
-  visualBell
+  secondaryScreen secondaryScroll shade skipBuiltinGlyphs skipScroll
+  term_name title transient_for transparent tripleclickwords urgentOnBell
+  utmpInhibit visualBell
 
 =cut
 
@@ -1371,10 +1397,17 @@ This method should only be called during the C<on_start> hook, as there is
 only one resource database per display, and later invocations might return
 the wrong resources.
 
-=item $success = $term->parse_keysym ($keysym_spec, $command_string)
+=item $success = $term->parse_keysym ($key, $octets)
 
-Adds a keymap translation exactly as specified via a resource. See the
+Adds a key binding exactly as specified via a resource. See the
 C<keysym> resource in the @@RXVT_NAME@@(1) manpage.
+
+=item $term->register_command ($keysym, $modifiermask, $string)
+
+Adds a key binding. This is a lower level api compared to
+C<parse_keysym>, as it expects a parsed key description, and can be
+used only inside either the C<on_init> hook, to add a binding, or the
+C<on_register_command> hook, to modify a parsed binding.
 
 =item $rend = $term->rstyle ([$new_rstyle])
 
@@ -1597,6 +1630,10 @@ Adds the specified events to the vt event mask. Useful e.g. when you want
 to receive pointer events all the times:
 
    $term->vt_emask_add (urxvt::PointerMotionMask);
+
+=item $term->set_urgency ($set)
+
+Enable/disable the urgency hint on the toplevel window.
 
 =item $term->focus_in
 
@@ -1922,6 +1959,10 @@ the session.
 =item ($x, $y, $child_window) = $term->XTranslateCoordinates ($src, $dst, $x, $y)
 
 =item $term->XChangeInput ($window, $add_events[, $del_events])
+
+=item $keysym = $term->XStringToKeysym ($string)
+
+=item $string = $term->XKeysymToString ($keysym)
 
 Various X or X-related functions. The C<$term> object only serves as
 the source of the display, otherwise those functions map more-or-less

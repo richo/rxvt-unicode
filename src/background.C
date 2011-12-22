@@ -34,32 +34,6 @@
 #define FilterConvolution "convolution"
 #endif
 
-/*
- * Pixmap geometry string interpretation :
- * Each geometry string contains zero or one scale/position
- * adjustment and may optionally be followed by a colon and one or more
- * colon-delimited pixmap operations.
- * The following table shows the valid geometry strings and their
- * effects on the background image :
- *
- * WxH+X+Y    Set scaling to W% by H%, and position to X% by Y%.
- *            W and H are percentages of the terminal window size.
- *            X and Y are also percentages; e.g., +50+50 centers
- *            the image in the window.
- *
- * Pixmap Operations : (should be prepended by a colon)
- * tile       Tile image. Scaling/position modifiers above will affect
- *            the tile size and origin.
- * propscale  When scaling, scale proportionally. That is, maintain the
- *            proper aspect ratio for the image. Any portion of the
- *            background not covered by the image is filled with the
- *            current background color.
- * hscale     Scale horizontally, tile vertically ?
- * vscale     Tile horizontally, scale vertically ?
- * scale      Scale both up and down
- * auto       Same as 100x100+50+50
- */
-
 #ifdef HAVE_BG_PIXMAP
 void
 rxvt_term::bg_destroy ()
@@ -178,9 +152,9 @@ make_align_position (int align, int window_size, int image_size)
   if (align >= 0 && align <= 100)
     return diff * align / 100;
   else if (align > 100 && align <= 200)
-    return ((align - 100) * smaller / 100) + window_size - smaller;
+    return (align - 100) * smaller / 100 + window_size - smaller;
   else if (align >= -100 && align < 0)
-    return ((align + 100) * smaller / 100) - image_size;
+    return (align + 100) * smaller / 100 - image_size;
   return 0;
 }
 
@@ -209,33 +183,108 @@ rxvt_term::bg_set_geometry (const char *geom, bool update)
   int geom_flags = 0;
   int x = 0, y = 0;
   unsigned int w = 0, h = 0;
-  unsigned int n;
-  unsigned long new_flags = (bg_flags & (~BG_GEOMETRY_FLAGS));
-  const char *ops;
+  unsigned long new_flags = bg_flags & ~BG_GEOMETRY_FLAGS;
 
   if (geom == NULL)
     return false;
 
-  char str[256];
-
-  ops = strchr (geom, ':');
-  if (ops == NULL)
-    n = strlen (geom);
-  else
-    n = ops - geom;
-
-  if (n >= sizeof (str))
-    return false;
-
-  memcpy (str, geom, n);
-  str[n] = '\0';
-  rxvt_strtrim (str);
-
-  if (str[0])
+  if (geom[0])
     {
-      /* we have geometry string - let's handle it prior to applying ops */
-      geom_flags = XParseGeometry (str, &x, &y, &w, &h);
-    } /* done parsing geometry string */
+      char **arr = rxvt_strsplit (':', geom);
+
+      for (int i = 0; arr[i]; i++)
+        {
+          if (!strcasecmp (arr[i], "style=tiled"))
+            {
+              new_flags = BG_TILE;
+              w = h = noScale;
+              x = y = 0;
+              geom_flags = WidthValue|HeightValue|XValue|YValue;
+            }
+          else if (!strcasecmp (arr[i], "style=aspect-stretched"))
+            {
+              new_flags = BG_KEEP_ASPECT;
+              w = h = windowScale;
+              x = y = centerAlign;
+              geom_flags = WidthValue|HeightValue|XValue|YValue;
+            }
+          else if (!strcasecmp (arr[i], "style=stretched"))
+            {
+              new_flags = 0;
+              w = h = windowScale;
+              geom_flags = WidthValue|HeightValue;
+            }
+          else if (!strcasecmp (arr[i], "style=centered"))
+            {
+              new_flags = 0;
+              w = h = noScale;
+              x = y = centerAlign;
+              geom_flags = WidthValue|HeightValue|XValue|YValue;
+            }
+          else if (!strcasecmp (arr[i], "style=root-tiled"))
+            {
+              new_flags = BG_TILE|BG_ROOT_ALIGN;
+              w = h = noScale;
+              geom_flags = WidthValue|HeightValue;
+            }
+          else if (!strcasecmp (arr[i], "op=tile"))
+            new_flags |= BG_TILE;
+          else if (!strcasecmp (arr[i], "op=keep-aspect"))
+            new_flags |= BG_KEEP_ASPECT;
+          else if (!strcasecmp (arr[i], "op=root-align"))
+            new_flags |= BG_ROOT_ALIGN;
+
+          // deprecated
+          else if (!strcasecmp (arr[i], "tile"))
+            {
+              new_flags |= BG_TILE;
+              w = h = noScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (!strcasecmp (arr[i], "propscale"))
+            {
+              new_flags |= BG_KEEP_ASPECT;
+              w = h = windowScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (!strcasecmp (arr[i], "hscale"))
+            {
+              new_flags |= BG_TILE;
+              w = windowScale;
+              h = noScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (!strcasecmp (arr[i], "vscale"))
+            {
+              new_flags |= BG_TILE;
+              h = windowScale;
+              w = noScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (!strcasecmp (arr[i], "scale"))
+            {
+              w = h = windowScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+          else if (!strcasecmp (arr[i], "auto"))
+            {
+              w = h = windowScale;
+              x = y = centerAlign;
+              geom_flags |= WidthValue|HeightValue|XValue|YValue;
+            }
+          else if (!strcasecmp (arr[i], "root"))
+            {
+              new_flags |= BG_TILE|BG_ROOT_ALIGN;
+              w = h = noScale;
+              geom_flags |= WidthValue|HeightValue;
+            }
+
+          else
+            geom_flags |= XParseGeometry (arr[i], &x, &y, &w, &h);
+        } /* done parsing ops */
+
+      rxvt_free_strsplit (arr);
+    }
 
   if (!update)
     {
@@ -252,59 +301,6 @@ rxvt_term::bg_set_geometry (const char *geom, bool update)
         w = h;
 
       geom_flags |= WidthValue|HeightValue|XValue|YValue;
-    }
-
-  if (ops)
-    {
-      char **arr = rxvt_strsplit (':', ops + 1);
-
-      for (int i = 0; arr[i]; i++) 
-        {
-          if (!strcasecmp (arr[i], "tile"))
-            {
-              w = h = noScale;
-              geom_flags |= WidthValue|HeightValue;
-            }
-          else if (!strcasecmp (arr[i], "propscale"))
-            {
-              new_flags |= BG_PROP_SCALE;
-            }
-          else if (!strcasecmp (arr[i], "hscale"))
-            {
-              if (w == 0) w = windowScale;
-
-              h = noScale;
-              geom_flags |= WidthValue|HeightValue;
-            }
-          else if (!strcasecmp (arr[i], "vscale"))
-            {
-              if (h == 0) h = windowScale;
-
-              w = noScale;
-              geom_flags |= WidthValue|HeightValue;
-            }
-          else if (!strcasecmp (arr[i], "scale"))
-            {
-              if (h == 0) h = windowScale;
-              if (w == 0) w = windowScale;
-
-              geom_flags |= WidthValue|HeightValue;
-            }
-          else if (!strcasecmp (arr[i], "auto"))
-            {
-              w = h = windowScale;
-              x = y = centerAlign;
-              geom_flags |= WidthValue|HeightValue|XValue|YValue;
-            }
-          else if (!strcasecmp (arr[i], "root"))
-            {
-              new_flags |= BG_ROOT_ALIGN;
-              w = h = noScale;
-              geom_flags |= WidthValue|HeightValue;
-            }
-        } /* done parsing ops */
-
-      rxvt_free_strsplit (arr);
     }
 
   if (check_set_scale_value (geom_flags, WidthValue, h_scale, w))  changed = true;
@@ -327,17 +323,15 @@ rxvt_term::get_image_geometry (int image_width, int image_height, int &w, int &h
   int target_width = szHint.width;
   int target_height = szHint.height;
 
-  if (bg_flags & BG_PROP_SCALE)
+  w = h_scale * target_width / 100;
+  h = v_scale * target_height / 100;
+
+  if (bg_flags & BG_KEEP_ASPECT)
     {
-      float scale = (float)target_width / image_width;
-      min_it (scale, (float)target_height / image_height);
+      float scale = (float)w / image_width;
+      min_it (scale, (float)h / image_height);
       w = image_width * scale + 0.5;
       h = image_height * scale + 0.5;
-    }
-  else
-    {
-      w = h_scale * target_width / 100;
-      h = v_scale * target_height / 100;
     }
 
   if (!w) w = image_width;
@@ -355,7 +349,8 @@ rxvt_term::get_image_geometry (int image_width, int image_height, int &w, int &h
     }
 
   bg_flags &= ~BG_IS_SIZE_SENSITIVE;
-  if ((bg_flags & BG_PROP_SCALE) || h_scale || v_scale
+  if (!(bg_flags & BG_TILE)
+      || h_scale || v_scale
       || (!(bg_flags & BG_ROOT_ALIGN) && (h_align || v_align))
       || w > target_width || h > target_height)
     bg_flags |= BG_IS_SIZE_SENSITIVE;
@@ -392,7 +387,7 @@ rxvt_term::render_image (unsigned long tr_flags)
   if ((tr_flags & BG_NEEDS_BLUR) && background != NULL)
     {
       ASImage *tmp = blur_asimage_gauss (asv, background, h_blurRadius, v_blurRadius, 0xFFFFFFFF,
-                                         (original_asim == NULL || tint == TINT_LEAVE_SAME) ? ASA_XImage : ASA_ASImage,
+                                         ASA_XImage,
                                          100, ASIMAGE_QUALITY_DEFAULT);
       if (tmp)
         {
@@ -421,8 +416,8 @@ rxvt_term::render_image (unsigned long tr_flags)
       || (!(bg_flags & BG_ROOT_ALIGN)
           && (x >= target_width
               || y >= target_height
-              || (x + w <= 0)
-              || (y + h <= 0))))
+              || x + w <= 0
+              || y + h <= 0)))
     {
       if (background)
         {
@@ -446,18 +441,18 @@ rxvt_term::render_image (unsigned long tr_flags)
     {
       result = original_asim;
 
-      if ((w != original_asim->width)
-          || (h != original_asim->height))
+      if (w != original_asim->width
+          || h != original_asim->height)
         {
           result = scale_asimage (asv, original_asim,
                                   w, h,
-                                  background ? ASA_ASImage : ASA_XImage,
+                                  ASA_XImage,
                                   100, ASIMAGE_QUALITY_DEFAULT);
         }
 
       if (background == NULL)
         {
-          if (h_scale == 0 || v_scale == 0)
+          if (bg_flags & BG_TILE)
             {
               /* if tiling - pixmap has to be sized exactly as the image,
                  but there is no need to make it bigger than the window! */
@@ -492,7 +487,7 @@ rxvt_term::render_image (unsigned long tr_flags)
           layers[0].tint = background_tint;
           layers[1].im = result;
 
-          if (h_scale == 0 || v_scale == 0)
+          if (bg_flags & BG_TILE)
             {
               /* tile horizontally */
               while (x > 0) x -= (int)result->width;
@@ -506,7 +501,7 @@ rxvt_term::render_image (unsigned long tr_flags)
               layers[1].clip_width = result->width;
             }
 
-          if (h_scale == 0 || v_scale == 0)
+          if (bg_flags & BG_TILE)
             {
               while (y > 0) y -= (int)result->height;
               layers[1].dst_y = y;
@@ -566,7 +561,7 @@ rxvt_term::render_image (unsigned long tr_flags)
       int dst_width = result->width, dst_height = result->height;
       if (background == NULL)
         {
-          if (!(h_scale == 0 || v_scale == 0))
+          if (!(bg_flags & BG_TILE))
             {
               src_x = make_clip_rectangle (x, result->width , new_pmap_width , dst_x, dst_width );
               src_y = make_clip_rectangle (y, result->height, new_pmap_height, dst_y, dst_height);
@@ -711,14 +706,14 @@ rxvt_term::render_image (unsigned long tr_flags)
   if (!(bg_flags & BG_ROOT_ALIGN)
       && (x >= target_width
           || y >= target_height
-          || (x + w <= 0)
-          || (y + h <= 0)))
+          || x + w <= 0
+          || y + h <= 0))
     return false;
 
   result = pixbuf;
 
-  if ((w != image_width)
-      || (h != image_height))
+  if (w != image_width
+      || h != image_height)
     {
       result = gdk_pixbuf_scale_simple (pixbuf,
                                         w, h,
@@ -744,7 +739,7 @@ rxvt_term::render_image (unsigned long tr_flags)
     }
   else
     {
-      if (h_scale == 0 || v_scale == 0)
+      if (bg_flags & BG_TILE)
         {
           new_pmap_width = min (image_width, target_width);
           new_pmap_height = min (image_height, target_height);
@@ -767,7 +762,7 @@ rxvt_term::render_image (unsigned long tr_flags)
 
   if (gc)
     {
-      if (h_scale == 0 || v_scale == 0)
+      if (bg_flags & BG_TILE)
         {
           Pixmap tile = XCreatePixmap (dpy, vt, image_width, image_height, depth);
           pixbuf_to_pixmap (result, tile, gc,
@@ -857,7 +852,10 @@ rxvt_term::bg_set_file (const char *file)
   if (!file || !*file)
     return false;
 
-  if (const char *p = strchr (file, ';'))
+  bool ret = false;
+  const char *p = strchr (file, ';');
+
+  if (p)
     {
       size_t len = p - file;
       char *f = rxvt_temp_buf<char> (len + 1);
@@ -876,7 +874,7 @@ rxvt_term::bg_set_file (const char *file)
         safe_asimage_destroy (original_asim);
       original_asim = image;
       bg_flags |= BG_IS_FROM_FILE | BG_CLIENT_RENDER;
-      return true;
+      ret = true;
     }
 #  endif
 
@@ -888,11 +886,19 @@ rxvt_term::bg_set_file (const char *file)
         g_object_unref (pixbuf);
       pixbuf = image;
       bg_flags |= BG_IS_FROM_FILE;
-      return true;
+      ret = true;
     }
 #  endif
 
-  return false;
+  if (ret)
+    {
+      if (p)
+        bg_set_geometry (p + 1);
+      else
+        bg_set_default_geometry ();
+    }
+
+  return ret;
 }
 
 # endif /* BG_IMAGE_FROM_FILE */
@@ -1273,8 +1279,8 @@ rxvt_term::make_transparency_pixmap ()
     }
 
   /* straightforward pixmap copy */
-  while (sx < 0) sx += root_width;
-  while (sy < 0) sy += root_height;
+  while (sx < 0) sx += root_pmap_width;
+  while (sy < 0) sy += root_pmap_height;
 
   gcv.tile = recoded_root_pmap;
   gcv.fill_style = FillTiled;
@@ -1339,8 +1345,7 @@ rxvt_term::bg_render ()
       tr_flags = make_transparency_pixmap ();
       if (tr_flags == 0)
         return false;
-      else if (!(tr_flags & BG_EFFECTS_FLAGS))
-        bg_flags |= BG_IS_VALID;
+      bg_flags |= BG_IS_VALID;
     }
 # endif
 
@@ -1356,7 +1361,7 @@ rxvt_term::bg_render ()
 # if defined(ENABLE_TRANSPARENCY) && !defined(HAVE_AFTERIMAGE)
   XImage *result = NULL;
 
-  if (tr_flags && !(bg_flags & BG_IS_VALID))
+  if (tr_flags & BG_NEEDS_TINT)
     {
       result = XGetImage (dpy, bg_pixmap, 0, 0, bg_pmap_width, bg_pmap_height, AllPlanes, ZPixmap);
     }
@@ -1364,7 +1369,8 @@ rxvt_term::bg_render ()
   if (result)
     {
       /* our own client-side tinting */
-      if (tr_flags & BG_NEEDS_TINT)
+      //if (tr_flags & BG_NEEDS_TINT)
+      if (1)
         {
           rgba c (rgba::MAX_CC,rgba::MAX_CC,rgba::MAX_CC);
           if (bg_flags & BG_TINT_SET)
@@ -1379,7 +1385,6 @@ rxvt_term::bg_render ()
           XPutImage (dpy, bg_pixmap, gc, result, 0, 0, 0, 0, result->width, result->height);
 
           XFreeGC (dpy, gc);
-          bg_flags |= BG_IS_VALID;
         }
 
       XDestroyImage (result);
@@ -1430,7 +1435,7 @@ rxvt_term::bg_init ()
 #endif /* HAVE_BG_PIXMAP */
 
 #if defined(ENABLE_TRANSPARENCY) && !defined(HAVE_AFTERIMAGE)
-/* taken from aterm-0.4.2 */
+/* based on code from aterm-0.4.2 */
 
 static void
 shade_ximage (Visual *visual, XImage *ximage, int shade, const rgba &c)

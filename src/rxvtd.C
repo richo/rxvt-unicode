@@ -188,8 +188,6 @@ void server::read_cb (ev::io &w, int revents)
                 return err ("protocol error: unexpected NEW token.\n");
             }
 
-          envv->push_back (0);
-
           {
             rxvt_term *term = new rxvt_term;
 
@@ -225,7 +223,7 @@ void server::read_cb (ev::io &w, int revents)
 }
 
 int
-main (int argc, const char *const *argv)
+main (int argc, char *argv[])
 {
   ptytty::init ();
 

@@ -41,6 +41,54 @@
 
 #if UTMP_SUPPORT
 
+#ifdef HAVE_UTMPX_H
+# include <utmpx.h>
+#endif
+#ifdef HAVE_UTMP_H
+# include <utmp.h>
+#endif
+#ifdef HAVE_LASTLOG_H
+# include <lastlog.h>
+#endif
+
+#if !defined(UTMP_FILE)
+# if defined(_PATH_UTMP)
+#  define UTMP_FILE _PATH_UTMP
+# elif defined(PT_UTMP_FILE)
+#  define UTMP_FILE PT_UTMP_FILE
+# endif
+#endif
+#if !defined(WTMP_FILE)
+# if defined(_PATH_WTMP)
+#  define WTMP_FILE _PATH_WTMP
+# elif defined(PT_WTMP_FILE)
+#  define WTMP_FILE PT_WTMP_FILE
+# endif
+#endif
+#if !defined(WTMPX_FILE)
+# if defined(_PATH_WTMPX)
+#  define WTMPX_FILE _PATH_WTMPX
+# elif defined(PT_WTMPX_FILE)
+#  define WTMPX_FILE PT_WTMPX_FILE
+# endif
+#endif
+#if !defined(LASTLOG_FILE)
+# if defined(_PATH_LASTLOG)
+#  define LASTLOG_FILE _PATH_LASTLOG
+# elif defined(PT_LASTLOG_FILE)
+#  define LASTLOG_FILE PT_LASTLOG_FILE
+# endif
+#endif
+#if !defined(LASTLOGX_FILE)
+# if defined(_PATH_LASTLOGX)
+#  define LASTLOGX_FILE _PATH_LASTLOGX
+# elif defined(PT_LASTLOGX_FILE)
+#  define LASTLOGX_FILE PT_LASTLOGX_FILE
+# endif
+#endif
+
+#include <pwd.h>
+
 #include <cstdio>
 #include <cstring>
 
@@ -63,18 +111,17 @@
  * Write a BSD style utmp entry
  */
 #if defined(HAVE_STRUCT_UTMP) && !defined(HAVE_UTMP_PID)
-static int
+static void
 write_bsd_utmp (int utmp_pos, struct utmp *ut)
 {
   int             fd;
 
   if (utmp_pos <= 0 || (fd = open (UTMP_FILE, O_WRONLY)) == -1)
-    return 0;
+    return;
 
   if (lseek (fd, (off_t) (utmp_pos * sizeof (struct utmp)), SEEK_SET) != -1)
     write (fd, ut, sizeof (struct utmp));
   close (fd);
-  return 1;
 }
 #endif
 
@@ -107,18 +154,17 @@ update_wtmp (const char *fname, const struct utmp *ut)
       }
     else if (errno != EAGAIN && errno != EACCES)
       break;
-  if (!gotlock)
-    {
-      /* give it up */
-      close (fd);
-      return;
-    }
-  if (fstat (fd, &sbuf) == 0)
-    if (write (fd, ut, sizeof (struct utmp)) != sizeof (struct utmp))
-      ftruncate (fd, sbuf.st_size);	/* remove bad writes */
 
-  lck.l_type = F_UNLCK;	/* unlocking the file */
-  fcntl (fd, F_SETLK, &lck);
+  if (gotlock)
+    {
+      if (fstat (fd, &sbuf) == 0)
+        if (write (fd, ut, sizeof (struct utmp)) != sizeof (struct utmp))
+          ftruncate (fd, sbuf.st_size);	/* remove bad writes */
+
+      lck.l_type = F_UNLCK;	/* unlocking the file */
+      fcntl (fd, F_SETLK, &lck);
+    }
+
   close (fd);
 }
 #endif
@@ -134,9 +180,7 @@ update_lastlog (const char *pty, const char *host)
 # ifdef HAVE_STRUCT_LASTLOG
   int             fd;
   struct lastlog  ll;
-  char            lastlogfile[256];
   struct passwd  *pwent;
-  struct stat     st;
 # endif
 
 # if defined(HAVE_STRUCT_LASTLOGX) && defined(HAVE_UPDLASTLOGX)
@@ -160,40 +204,38 @@ update_lastlog (const char *pty, const char *host)
   ll.ll_time = time (NULL);
   strncpy (ll.ll_line, pty, sizeof (ll.ll_line));
   strncpy (ll.ll_host, host, sizeof (ll.ll_host));
-  if (stat (LASTLOG_FILE, &st) != 0)
-    return;
-  if (S_ISDIR (st.st_mode))
+  if ((fd = open (LASTLOG_FILE, O_RDWR)) != -1)
     {
-      snprintf (lastlogfile, sizeof (lastlogfile), "%s/%s", LASTLOG_FILE,
-               (!pwent->pw_name || pwent->pw_name[0] == '\0') ? "unknown"
-               : pwent->pw_name);
-      if ((fd = open (lastlogfile, O_WRONLY | O_CREAT, 0644)) >= 0)
-        {
-          write (fd, &ll, sizeof (ll));
-          close (fd);
-        }
+      if (lseek (fd, (off_t) ((long)pwent->pw_uid * sizeof (ll)),
+                 SEEK_SET) != -1)
+        write (fd, &ll, sizeof (ll));
+      close (fd);
     }
-  else if (S_ISREG (st.st_mode))
-    if ((fd = open (LASTLOG_FILE, O_RDWR)) != -1)
-      {
-        if (lseek (fd, (off_t) ((long)pwent->pw_uid * sizeof (ll)),
-                   SEEK_SET) != -1)
-          write (fd, &ll, sizeof (ll));
-        close (fd);
-      }
 # endif /* HAVE_STRUCT_LASTLOG */
 }
 #endif /* LASTLOG_SUPPORT */
 
+#if defined(HAVE_UTMP_PID) || defined(HAVE_STRUCT_UTMPX)
+static void
+fill_id (char *id, const char *line, size_t id_size)
+{
+  size_t len = strlen (line);
+
+  if (len > id_size)
+    line += len - id_size;
+  strncpy (id, line, id_size);
+}
+#endif
+
 #ifdef HAVE_STRUCT_UTMP
 static void
-fill_utmp (struct utmp *ut, bool login, int pid, const char *id, const char *line, const char *user, const char *host)
+fill_utmp (struct utmp *ut, bool login, int pid, const char *line, const char *user, const char *host)
 {
   memset (ut, 0, sizeof (struct utmp));
 
   strncpy (ut->ut_line, line, sizeof (ut->ut_line));
 # ifdef HAVE_UTMP_PID
-  strncpy (ut->ut_id, id, sizeof (ut->ut_id));
+  fill_id (ut->ut_id, line, sizeof (ut->ut_id));
   ut->ut_pid = pid;
   ut->ut_type = login ? USER_PROCESS : DEAD_PROCESS;
 # endif
@@ -215,7 +257,7 @@ fill_utmp (struct utmp *ut, bool login, int pid, const char *id, const char *lin
 
 #ifdef HAVE_STRUCT_UTMPX
 static void
-fill_utmpx (struct utmpx *utx, bool login, int pid, const char *id, const char *line, const char *user, const char *host)
+fill_utmpx (struct utmpx *utx, bool login, int pid, const char *line, const char *user, const char *host)
 {
   memset (utx, 0, sizeof (struct utmpx));
 
@@ -223,7 +265,7 @@ fill_utmpx (struct utmpx *utx, bool login, int pid, const char *id, const char *
   // records, but most implementations of last use ut_line to
   // associate records in wtmp file
   strncpy (utx->ut_line, line, sizeof (utx->ut_line));
-  strncpy (utx->ut_id, id, sizeof (utx->ut_id));
+  fill_id (utx->ut_id, line, sizeof (utx->ut_id));
   utx->ut_pid = pid;
   utx->ut_type = login ? USER_PROCESS : DEAD_PROCESS;
   utx->ut_tv.tv_sec = time (NULL);
@@ -232,9 +274,14 @@ fill_utmpx (struct utmpx *utx, bool login, int pid, const char *id, const char *
   utx->ut_session = getsid (0);
 # endif
 
+  // posix says that ut_user is not meaningful for DEAD_PROCESS
+  // records, but solaris utmp_update helper requires that the ut_user
+  // field of a DEAD_PROCESS entry matches the one of an existing
+  // USER_PROCESS entry for the same line, if any
+  strncpy (utx->ut_user, user, sizeof (utx->ut_user));
+
   if (login)
     {
-      strncpy (utx->ut_user, user, sizeof (utx->ut_user));
 # ifdef HAVE_UTMPX_HOST
       strncpy (utx->ut_host, host, sizeof (utx->ut_host));
 # endif
@@ -250,68 +297,53 @@ fill_utmpx (struct utmpx *utx, bool login, int pid, const char *id, const char *
 void
 ptytty_unix::login (int cmd_pid, bool login_shell, const char *hostname)
 {
-  const char *pty = name;
-
-  if (!pty || !*pty)
+  if (!name || !*name)
     return;
 
   this->cmd_pid     = cmd_pid;
   this->login_shell = login_shell;
 
-#ifdef HAVE_STRUCT_UTMP
-  struct utmp *ut = &this->ut;
-#endif
-#ifdef HAVE_STRUCT_UTMPX
-  struct utmpx *utx = &this->utx;
-#endif
-  int i;
+  log_session (true, hostname);
+}
+
+void
+ptytty_unix::log_session (bool login, const char *hostname)
+{
   struct passwd *pwent = getpwuid (getuid ());
   const char *user = (pwent && pwent->pw_name) ? pwent->pw_name : "?";
+
+  const char *pty = name;
 
   if (!strncmp (pty, "/dev/", 5))
     pty += 5;		/* skip /dev/ prefix */
 
-#if defined(HAVE_UTMP_PID) || defined(HAVE_STRUCT_UTMPX)
-  if (!strncmp (pty, "pty", 3) || !strncmp (pty, "tty", 3))
-    strncpy (ut_id, pty + 3, sizeof (ut_id));
-  else if (sscanf (pty, "pts/%d", &i) == 1)
-    sprintf (ut_id, "vt%02x", (i & 0xff));	/* sysv naming */
-  else
-    {
-      PTYTTY_WARN ("can't parse tty name \"%s\", not adding utmp entry.\n", pty);
-      return;
-    }
-#endif
-
 #ifdef HAVE_STRUCT_UTMP
-  fill_utmp (ut, true, cmd_pid, ut_id, pty, user, hostname);
+  struct utmp *tmput;
+  struct utmp ut;
+  fill_utmp (&ut, login, cmd_pid, pty, user, hostname);
 #endif
 
 #ifdef HAVE_STRUCT_UTMPX
-  fill_utmpx (utx, true, cmd_pid, ut_id, pty, user, hostname);
+  struct utmpx *tmputx;
+  struct utmpx utx;
+  fill_utmpx (&utx, login, cmd_pid, pty, user, hostname);
 #endif
 
 #ifdef HAVE_STRUCT_UTMP
 # ifdef HAVE_UTMP_PID
   setutent ();
-  pututline (ut);
+  if (login || ((tmput = getutid (&ut)) && tmput->ut_pid == cmd_pid))
+    pututline (&ut);
   endutent ();
 # else
-  int fd_stdin = dup (STDIN_FILENO);
-  dup2 (tty, STDIN_FILENO);
-
-  utmp_pos = ttyslot ();
-  if (!write_bsd_utmp (utmp_pos, ut))
-    utmp_pos = 0;
-
-  dup2 (fd_stdin, STDIN_FILENO);
-  close (fd_stdin);
+  write_bsd_utmp (utmp_pos, &ut);
 # endif
 #endif
 
 #ifdef HAVE_STRUCT_UTMPX
   setutxent ();
-  pututxline (utx);
+  if (login || ((tmputx = getutxid (&utx)) && tmputx->ut_pid == cmd_pid))
+    pututxline (&utx);
   endutxent ();
 #endif
 
@@ -322,21 +354,23 @@ ptytty_unix::login (int cmd_pid, bool login_shell, const char *hostname)
     {
 # ifdef HAVE_STRUCT_UTMP
 #  ifdef HAVE_UPDWTMP
-      updwtmp (WTMP_FILE, ut);
+      updwtmp (WTMP_FILE, &ut);
 #  else
-      update_wtmp (WTMP_FILE, ut);
+      update_wtmp (WTMP_FILE, &ut);
 #  endif
 # endif
 # if defined(HAVE_STRUCT_UTMPX) && defined(HAVE_UPDWTMPX)
-      updwtmpx (WTMPX_FILE, utx);
+      updwtmpx (WTMPX_FILE, &utx);
 # endif
     }
 #endif
+
 #ifdef LASTLOG_SUPPORT
 #ifdef LOG_ONLY_ON_LOGIN
   if (login_shell)
 #endif
-    update_lastlog (pty, hostname);
+    if (login)
+      update_lastlog (pty, hostname);
 #endif
 }
 
@@ -350,68 +384,7 @@ ptytty_unix::logout ()
   if (!cmd_pid)
     return;
 
-  const char *pty = name;
-
-  if (!strncmp (pty, "/dev/", 5))
-    pty += 5;
-
-#ifdef HAVE_STRUCT_UTMP
-  struct utmp *tmput, *ut = &this->ut;
-#endif
-#ifdef HAVE_STRUCT_UTMPX
-  struct utmpx *tmputx, *utx = &this->utx;
-#endif
-
-#ifdef HAVE_STRUCT_UTMP
-  fill_utmp (ut, false, cmd_pid, ut_id, pty, 0, 0);
-#endif
-
-#ifdef HAVE_STRUCT_UTMPX
-  fill_utmpx (utx, false, cmd_pid, ut_id, pty, 0, 0);
-#endif
-
-  /*
-   * Write ending wtmp entry
-   */
-#ifdef WTMP_SUPPORT
-#ifdef LOG_ONLY_ON_LOGIN
-  if (login_shell)
-#endif
-    {
-# ifdef HAVE_STRUCT_UTMP
-#  ifdef HAVE_UPDWTMP
-      updwtmp (WTMP_FILE, ut);
-#  else
-      update_wtmp (WTMP_FILE, ut);
-#  endif
-# endif
-# if defined(HAVE_STRUCT_UTMPX) && defined(HAVE_UPDWTMPX)
-      updwtmpx (WTMPX_FILE, utx);
-# endif
-    }
-#endif
-
-  /*
-   * Write utmp entry
-   */
-#ifdef HAVE_STRUCT_UTMP
-# ifdef HAVE_UTMP_PID
-  setutent ();
-  tmput = getutid (ut);
-  if (tmput && tmput->ut_pid == cmd_pid)
-    pututline (ut);
-  endutent ();
-# else
-  write_bsd_utmp (utmp_pos, ut);
-# endif
-#endif
-#ifdef HAVE_STRUCT_UTMPX
-  setutxent ();
-  tmputx = getutxid (utx);
-  if (tmputx && tmputx->ut_pid == cmd_pid)
-    pututxline (utx);
-  endutxent ();
-#endif
+  log_session (false, 0);
 
   cmd_pid = 0;
 }

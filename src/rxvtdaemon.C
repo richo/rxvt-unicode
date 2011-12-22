@@ -27,6 +27,7 @@
 #include <inttypes.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/utsname.h>
 
@@ -43,8 +44,14 @@ char *rxvt_connection::unix_sockname ()
       uname (&u);
 
       path = getenv ("HOME");
-      snprintf (name, PATH_MAX, "%s/.rxvt-unicode-%s",
-                path ? path : "/tmp",
+      if (!path)
+        path = "/tmp";
+
+      snprintf (name, PATH_MAX, "%s/.urxvt", path);
+      mkdir (name, 0777);
+
+      snprintf (name, PATH_MAX, "%s/.urxvt/urxvtd-%s",
+                path,
                 u.nodename);
 
       path = name;
@@ -87,9 +94,6 @@ bool rxvt_connection::recv (auto_str &data, int *len)
     *len = l;
 
   data = new char[l + 1];
-
-  if (!data)
-    return false;
 
   if (read (fd, data, l) != l)
     return false;

@@ -205,7 +205,7 @@ rxvt_term::scr_reset ()
       talloc = new rxvt_salloc (ncol * sizeof (text_t));
       ralloc = new rxvt_salloc (ncol * sizeof (rend_t));
 
-      row_buf   = (line_t *)rxvt_calloc (total_rows + nrow, sizeof (line_t));
+      row_buf   = (line_t *)rxvt_calloc (total_rows       , sizeof (line_t));
       drawn_buf = (line_t *)rxvt_calloc (nrow             , sizeof (line_t));
       swap_buf  = (line_t *)rxvt_calloc (nrow             , sizeof (line_t));
 
@@ -277,7 +277,7 @@ rxvt_term::scr_reset ()
         }
 
       line_t *old_buf = row_buf;
-      row_buf = (line_t *)rxvt_calloc (total_rows + nrow, sizeof (line_t));
+      row_buf = (line_t *)rxvt_calloc (total_rows, sizeof (line_t));
 
       int p    = MOD (term_start + prev_nrow, prev_total_rows);  // previous row
       int pend = MOD (term_start + top_row  , prev_total_rows);
@@ -551,7 +551,12 @@ rxvt_term::scr_change_screen (int scrn)
   want_refresh = 1;
   view_start = 0;
 
-  selection_check (2);        /* check for boundary cross */
+  /* check for boundary cross */
+  row_col_t pos;
+  pos.row = pos.col = 0;
+  if (ROWCOL_IS_BEFORE (selection.beg, pos)
+      && ROWCOL_IS_AFTER (selection.end, pos))
+    CLEAR_SELECTION ();
 
   current_screen = scrn;
 
@@ -640,34 +645,19 @@ rxvt_term::scr_scroll_text (int row1, int row2, int count) NOTHROW
       && row1 == 0
       && (current_screen == PRIMARY || option (Opt_secondaryScroll)))
     {
-      top_row = max (top_row - count, -saveLines);
+      min_it (count, total_rows - (nrow - (row2 + 1)));
 
-      // scroll everything up 'count' lines
-      term_start = (term_start + count) % total_rows;
+      top_row = max (top_row - count, -saveLines);
 
       // sever bottommost line
       {
-        line_t &l = ROW(row2 - count);
+        line_t &l = ROW(row2);
         l.is_longer (0);
         l.touch ();
       }
 
-      // erase newly scrolled-in lines
-      for (int i = count; i--; )
-        {
-          line_t &l = ROW(nrow - 1 - i);
-
-          // optimize if already cleared, can be significant on slow machines
-          // could be rolled into scr_blank_screen_mem
-          if (l.r && l.l < ncol - 1 && !((l.r[l.l + 1] ^ rstyle) & (RS_fgMask | RS_bgMask)))
-            {
-              scr_blank_line (l, 0, l.l, rstyle);
-              l.l = 0;
-              l.f = 0;
-            }
-          else
-            scr_blank_screen_mem (l, rstyle);
-        }
+      // scroll everything up 'count' lines
+      term_start = (term_start + count) % total_rows;
 
       // now copy lines below the scroll region bottom to the
       // bottom of the screen again, so they look as if they
@@ -681,20 +671,32 @@ rxvt_term::scr_scroll_text (int row1, int row2, int count) NOTHROW
           l2.touch ();
         }
 
+      // erase newly scrolled-in lines
+      for (int i = count; i--; )
+        {
+          line_t &l = ROW(row2 - i);
+
+          // optimise if already cleared, can be significant on slow machines
+          // could be rolled into scr_blank_screen_mem
+          if (l.r && l.l < ncol - 1 && !((l.r[l.l + 1] ^ rstyle) & (RS_fgMask | RS_bgMask)))
+            {
+              scr_blank_line (l, 0, l.l, rstyle);
+              l.l = 0;
+              l.f = 0;
+            }
+          else
+            scr_blank_screen_mem (l, rstyle);
+        }
+
       // move and/or clear selection, if any
-      if (selection.op && current_screen == selection.screen)
+      if (selection.op && current_screen == selection.screen
+          && selection.beg.row <= row2)
         {
           selection.beg.row  -= count;
           selection.end.row  -= count;
           selection.mark.row -= count;
 
-          if (selection.beg.row < top_row
-              || selection.end.row < top_row
-              || selection.mark.row < top_row)
-            {
-              CLEAR_ALL_SELECTION ();
-              selection.op = SELECTION_CLEAR;
-            }
+          selection_check (0);
         }
 
       // finally move the view window, if desired
@@ -734,11 +736,19 @@ rxvt_term::scr_scroll_text (int row1, int row2, int count) NOTHROW
       // use a simple and robust scrolling algorithm, this
       // part of scr_scroll_text is not time-critical.
 
+      // sever line above scroll region
+      if (row1)
+        {
+          line_t &l = ROW(row1 - 1);
+          l.is_longer (0);
+          l.touch ();
+        }
+
       int rows = row2 - row1 + 1;
 
       min_it (count, rows);
 
-      line_t *temp_buf = row_buf + total_rows;
+      line_t *temp_buf = rxvt_temp_buf<line_t> (rows);
 
       for (int row = 0; row < rows; row++)
         {
@@ -750,6 +760,13 @@ rxvt_term::scr_scroll_text (int row1, int row2, int count) NOTHROW
 
       for (int row = 0; row < rows; row++)
         ROW(row1 + row) = temp_buf [row];
+
+      // sever bottommost line
+      {
+        line_t &l = ROW(row2);
+        l.is_longer (0);
+        l.touch ();
+      }
     }
 
   return count;
@@ -765,7 +782,7 @@ rxvt_term::scr_add_lines (const wchar_t *str, int len, int minlines) NOTHROW
   if (len <= 0)               /* sanity */
     return;
 
-  unsigned char checksel;
+  bool checksel;
   unicode_t c;
   int ncol = this->ncol;
   const wchar_t *strend = str + len;
@@ -1297,7 +1314,7 @@ rxvt_term::scr_erase_line (int mode) NOTHROW
 
 /* ------------------------------------------------------------------------- */
 /*
- * Erase part of whole of the screen
+ * Erase part or whole of the screen
  * XTERM_SEQ: Clear screen after cursor : ESC [ 0 J
  * XTERM_SEQ: Clear screen before cursor: ESC [ 1 J
  * XTERM_SEQ: Clear whole screen        : ESC [ 2 J
@@ -1316,19 +1333,16 @@ rxvt_term::scr_erase_screen (int mode) NOTHROW
   switch (mode)
     {
       case 0:                     /* erase to end of screen */
-        selection_check (1);
         scr_erase_line (0);
         row = screen.cur.row + 1;    /* possible OOB */
         num = nrow - row;
         break;
       case 1:                     /* erase to beginning of screen */
-        selection_check (3);
         scr_erase_line (1);
         row = 0;
         num = screen.cur.row;
         break;
       case 2:                     /* erase whole screen */
-        selection_check (3);
         row = 0;
         num = nrow;
         break;
@@ -1409,7 +1423,11 @@ rxvt_term::scr_E () NOTHROW
   ZERO_SCROLLBACK ();
 
   num_scr_allow = 0;
-  selection_check (3);
+
+  row_col_t pos;
+  pos.row = pos.col = 0;
+  if (ROWCOL_IS_AFTER (selection.end, pos))
+    CLEAR_SELECTION ();
 
   fs = SET_FONT (rstyle, FONTSET (rstyle)->find_font ('E'));
   for (int row = nrow; row--; )
@@ -2032,7 +2050,7 @@ rxvt_term::scr_refresh () NOTHROW
   refresh_count = 0;
 
   unsigned int old_screen_flags = screen.flags;
-  char have_bg = 0;
+  bool have_bg = 0;
 #ifdef HAVE_BG_PIXMAP
   have_bg = bg_pixmap != None;
 #endif
@@ -2048,13 +2066,13 @@ rxvt_term::scr_refresh () NOTHROW
   scr_swap_overlay ();
 #endif
 
-  char showcursor = screen.flags & Screen_VisibleCursor;
+  bool showcursor = screen.flags & Screen_VisibleCursor;
 
   /*
    * C: set the cursor character (s)
    */
   {
-    unsigned char setoldcursor;
+    bool setoldcursor;
 
 #ifdef CURSOR_BLINK
     if (hidden_cursor)
@@ -2151,7 +2169,6 @@ rxvt_term::scr_refresh () NOTHROW
       int i = num_scr;
       int j;
       int len, wlen;
-      dLocal (int, num_scr);
 
       j = nrow;
       wlen = len = -1;
@@ -2548,7 +2565,7 @@ rxvt_term::scr_recolour (bool refresh) NOTHROW
         XSetWindowBackgroundPixmap (dpy, scrollBar.win, ParentRelative);
       else
         XSetWindowBackground (dpy, scrollBar.win, pix_colors[Color_border]);
-      scrollBar.state = STATE_IDLE;
+      scrollBar.state = SB_STATE_IDLE;
       scrollBar.show (0);
     }
 
@@ -2652,26 +2669,8 @@ rxvt_term::scr_reverse_selection () NOTHROW
 void
 rxvt_term::scr_dump (int fd) NOTHROW
 {
-  int             row, wrote;
-  unsigned int    width, towrite;
-  const char      r1[] = "\n";
-
-  for (row = saveLines + top_row;
-       row < saveLines + nrow - 1; row++)
-    {
-      width = row_buf[row].l >= 0 ? row_buf[row].l
-              : ncol;
-      for (towrite = width; towrite; towrite -= wrote)
-        {
-          wrote = write (fd, & (row_buf[row].t[width - towrite]),
-                        towrite);
-          if (wrote < 0)
-            return;         /* XXX: death, no report */
-        }
-      if (row_buf[row].l >= 0)
-        if (write (fd, r1, 1) <= 0)
-          return; /* XXX: death, no report */
-    }
+  // if this method is needed, it can be implemented by factoring the
+  // relevant code in scr_printscreen
 }
 #endif
 
@@ -2681,28 +2680,17 @@ rxvt_term::scr_dump (int fd) NOTHROW
 void
 rxvt_term::selection_check (int check_more) NOTHROW
 {
-  row_col_t pos;
-
   if (!selection.op)
     return;
 
-  pos.row = pos.col = 0;
   if (!IN_RANGE_EXC (selection.beg.row, top_row, nrow)
       || !IN_RANGE_EXC (selection.mark.row, top_row, nrow)
       || !IN_RANGE_EXC (selection.end.row, top_row, nrow)
       || (check_more == 1
           && current_screen == selection.screen
           && !ROWCOL_IS_BEFORE (screen.cur, selection.beg)
-          && ROWCOL_IS_BEFORE (screen.cur, selection.end))
-      || (check_more == 2
-          && ROWCOL_IS_BEFORE (selection.beg, pos)
-          && ROWCOL_IS_AFTER (selection.end, pos))
-      || (check_more == 3
-          && ROWCOL_IS_AFTER (selection.end, pos))
-      || (check_more == 4     /* screen width change */
-          && (selection.beg.row != selection.end.row
-              || selection.end.col > ncol)))
-    CLEAR_SELECTION ();
+          && ROWCOL_IS_BEFORE (screen.cur, selection.end)))
+    CLEAR_ALL_SELECTION ();
 }
 
 /* ------------------------------------------------------------------------- */

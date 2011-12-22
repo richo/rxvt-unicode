@@ -96,7 +96,7 @@ support_scroll_next=yes
 support_scroll_xterm=yes
 support_xim=yes
 support_pixbuf=yes
-support_afterimage=yes
+support_startup_notification=yes
 support_xft=yes
 support_unicode3=no
 support_combining=yes
@@ -132,7 +132,7 @@ AC_ARG_ENABLE(everything,
        support_wtmp=no
        support_xim=no
        support_pixbuf=no
-       support_afterimage=no
+       support_startup_notification=no
        support_xft=no
        support_unicode3=no
        support_combining=no
@@ -160,7 +160,7 @@ AC_ARG_ENABLE(everything,
        support_wtmp=yes
        support_xim=yes
        support_pixbuf=yes
-       support_afterimage=yes
+       support_startup_notification=yes
        support_xft=yes
        support_unicode3=yes
        support_combining=yes
@@ -172,26 +172,26 @@ AC_ARG_ENABLE(everything,
     fi
   ])
 
-ASSERTIONS=no
+support_assertions=no
 AC_ARG_ENABLE(assert,
   [  --enable-assert         enable assertions],
   [if test x$enableval = xyes; then
-    ASSERTIONS=yes
+    support_assertions=yes
   fi])
-if test x$ASSERTIONS = xno; then
+if test x$support_assertions = xno; then
   AC_DEFINE(NDEBUG, 1, Disable assertions (good for debugging))
 fi
 
-WARNINGS=no
+support_warnings=no
 AC_ARG_ENABLE(warnings,
   [  --enable-warnings       turn on g++ warnings],
   [if test x$enableval = xyes; then
-    WARNINGS=yes
+    support_warnings=yes
   fi])
 if test x$GXX = xyes; then
-  if test $WARNINGS = yes; then
+  if test $support_warnings = yes; then
     save_CXXFLAGS="$CXXFLAGS"
-    CXXFLAGS="$CXXFLAGS -Wall -Wno-sign-compare -Wno-reorder -Wno-non-virtual-dtor"
+    CXXFLAGS="$CXXFLAGS -Wall -Wno-sign-compare -Wno-reorder -Wno-unused-value"
     AC_COMPILE_IFELSE([AC_LANG_PROGRAM([],[])], [], [CXXFLAGS="$save_CXXFLAGS"])
   else
     CXXFLAGS="$CXXFLAGS -w"
@@ -233,7 +233,7 @@ AC_ARG_ENABLE(font-styles,
   fi])
 
 AC_ARG_ENABLE(afterimage,
-  [  --enable-afterimage     enable integration with libAfterImage for background images],
+  [  --enable-afterimage     enable integration with libAfterImage for background images (deprecated)],
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_afterimage=$enableval
   fi])
@@ -248,6 +248,12 @@ AC_ARG_ENABLE(pixbuf,
   [  --enable-pixbuf         enable integration with gdk-pixbuf for background images],
   [if test x$enableval = xyes -o x$enableval = xno; then
     support_pixbuf=$enableval
+  fi])
+
+AC_ARG_ENABLE(startup-notification,
+  [  --enable-startup-notification  enable freedesktop startup notification support],
+  [if test x$enableval = xyes -o x$enableval = xno; then
+    support_startup_notification=$enableval
   fi])
 
 AC_ARG_ENABLE(transparency,
@@ -465,9 +471,32 @@ fi
 AC_SUBST(PIXBUF_CFLAGS)
 AC_SUBST(PIXBUF_LIBS)
 
+STARTUP_NOTIFICATION_CFLAGS=
+STARTUP_NOTIFICATION_LIBS=
+
+if test x$support_startup_notification = xyes; then
+  support_startup_notification=no
+  AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
+  AC_MSG_CHECKING(for libstartup-notification)
+  if test $PKG_CONFIG != no && $PKG_CONFIG --exists libstartup-notification-1.0; then
+    STARTUP_NOTIFICATION_CFLAGS="`$PKG_CONFIG libstartup-notification-1.0 --cflags`"
+    STARTUP_NOTIFICATION_LIBS="`$PKG_CONFIG libstartup-notification-1.0 --libs`"
+    support_startup_notification=yes
+  fi
+
+  if test x$support_startup_notification = xyes; then
+    AC_MSG_RESULT(ok)
+    AC_DEFINE(HAVE_STARTUP_NOTIFICATION, 1, Define if freedesktop startup notifications should be supported)
+  else
+    AC_MSG_RESULT(no)
+  fi
+fi
+
+AC_SUBST(STARTUP_NOTIFICATION_CFLAGS)
+AC_SUBST(STARTUP_NOTIFICATION_LIBS)
+
 AFTERIMAGE_CFLAGS=
 AFTERIMAGE_LIBS=
-AFTERIMAGE_VERSION=
 
 if test x$support_afterimage = xyes; then
   support_afterimage=no
@@ -477,18 +506,15 @@ if test x$support_afterimage = xyes; then
   fi
   if test "x$afterimage_config" != "xno" ; then
     AC_MSG_CHECKING(for libAfterImage version >= 1.15)
-    xAFTERIMAGE_VERSION=`$afterimage_config --version`
-    if test -n "$xAFTERIMAGE_VERSION" ; then
-      xAFTERIMAGE_CFLAGS=`$afterimage_config --cflags`
-      xAFTERIMAGE_LIBS=`$afterimage_config --libs`
-      if test "x$xAFTERIMAGE_LIBS" != "x"; then
-        libai_ver_major=`echo $xAFTERIMAGE_VERSION | cut -f 1 -d .`
-        libai_ver_minor=`echo $xAFTERIMAGE_VERSION | cut -f 2 -d .`
+    AFTERIMAGE_VERSION=`$afterimage_config --version`
+    if test -n "$AFTERIMAGE_VERSION" ; then
+      AFTERIMAGE_CFLAGS=`$afterimage_config --cflags`
+      AFTERIMAGE_LIBS=`$afterimage_config --libs`
+      if test "x$AFTERIMAGE_LIBS" != "x"; then
+        libai_ver_major=`echo $AFTERIMAGE_VERSION | cut -f 1 -d .`
+        libai_ver_minor=`echo $AFTERIMAGE_VERSION | cut -f 2 -d .`
         if test $libai_ver_major -gt 1 -o \( $libai_ver_major -eq 1 -a $libai_ver_minor -ge 15 \); then
           support_afterimage=yes
-          AFTERIMAGE_CFLAGS="$xAFTERIMAGE_CFLAGS"
-          AFTERIMAGE_LIBS="$xAFTERIMAGE_LIBS"
-          AFTERIMAGE_VERSION="$xAFTERIMAGE_VERSION"
         fi
       fi
     fi
@@ -499,6 +525,8 @@ if test x$support_afterimage = xyes; then
       AC_DEFINE(BG_IMAGE_FROM_FILE, 1, Define if you want to have sexy-looking background pixmaps.)
     else
       AC_MSG_RESULT(no)
+      AFTERIMAGE_CFLAGS=
+      AFTERIMAGE_LIBS=
     fi
   fi
 fi

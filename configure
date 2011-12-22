@@ -603,6 +603,8 @@ XFT_CONFIG
 AFTERIMAGE_LIBS
 AFTERIMAGE_CFLAGS
 afterimage_config
+STARTUP_NOTIFICATION_LIBS
+STARTUP_NOTIFICATION_CFLAGS
 PIXBUF_LIBS
 PIXBUF_CFLAGS
 PKG_CONFIG
@@ -693,6 +695,7 @@ enable_font_styles
 enable_afterimage
 with_afterimage_config
 enable_pixbuf
+enable_startup_notification
 enable_transparency
 enable_fading
 enable_rxvt_scroll
@@ -1366,8 +1369,9 @@ Optional Features:
   --enable-combining      enable composition of base and combining characters
   --enable-xft            enable xft support on systems that have it
   --enable-font-styles    enable bold and italic support
-  --enable-afterimage     enable integration with libAfterImage for background images
+  --enable-afterimage     enable integration with libAfterImage for background images (deprecated)
   --enable-pixbuf         enable integration with gdk-pixbuf for background images
+  --enable-startup-notification  enable freedesktop startup notification support
   --enable-transparency   enable transparent backgrounds
   --enable-fading         enable colors fading when off focus
   --enable-rxvt-scroll    enable rxvt style scrollbar
@@ -4667,7 +4671,7 @@ support_scroll_next=yes
 support_scroll_xterm=yes
 support_xim=yes
 support_pixbuf=yes
-support_afterimage=yes
+support_startup_notification=yes
 support_xft=yes
 support_unicode3=no
 support_combining=yes
@@ -4699,7 +4703,7 @@ if test "${enable_everything+set}" = set; then :
        support_wtmp=no
        support_xim=no
        support_pixbuf=no
-       support_afterimage=no
+       support_startup_notification=no
        support_xft=no
        support_unicode3=no
        support_combining=no
@@ -4727,7 +4731,7 @@ if test "${enable_everything+set}" = set; then :
        support_wtmp=yes
        support_xim=yes
        support_pixbuf=yes
-       support_afterimage=yes
+       support_startup_notification=yes
        support_xft=yes
        support_unicode3=yes
        support_combining=yes
@@ -4741,32 +4745,32 @@ if test "${enable_everything+set}" = set; then :
 fi
 
 
-ASSERTIONS=no
+support_assertions=no
 # Check whether --enable-assert was given.
 if test "${enable_assert+set}" = set; then :
   enableval=$enable_assert; if test x$enableval = xyes; then
-    ASSERTIONS=yes
+    support_assertions=yes
   fi
 fi
 
-if test x$ASSERTIONS = xno; then
+if test x$support_assertions = xno; then
 
 $as_echo "#define NDEBUG 1" >>confdefs.h
 
 fi
 
-WARNINGS=no
+support_warnings=no
 # Check whether --enable-warnings was given.
 if test "${enable_warnings+set}" = set; then :
   enableval=$enable_warnings; if test x$enableval = xyes; then
-    WARNINGS=yes
+    support_warnings=yes
   fi
 fi
 
 if test x$GXX = xyes; then
-  if test $WARNINGS = yes; then
+  if test $support_warnings = yes; then
     save_CXXFLAGS="$CXXFLAGS"
-    CXXFLAGS="$CXXFLAGS -Wall -Wno-sign-compare -Wno-reorder -Wno-non-virtual-dtor"
+    CXXFLAGS="$CXXFLAGS -Wall -Wno-sign-compare -Wno-reorder -Wno-unused-value"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -4856,6 +4860,14 @@ fi
 if test "${enable_pixbuf+set}" = set; then :
   enableval=$enable_pixbuf; if test x$enableval = xyes -o x$enableval = xno; then
     support_pixbuf=$enableval
+  fi
+fi
+
+
+# Check whether --enable-startup-notification was given.
+if test "${enable_startup_notification+set}" = set; then :
+  enableval=$enable_startup_notification; if test x$enableval = xyes -o x$enableval = xno; then
+    support_startup_notification=$enableval
   fi
 fi
 
@@ -6340,9 +6352,77 @@ fi
 
 
 
+STARTUP_NOTIFICATION_CFLAGS=
+STARTUP_NOTIFICATION_LIBS=
+
+if test x$support_startup_notification = xyes; then
+  support_startup_notification=no
+  # Extract the first word of "pkg-config", so it can be a program name with args.
+set dummy pkg-config; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_path_PKG_CONFIG+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $PKG_CONFIG in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PKG_CONFIG="$PKG_CONFIG" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_PKG_CONFIG="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_path_PKG_CONFIG" && ac_cv_path_PKG_CONFIG="no"
+  ;;
+esac
+fi
+PKG_CONFIG=$ac_cv_path_PKG_CONFIG
+if test -n "$PKG_CONFIG"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PKG_CONFIG" >&5
+$as_echo "$PKG_CONFIG" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libstartup-notification" >&5
+$as_echo_n "checking for libstartup-notification... " >&6; }
+  if test $PKG_CONFIG != no && $PKG_CONFIG --exists libstartup-notification-1.0; then
+    STARTUP_NOTIFICATION_CFLAGS="`$PKG_CONFIG libstartup-notification-1.0 --cflags`"
+    STARTUP_NOTIFICATION_LIBS="`$PKG_CONFIG libstartup-notification-1.0 --libs`"
+    support_startup_notification=yes
+  fi
+
+  if test x$support_startup_notification = xyes; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: ok" >&5
+$as_echo "ok" >&6; }
+
+$as_echo "#define HAVE_STARTUP_NOTIFICATION 1" >>confdefs.h
+
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+  fi
+fi
+
+
+
+
 AFTERIMAGE_CFLAGS=
 AFTERIMAGE_LIBS=
-AFTERIMAGE_VERSION=
 
 if test x$support_afterimage = xyes; then
   support_afterimage=no
@@ -6393,18 +6473,15 @@ fi
   if test "x$afterimage_config" != "xno" ; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libAfterImage version >= 1.15" >&5
 $as_echo_n "checking for libAfterImage version >= 1.15... " >&6; }
-    xAFTERIMAGE_VERSION=`$afterimage_config --version`
-    if test -n "$xAFTERIMAGE_VERSION" ; then
-      xAFTERIMAGE_CFLAGS=`$afterimage_config --cflags`
-      xAFTERIMAGE_LIBS=`$afterimage_config --libs`
-      if test "x$xAFTERIMAGE_LIBS" != "x"; then
-        libai_ver_major=`echo $xAFTERIMAGE_VERSION | cut -f 1 -d .`
-        libai_ver_minor=`echo $xAFTERIMAGE_VERSION | cut -f 2 -d .`
+    AFTERIMAGE_VERSION=`$afterimage_config --version`
+    if test -n "$AFTERIMAGE_VERSION" ; then
+      AFTERIMAGE_CFLAGS=`$afterimage_config --cflags`
+      AFTERIMAGE_LIBS=`$afterimage_config --libs`
+      if test "x$AFTERIMAGE_LIBS" != "x"; then
+        libai_ver_major=`echo $AFTERIMAGE_VERSION | cut -f 1 -d .`
+        libai_ver_minor=`echo $AFTERIMAGE_VERSION | cut -f 2 -d .`
         if test $libai_ver_major -gt 1 -o \( $libai_ver_major -eq 1 -a $libai_ver_minor -ge 15 \); then
           support_afterimage=yes
-          AFTERIMAGE_CFLAGS="$xAFTERIMAGE_CFLAGS"
-          AFTERIMAGE_LIBS="$xAFTERIMAGE_LIBS"
-          AFTERIMAGE_VERSION="$xAFTERIMAGE_VERSION"
         fi
       fi
     fi
@@ -6421,6 +6498,8 @@ $as_echo "#define BG_IMAGE_FROM_FILE 1" >>confdefs.h
     else
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
+      AFTERIMAGE_CFLAGS=
+      AFTERIMAGE_LIBS=
     fi
   fi
 fi
@@ -6872,309 +6951,145 @@ fi
 
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking where utmp is located" >&5
-$as_echo_n "checking where utmp is located... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a fallback location of utmp" >&5
+$as_echo_n "checking for a fallback location of utmp... " >&6; }
 if test "${pt_cv_path_utmp+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
-  if test "$cross_compiling" = yes; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define UTMP_FILE in config.h manually" >&5
-$as_echo "$as_me: WARNING: Define UTMP_FILE in config.h manually" >&2;}
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 
-#include <sys/types.h>
-#include <utmp.h>
-
-int main()
-{
-    char **path, *list[] = { "/var/run/utmp", "/var/adm/utmp", "/etc/utmp", "/usr/etc/utmp", "/usr/adm/utmp", NULL };
-    FILE *f = fopen("conftestval", "w");
-    if (!f) return 1;
-#ifdef UTMP_FILE
-    fprintf(f, "%s\n", UTMP_FILE);
-#elif defined(_PATH_UTMP)
-    fprintf(f, "%s\n", _PATH_UTMP);
-#else
-    for (path = list; *path; path++) {
-        struct stat st;
-        if (stat(*path, &st) == 0) {
-            fprintf(f, "%s\n", *path);
-            break;
-        }
-    }
-#endif
-    return fclose(f) != 0;
-}
-_ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
-  pt_cv_path_utmp=`cat conftestval`
-else
-  pt_cv_path_utmp=
+if test "$cross_compiling" != yes; then
+  for file in "/var/run/utmp" "/var/adm/utmp" "/etc/utmp" "/usr/etc/utmp" "/usr/adm/utmp"; do
+    if test -f "$file"; then
+      pt_cv_path_utmp=$file
+      break
+    fi
+  done
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_path_utmp" >&5
 $as_echo "$pt_cv_path_utmp" >&6; }
 if test x$pt_cv_path_utmp != x; then
 
 cat >>confdefs.h <<_ACEOF
-#define UTMP_FILE "$pt_cv_path_utmp"
+#define PT_UTMP_FILE "$pt_cv_path_utmp"
 _ACEOF
 
+elif test "$cross_compiling" = yes; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define PT_UTMP_FILE in config.h manually" >&5
+$as_echo "$as_me: WARNING: Define PT_UTMP_FILE in config.h manually" >&2;}
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking where wtmp is located" >&5
-$as_echo_n "checking where wtmp is located... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a fallback location of wtmp" >&5
+$as_echo_n "checking for a fallback location of wtmp... " >&6; }
 if test "${pt_cv_path_wtmp+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
-  if test "$cross_compiling" = yes; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define WTMP_FILE in config.h manually" >&5
-$as_echo "$as_me: WARNING: Define WTMP_FILE in config.h manually" >&2;}
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 
-#include <sys/types.h>
-#ifdef HAVE_UTMP_H
-#include <utmp.h>
-#endif
-
-int main()
-{
-    char **path, *list[] = { "/var/log/wtmp", "/var/adm/wtmp", "/etc/wtmp", "/usr/etc/wtmp", "/usr/adm/wtmp", NULL };
-    FILE *f = fopen("conftestval", "w");
-    if (!f) return 1;
-#ifdef WTMP_FILE
-    fprintf(f, "%s\n", WTMP_FILE);
-#elif defined(_PATH_WTMP)
-    fprintf(f, "%s\n", _PATH_WTMP);
-#else
-    for (path = list; *path; path++) {
-        struct stat st;
-        if (stat(*path, &st) == 0) {
-            fprintf(f, "%s\n", *path);
-            break;
-        }
-    }
-#endif
-    return fclose(f) != 0;
-}
-_ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
-  pt_cv_path_wtmp=`cat conftestval`
-else
-  pt_cv_path_wtmp=
+if test "$cross_compiling" != yes; then
+  for file in "/var/log/wtmp" "/var/adm/wtmp" "/etc/wtmp" "/usr/etc/wtmp" "/usr/adm/wtmp"; do
+    if test -f "$file"; then
+      pt_cv_path_wtmp=$file
+      break
+    fi
+  done
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_path_wtmp" >&5
 $as_echo "$pt_cv_path_wtmp" >&6; }
 if test x$pt_cv_path_wtmp != x; then
 
 cat >>confdefs.h <<_ACEOF
-#define WTMP_FILE "$pt_cv_path_wtmp"
+#define PT_WTMP_FILE "$pt_cv_path_wtmp"
 _ACEOF
 
+elif test "$cross_compiling" = yes; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define PT_WTMP_FILE in config.h manually" >&5
+$as_echo "$as_me: WARNING: Define PT_WTMP_FILE in config.h manually" >&2;}
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking where wtmpx is located" >&5
-$as_echo_n "checking where wtmpx is located... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a fallback location of wtmpx" >&5
+$as_echo_n "checking for a fallback location of wtmpx... " >&6; }
 if test "${pt_cv_path_wtmpx+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
-  if test "$cross_compiling" = yes; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define WTMPX_FILE in config.h manually" >&5
-$as_echo "$as_me: WARNING: Define WTMPX_FILE in config.h manually" >&2;}
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 
-#ifdef HAVE_UTMPX_H
-#include <utmpx.h>
-#endif
-
-int main()
-{
-    char **path, *list[] = { "/var/log/wtmpx", "/var/adm/wtmpx", NULL };
-    FILE *f = fopen("conftestval", "w");
-    if (!f) return 1;
-#ifdef WTMPX_FILE
-    fprintf(f, "%s\n", WTMPX_FILE);
-#elif defined(_PATH_WTMPX)
-    fprintf(f, "%s\n", _PATH_WTMPX);
-#else
-    for (path = list; *path; path++) {
-        struct stat st;
-        if (stat(*path, &st) == 0) {
-            fprintf(f, "%s\n", *path);
-            break;
-        }
-    }
-#endif
-    return fclose(f) != 0;
-}
-_ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
-  pt_cv_path_wtmpx=`cat conftestval`
-else
-  pt_cv_path_wtmpx=
+if test "$cross_compiling" != yes; then
+  for file in "/var/log/wtmpx" "/var/adm/wtmpx"; do
+    if test -f "$file"; then
+      pt_cv_path_wtmpx=$file
+      break
+    fi
+  done
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_path_wtmpx" >&5
 $as_echo "$pt_cv_path_wtmpx" >&6; }
 if test x$pt_cv_path_wtmpx != x; then
 
 cat >>confdefs.h <<_ACEOF
-#define WTMPX_FILE "$pt_cv_path_wtmpx"
+#define PT_WTMPX_FILE "$pt_cv_path_wtmpx"
 _ACEOF
 
+elif test "$cross_compiling" = yes; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define PT_WTMPX_FILE in config.h manually" >&5
+$as_echo "$as_me: WARNING: Define PT_WTMPX_FILE in config.h manually" >&2;}
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking where lastlog is located" >&5
-$as_echo_n "checking where lastlog is located... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a fallback location of lastlog" >&5
+$as_echo_n "checking for a fallback location of lastlog... " >&6; }
 if test "${pt_cv_path_lastlog+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
-  if test "$cross_compiling" = yes; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define LASTLOG_FILE in config.h manually" >&5
-$as_echo "$as_me: WARNING: Define LASTLOG_FILE in config.h manually" >&2;}
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 
-#include <sys/types.h>
-#ifdef HAVE_UTMP_H
-#include <utmp.h>
-#endif
-#ifdef HAVE_LASTLOG_H
-#include <lastlog.h>
-#endif
-
-int main()
-{
-    char **path, *list[] = { "/var/log/lastlog", NULL };
-    FILE *f = fopen("conftestval", "w");
-    if (!f) return 1;
-#ifdef LASTLOG_FILE
-    fprintf(f, "%s\n", LASTLOG_FILE);
-#elif defined(_PATH_LASTLOG)
-    fprintf(f, "%s\n", _PATH_LASTLOG);
-#else
-    for (path = list; *path; path++) {
-        struct stat st;
-        if (stat(*path, &st) == 0) {
-            fprintf(f, "%s\n", *path);
-            break;
-        }
-    }
-#endif
-    return fclose(f) != 0;
-}
-_ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
-  pt_cv_path_lastlog=`cat conftestval`
-else
-  pt_cv_path_lastlog=
+if test "$cross_compiling" != yes; then
+  for file in "/var/log/lastlog"; do
+    if test -f "$file"; then
+      pt_cv_path_lastlog=$file
+      break
+    fi
+  done
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_path_lastlog" >&5
 $as_echo "$pt_cv_path_lastlog" >&6; }
 if test x$pt_cv_path_lastlog != x; then
 
 cat >>confdefs.h <<_ACEOF
-#define LASTLOG_FILE "$pt_cv_path_lastlog"
+#define PT_LASTLOG_FILE "$pt_cv_path_lastlog"
 _ACEOF
 
+elif test "$cross_compiling" = yes; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define PT_LASTLOG_FILE in config.h manually" >&5
+$as_echo "$as_me: WARNING: Define PT_LASTLOG_FILE in config.h manually" >&2;}
 fi
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking where lastlogx is located" >&5
-$as_echo_n "checking where lastlogx is located... " >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a fallback location of lastlogx" >&5
+$as_echo_n "checking for a fallback location of lastlogx... " >&6; }
 if test "${pt_cv_path_lastlogx+set}" = set; then :
   $as_echo_n "(cached) " >&6
 else
-  if test "$cross_compiling" = yes; then :
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define LASTLOGX_FILE in config.h manually" >&5
-$as_echo "$as_me: WARNING: Define LASTLOGX_FILE in config.h manually" >&2;}
-else
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/stat.h>
 
-#ifdef HAVE_UTMPX_H
-#include <utmpx.h>
-#endif
-
-int main()
-{
-    char **path, *list[] = { "/var/log/lastlogx", "/var/adm/lastlogx", NULL };
-    FILE *f = fopen("conftestval", "w");
-    if (!f) return 1;
-#ifdef LASTLOGX_FILE
-    fprintf(f, "%s\n", LASTLOGX_FILE);
-#elif defined(_PATH_LASTLOGX)
-    fprintf(f, "%s\n", _PATH_LASTLOGX);
-#else
-    for (path = list; *path; path++) {
-        struct stat st;
-        if (stat(*path, &st) == 0) {
-            fprintf(f, "%s\n", *path);
-            break;
-        }
-    }
-#endif
-    return fclose(f) != 0;
-}
-_ACEOF
-if ac_fn_cxx_try_run "$LINENO"; then :
-  pt_cv_path_lastlogx=`cat conftestval`
-else
-  pt_cv_path_lastlogx=
+if test "$cross_compiling" != yes; then
+  for file in "/var/log/lastlogx" "/var/adm/lastlogx"; do
+    if test -f "$file"; then
+      pt_cv_path_lastlogx=$file
+      break
+    fi
+  done
 fi
-rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
-  conftest.$ac_objext conftest.beam conftest.$ac_ext
-fi
-
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $pt_cv_path_lastlogx" >&5
 $as_echo "$pt_cv_path_lastlogx" >&6; }
 if test x$pt_cv_path_lastlogx != x; then
 
 cat >>confdefs.h <<_ACEOF
-#define LASTLOGX_FILE "$pt_cv_path_lastlogx"
+#define PT_LASTLOGX_FILE "$pt_cv_path_lastlogx"
 _ACEOF
 
+elif test "$cross_compiling" = yes; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Define PT_LASTLOGX_FILE in config.h manually" >&5
+$as_echo "$as_me: WARNING: Define PT_LASTLOGX_FILE in config.h manually" >&2;}
 fi
 
 
@@ -7468,53 +7383,9 @@ fi
 done
 
 
-have_clone=no
-
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for /dev/ptc" >&5
-$as_echo_n "checking for /dev/ptc... " >&6; }
-if test -e /dev/ptc; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
-$as_echo "#define CLONE_DEVICE \"/dev/ptc\"" >>confdefs.h
-
-  have_clone=yes
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-case $host in
-  *-*-cygwin*)
-    have_clone=yes
-
-$as_echo "#define CLONE_DEVICE \"/dev/ptmx\"" >>confdefs.h
-
-    ;;
-  *)
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for /dev/ptmx" >&5
-$as_echo_n "checking for /dev/ptmx... " >&6; }
-    if test -e /dev/ptmx; then
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
-$as_echo "#define HAVE_DEV_PTMX 1" >>confdefs.h
-
-
-$as_echo "#define CLONE_DEVICE \"/dev/ptmx\"" >>confdefs.h
-
-      have_clone=yes
-    else
-      { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-    fi
-    ;;
-esac
-
-if test x$ac_cv_func_getpt = xyes -o x$ac_cv_func_posix_openpt = xyes -o x$have_clone = xyes; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for UNIX98 ptys" >&5
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for UNIX98 ptys" >&5
 $as_echo_n "checking for UNIX98 ptys... " >&6; }
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <stdlib.h>
 int
@@ -7530,7 +7401,7 @@ if ac_fn_cxx_try_link "$LINENO"; then :
 
 $as_echo "#define UNIX98_PTY 1" >>confdefs.h
 
-               { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
@@ -7538,7 +7409,6 @@ $as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-fi
 
 if test -z "$unix98_pty"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for library containing openpty" >&5

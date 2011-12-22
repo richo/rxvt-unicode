@@ -50,7 +50,7 @@
 
 /* many compilers define _GNUC_ to some versions but then only implement
  * what their idiot authors think are the "more important" extensions,
- * causing enourmous grief in return for some better fake benchmark numbers.
+ * causing enormous grief in return for some better fake benchmark numbers.
  * or so.
  * we try to detect these and simply assume they are not gcc - if they have
  * an issue with that they should have done it right in the first place.
@@ -62,6 +62,81 @@
     #define ECB_GCC_VERSION(major,minor) (__GNUC__ > (major) || (__GNUC__ == (major) && __GNUC_MINOR__ >= (minor)))
   #endif
 #endif
+
+/*****************************************************************************/
+
+/* ECB_NO_THREADS - ecb is not used by multiple threads, ever */
+/* ECB_NO_SMP     - ecb might be used in multiple threads, but only on a single cpu */
+
+#if ECB_NO_THREADS || ECB_NO_SMP
+  #define ECB_MEMORY_FENCE do { } while (0)
+#endif
+
+#ifndef ECB_MEMORY_FENCE
+  #if ECB_GCC_VERSION(2,5) || defined(__INTEL_COMPILER) || defined(__clang__)
+    #if __i386__
+      #define ECB_MEMORY_FENCE         __asm__ __volatile__ ("lock; orb $0, -1(%%esp)" : : : "memory")
+      #define ECB_MEMORY_FENCE_ACQUIRE ECB_MEMORY_FENCE /* non-lock xchg might be enough */
+      #define ECB_MEMORY_FENCE_RELEASE do { } while (0) /* unlikely to change in future cpus */
+    #elif __amd64
+      #define ECB_MEMORY_FENCE         __asm__ __volatile__ ("mfence" : : : "memory")
+      #define ECB_MEMORY_FENCE_ACQUIRE __asm__ __volatile__ ("lfence" : : : "memory")
+      #define ECB_MEMORY_FENCE_RELEASE __asm__ __volatile__ ("sfence") /* play safe - not needed in any current cpu */
+    #elif __powerpc__ || __ppc__ || __powerpc64__ || __ppc64__
+      #define ECB_MEMORY_FENCE         __asm__ __volatile__ ("sync" : : : "memory")
+    #elif defined(__ARM_ARCH_6__ ) || defined(__ARM_ARCH_6J__ ) \
+       || defined(__ARM_ARCH_6K__) || defined(__ARM_ARCH_6ZK__)
+      #define ECB_MEMORY_FENCE __asm__ __volatile__ ("mcr p15,0,%0,c7,c10,5" : : "r" (0) : "memory")
+    #elif defined(__ARM_ARCH_7__ ) || defined(__ARM_ARCH_7A__ ) \
+       || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7R__ )
+      #define ECB_MEMORY_FENCE         __asm__ __volatile__ ("dmb" : : : "memory")
+    #endif
+  #endif
+#endif
+
+#ifndef ECB_MEMORY_FENCE
+  #if ECB_GCC_VERSION(4,4) || defined(__INTEL_COMPILER) || defined(__clang__)
+    #define ECB_MEMORY_FENCE         __sync_synchronize ()
+    /*#define ECB_MEMORY_FENCE_ACQUIRE ({ char dummy = 0; __sync_lock_test_and_set (&dummy, 1); }) */
+    /*#define ECB_MEMORY_FENCE_RELEASE ({ char dummy = 1; __sync_lock_release      (&dummy   ); }) */
+  #elif _MSC_VER >= 1400 /* VC++ 2005 */
+    #pragma intrinsic(_ReadBarrier,_WriteBarrier,_ReadWriteBarrier)
+    #define ECB_MEMORY_FENCE         _ReadWriteBarrier ()
+    #define ECB_MEMORY_FENCE_ACQUIRE _ReadWriteBarrier () /* according to msdn, _ReadBarrier is not a load fence */
+    #define ECB_MEMORY_FENCE_RELEASE _WriteBarrier ()
+  #elif defined(_WIN32)
+    #include <WinNT.h>
+    #define ECB_MEMORY_FENCE         MemoryBarrier () /* actually just xchg on x86... scary */
+  #endif
+#endif
+
+#ifndef ECB_MEMORY_FENCE
+  #if !ECB_AVOID_PTHREADS
+    /*
+     * if you get undefined symbol references to pthread_mutex_lock,
+     * or failure to find pthread.h, then you should implement
+     * the ECB_MEMORY_FENCE operations for your cpu/compiler
+     * OR provide pthread.h and link against the posix thread library
+     * of your system.
+     */
+    #include <pthread.h>
+    #define ECB_NEEDS_PTHREADS 1
+    #define ECB_MEMORY_FENCE_NEEDS_PTHREADS 1
+
+    static pthread_mutex_t ecb_mf_lock = PTHREAD_MUTEX_INITIALIZER;
+    #define ECB_MEMORY_FENCE do { pthread_mutex_lock (&ecb_mf_lock); pthread_mutex_unlock (&ecb_mf_lock); } while (0)
+  #endif
+#endif
+
+#if !defined(ECB_MEMORY_FENCE_ACQUIRE) && defined(ECB_MEMORY_FENCE)
+  #define ECB_MEMORY_FENCE_ACQUIRE ECB_MEMORY_FENCE
+#endif
+
+#if !defined(ECB_MEMORY_FENCE_RELEASE) && defined(ECB_MEMORY_FENCE)
+  #define ECB_MEMORY_FENCE_RELEASE ECB_MEMORY_FENCE
+#endif
+
+/*****************************************************************************/
 
 #define ECB_C99 (__STDC_VERSION__ >= 199901L)
 
@@ -191,9 +266,6 @@ typedef int ecb_bool;
     return x >> 24;
   }
 
-  /* you have the choice beetween something with a table lookup, */
-  /* something using lots of bit arithmetic and a simple loop */
-  /* we went for the loop */
   ecb_function_ int ecb_ld32 (uint32_t x) ecb_const;
   ecb_function_ int ecb_ld32 (uint32_t x)
   {
@@ -218,6 +290,36 @@ typedef int ecb_bool;
     return r + ecb_ld32 (x);
   }
 #endif
+
+ecb_function_ uint8_t  ecb_bitrev8  (uint8_t  x) ecb_const;
+ecb_function_ uint8_t  ecb_bitrev8  (uint8_t  x)
+{
+  return (  (x * 0x0802U & 0x22110U)
+          | (x * 0x8020U & 0x88440U)) * 0x10101U >> 16; 
+}
+
+ecb_function_ uint16_t ecb_bitrev16 (uint16_t x) ecb_const;
+ecb_function_ uint16_t ecb_bitrev16 (uint16_t x)
+{
+  x = ((x >>  1) &     0x5555) | ((x &     0x5555) <<  1);
+  x = ((x >>  2) &     0x3333) | ((x &     0x3333) <<  2);
+  x = ((x >>  4) &     0x0f0f) | ((x &     0x0f0f) <<  4);
+  x = ( x >>  8              ) | ( x               <<  8);
+
+  return x;
+}
+
+ecb_function_ uint32_t ecb_bitrev32 (uint32_t x) ecb_const;
+ecb_function_ uint32_t ecb_bitrev32 (uint32_t x)
+{
+  x = ((x >>  1) & 0x55555555) | ((x & 0x55555555) <<  1);
+  x = ((x >>  2) & 0x33333333) | ((x & 0x33333333) <<  2);
+  x = ((x >>  4) & 0x0f0f0f0f) | ((x & 0x0f0f0f0f) <<  4);
+  x = ((x >>  8) & 0x00ff00ff) | ((x & 0x00ff00ff) <<  8);
+  x = ( x >> 16              ) | ( x               << 16);
+
+  return x;
+}
 
 /* popcount64 is only available on 64 bit cpus as gcc builtin */
 /* so for this version we are lazy */
@@ -301,6 +403,22 @@ ecb_function_ ecb_bool ecb_little_endian (void) { return ecb_byteorder_helper ()
   #define ecb_mod(m,n) ((m) % (n) + ((m) % (n) < 0 ? (n) : 0))
 #else
   #define ecb_mod(m,n) ((m) < 0 ? ((n) - 1 - ((-1 - (m)) % (n))) : ((m) % (n)))
+#endif
+
+#if __cplusplus
+  template<typename T>
+  static inline T ecb_div_rd (T val, T div)
+  {
+    return val < 0 ? - ((-val + div - 1) / div) : (val          ) / div;
+  }
+  template<typename T>
+  static inline T ecb_div_ru (T val, T div)
+  {
+    return val < 0 ? - ((-val          ) / div) : (val + div - 1) / div;
+  }
+#else
+  #define ecb_div_rd(val,div) ((val) < 0 ? - ((-(val) + (div) - 1) / (div)) : ((val)            ) / (div))
+  #define ecb_div_ru(val,div) ((val) < 0 ? - ((-(val)            ) / (div)) : ((val) + (div) - 1) / (div))
 #endif
 
 #if ecb_cplusplus_does_not_suck

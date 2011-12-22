@@ -57,6 +57,11 @@
 # include <langinfo.h>
 #endif
 
+#ifdef HAVE_STARTUP_NOTIFICATION
+# define SN_API_NOT_YET_FROZEN
+# include <libsn/sn-launchee.h>
+#endif
+
 #ifdef DISPLAY_IS_IP
 /* On Solaris link with -lsocket and -lnsl */
 #include <sys/types.h>
@@ -564,36 +569,8 @@ rxvt_term::init_vars ()
 const char **
 rxvt_term::init_resources (int argc, const char *const *argv)
 {
-  int i, r_argc;
-  const char **cmd_argv, **r_argv;
-
-  /*
-   * Look for -e option. Find => split and make cmd_argv[] of command args
-   */
-  for (r_argc = 0; r_argc < argc; r_argc++)
-    if (!strcmp (argv[r_argc], "-e"))
-      break;
-
-  if (r_argc == argc)
-    cmd_argv = NULL;
-  else if (!argv[r_argc + 1])
-    rxvt_fatal ("option '-e' requires an argument, aborting.\n");
-  else
-    {
-      cmd_argv = (const char **)rxvt_malloc (sizeof (char *) * (argc - r_argc));
-
-      for (i = 0; i < argc - r_argc - 1; i++)
-        cmd_argv[i] = (const char *)argv[i + r_argc + 1];
-
-      cmd_argv[i] = NULL;
-    }
-
-  r_argv = (const char **)rxvt_malloc (sizeof (char *) * (r_argc + 1));
-
-  for (i = 0; i < r_argc; i++)
-    r_argv[i] = (const char *)argv[i];
-
-  r_argv[i] = NULL;
+  int i;
+  const char **cmd_argv;
 
   rs[Rs_name] = rxvt_basename (argv[0]);
 
@@ -604,13 +581,10 @@ rxvt_term::init_resources (int argc, const char *const *argv)
   if ((rs[Rs_display_name] = getenv ("DISPLAY")) == NULL)
     rs[Rs_display_name] = ":0";
 
-  get_options (r_argc, r_argv);
+  cmd_argv = get_options (argc, argv);
 
   if (!(display = displays.get (rs[Rs_display_name])))
-    {
-      free (r_argv);
-      rxvt_fatal ("can't open display %s, aborting.\n", rs[Rs_display_name]);
-    }
+    rxvt_fatal ("can't open display %s, aborting.\n", rs[Rs_display_name]);
 
   // using a local pointer decreases code size a lot
   xa = display->xa;
@@ -623,20 +597,9 @@ rxvt_term::init_resources (int argc, const char *const *argv)
     select_visual (strtol (rs[Rs_depth], 0, 0));
 #endif
 
-  free (r_argv);
-
   for (int i = NUM_RESOURCES; i--; )
     if (rs [i] == resval_undef)
       rs [i] = 0;
-
-#ifdef HAVE_AFTERIMAGE
-  set_application_name ((char *)rs[Rs_name]);
-  set_output_threshold (OUTPUT_LEVEL_WARNING);
-#endif
-
-#ifdef HAVE_PIXBUF
-  g_type_init ();
-#endif
 
 #if ENABLE_PERL
   if (!rs[Rs_perl_ext_1])
@@ -650,6 +613,10 @@ rxvt_term::init_resources (int argc, const char *const *argv)
       HOOK_INVOKE ((this, HOOK_INIT, DT_END));
     }
 #endif
+
+  // must be called after initialising the perl interpreter as it
+  // may invoke the `on_register_command' hook
+  extract_keysym_resources ();
 
   /*
    * set any defaults not already set
@@ -768,10 +735,39 @@ rxvt_term::init_resources (int argc, const char *const *argv)
 
 /*----------------------------------------------------------------------*/
 void
-rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
+rxvt_term::init (stringvec *argv, stringvec *envv)
 {
+  argv->push_back (0);
+  envv->push_back (0);
+
+  this->argv = argv;
   this->envv = envv;
 
+  init2 (argv->size () - 1, argv->begin ());
+}
+
+void
+rxvt_term::init (int argc, const char *const *argv, const char *const *envv)
+{
+#if ENABLE_PERL
+  // perl might want to access the stringvecs later, so we need to copy them
+  stringvec *args = new stringvec;
+  for (int i = 0; i < argc; i++)
+    args->push_back (strdup (argv [i]));
+
+  stringvec *envs = new stringvec;
+  for (const char *const *var = envv; *var; var++)
+    envs->push_back (strdup (*var));
+
+  init (args, envs);
+#else
+  init2 (argc, argv);
+#endif
+}
+
+void
+rxvt_term::init2 (int argc, const char *const *argv)
+{
   SET_R (this);
   set_locale ("");
   set_environ (envv); // a few things in X do not call setlocale :(
@@ -795,9 +791,19 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
       }
 
   if (option (Opt_scrollBar))
-    scrollBar.state = STATE_IDLE;    /* set existence for size calculations */
+    scrollBar.state = SB_STATE_IDLE;    /* set existence for size calculations */
 
   pty = ptytty::create ();
+
+#ifdef HAVE_AFTERIMAGE
+  set_application_name ((char *)rs[Rs_name]);
+  set_output_threshold (OUTPUT_LEVEL_WARNING);
+#endif
+
+  // must be called before create_windows, because the latter may call set_icon
+#ifdef HAVE_PIXBUF
+  g_type_init ();
+#endif
 
   create_windows (argc, argv);
 
@@ -837,21 +843,9 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
 
 #ifdef BG_IMAGE_FROM_FILE
     if (rs[Rs_backgroundPixmap])
-      {
-        const char *p = rs[Rs_backgroundPixmap];
-
-        if ((p = strchr (p, ';')) != 0)
-          {
-            p++;
-            bg_set_geometry (p);
-          }
-        else
-          bg_set_default_geometry ();
-
-        if (bg_set_file (rs[Rs_backgroundPixmap]))
-          if (!bg_window_position_sensitive ())
-            update_background ();
-      }
+      if (bg_set_file (rs[Rs_backgroundPixmap]))
+        if (!bg_window_position_sensitive ())
+          update_background ();
 #endif
   }
 #endif
@@ -863,8 +857,6 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
   set_colorfgbg ();
 
   init_command (cmd_argv);
-
-  free (cmd_argv);
 
   if (pty->pty >= 0)
     pty_ev.start (pty->pty, ev::READ);
@@ -881,8 +873,32 @@ rxvt_term::init (int argc, const char *const *argv, stringvec *envv)
     }
 #endif
 
+#if HAVE_STARTUP_NOTIFICATION
+  SnDisplay *snDisplay;
+  SnLauncheeContext *snContext;
+
+  snDisplay = sn_display_new (dpy, NULL, NULL);
+  snContext = sn_launchee_context_new_from_environment (snDisplay, DefaultScreen (dpy));
+
+  /* Tell the window manager that this window is part of the startup context */
+  if (snContext)
+    sn_launchee_context_setup_window (snContext, parent);
+#endif
+
   XMapWindow (dpy, vt);
   XMapWindow (dpy, parent);
+
+#if HAVE_STARTUP_NOTIFICATION
+  if (snContext)
+    {
+      /* Mark the startup process as complete */
+      sn_launchee_context_complete (snContext);
+
+      sn_launchee_context_unref (snContext);
+    }
+
+  sn_display_unref (snDisplay);
+#endif
 
   refresh_check ();
 }
@@ -961,10 +977,6 @@ rxvt_term::init_env ()
 }
 
 /*----------------------------------------------------------------------*/
-/*
- * This is more or less stolen straight from XFree86 xterm.
- * This should support all European type languages.
- */
 void
 rxvt_term::set_locale (const char *locale)
 {
@@ -994,13 +1006,12 @@ rxvt_term::set_locale (const char *locale)
 #endif
 
 #if HAVE_NL_LANGINFO
-  char *codeset = strdup (nl_langinfo (CODESET));
+  char *codeset = nl_langinfo (CODESET);
   // /^UTF.?8/i
   enc_utf8 = (codeset[0] == 'U' || codeset[0] == 'u')
           && (codeset[1] == 'T' || codeset[1] == 't')
           && (codeset[2] == 'F' || codeset[2] == 'f')
           && (codeset[3] == '8' || codeset[4] == '8');
-  free (codeset);
 #else
   enc_utf8 = 0;
 #endif
@@ -1013,14 +1024,14 @@ rxvt_term::init_xlocale ()
 
 #ifdef USE_XIM
   if (!locale)
-    rxvt_warn ("setting locale failed, working without locale support.\n");
+    rxvt_warn ("setting locale failed, continuing without locale support.\n");
   else
     {
       set_string_property (xa[XA_WM_LOCALE_NAME], locale);
 
       if (!XSupportsLocale ())
         {
-          rxvt_warn ("the locale is not supported by Xlib, working without locale support.\n");
+          rxvt_warn ("the locale is not supported by Xlib, continuing without locale support.\n");
           return;
         }
 
@@ -1598,7 +1609,7 @@ rxvt_term::run_command (const char *const *argv)
           if (getfd_hook)
             pty->pty = (*getfd_hook) (pty->pty);
 
-          if (pty->pty < 0 || fcntl (pty->pty, F_SETFL, O_NONBLOCK))
+          if (pty->pty < 0)
             rxvt_fatal ("unusable pty-fd filehandle, aborting.\n");
         }
     }
@@ -1606,6 +1617,8 @@ rxvt_term::run_command (const char *const *argv)
 #endif
     if (!pty->get ())
       rxvt_fatal ("can't initialize pseudo-tty, aborting.\n");
+
+  fcntl (pty->pty, F_SETFL, O_NONBLOCK);
 
   struct termios tio = def_tio;
 

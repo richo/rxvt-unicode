@@ -16,37 +16,21 @@
 #endif
 
 #if UTMP_SUPPORT
-# if !defined(HAVE_STRUCT_UTMPX) || defined(__GLIBC__)
-#  undef HAVE_UTMPX_H
+# if defined(__GLIBC__)
 #  undef HAVE_STRUCT_UTMPX
-# endif
-# if !defined(UTMP_FILE) || !defined(HAVE_STRUCT_UTMP)
-#  undef HAVE_UTMP_H
-#  undef HAVE_STRUCT_UTMP
-# endif
-
-# ifdef HAVE_UTMPX_H
-#  include <utmpx.h>
-# endif
-# ifdef HAVE_UTMP_H
-#  include <utmp.h>
 # endif
 
 # if ! defined(HAVE_STRUCT_UTMPX) && ! defined(HAVE_STRUCT_UTMP)
 #  error cannot build with utmp support - no utmp or utmpx struct found
 # endif
 
-# ifdef HAVE_LASTLOG_H
-#  include <lastlog.h>
-# endif
-
-# include <pwd.h>
-
 #endif
 
 struct ptytty_unix : ptytty
 {
   char *name;
+
+  void log_session (bool login, const char *hostname);
 
 public:
 
@@ -62,16 +46,6 @@ public:
   int utmp_pos;
   int cmd_pid;
   bool login_shell;
-
-#ifdef HAVE_STRUCT_UTMP
-  struct utmp ut;
-#endif
-#ifdef HAVE_STRUCT_UTMPX
-  struct utmpx utx;
-#endif
-#if (defined(HAVE_STRUCT_UTMP) && defined(HAVE_UTMP_PID)) || defined(HAVE_STRUCT_UTMPX)
-  char ut_id[5];
-#endif
 
   void logout ();
 #endif
