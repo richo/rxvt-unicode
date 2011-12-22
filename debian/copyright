@@ -7,133 +7,31 @@ Upstream Author: Marc Lehmann <pcg@schmorp.de> and others
 
 Copyright:
 
-    [background.C]
-    Copyright (c) 2005-2008 Marc Lehmann <pcg@goof.com>
-    Copyright (c) 2007      Sasha Vasko <sasha@aftercode.net>
+    Copyright (C) 2003-2011 Marc Alexander Lehmann <schmorp@schmorp.de>
+    Copyright (C) 2006-2011 Emanuele Giaquinta <e.giaquinta@glauco.it>
 
-    [command.C]
-    Copyright (c) 1992      John Bovey, University of Kent at Canterbury <jdb@ukc.ac.uk>
-   				- original version
-    Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
-    				- extensive modifications
-    Copyright (c) 1995      Garrett D'Amore <garrett@netcom.com>
-   				- vt100 printing
-    Copyright (c) 1995      Steven Hirsch <hirsch@emba.uvm.edu>
-   				- X11 mouse report mode and support for
-   				  DEC "private mode" save/restore functions.
-    Copyright (c) 1995      Jakub Jelinek <jj@gnu.ai.mit.edu>
-   				- key-related changes to handle Shift+function
-   				  keys properly.
-    Copyright (c) 1997      MJ Olesen <olesen@me.queensu.ca>
-   				- extensive modifications
-    Copyright (c) 1997      Raul Garcia Garcia <rgg@tid.es>
-   				- modification and cleanups for Solaris 2.x
-   				  and Linux 1.2.x
-    Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
-    Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
-    				- extensive modifications
-    Copyright (c) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
-    Copyright (c) 2001      Marius Gedminas
-   				- Ctrl/Mod4+Tab works like Meta+Tab (options)
-    Copyright (c) 2003      Rob McMullen <robm@flipturn.org>
-    Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
-    Copyright (c) 2007      Emanuele Giaquinta <e.giaquinta@glauco.it>
-
-    [encoding.C, salloc.C, rxvtc.C, rxvt.C]
-    Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
-
-    [fdpass.C]
-    Copyright (c) 2005-2006 Marc Lehmann <pcg@goof.com>
-
-    [init.C]
-    Copyright (c) 1992      John Bovey, University of Kent at Canterbury <jdb@ukc.ac.uk>
-                                 - original version
-    Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
-                                 - extensive modifications
-    Copyright (c) 1996      Chuck Blake <cblake@BBN.COM>
-    Copyright (c) 1997      mj olesen <olesen@me.queensu.ca>
-    Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
-    Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
-                                 - extensive modifications
-    Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
-
-    [keyboard.C]
-    Copyright (c) 2005      WU Fengguang
-    Copyright (c) 2005-2006 Marc Lehmann <pcg@goof.com>
-
-    [logging.C]
-    Copyright (c) 1992      John Bovey <jdb@ukc.ac.uk>
-   				- original version
-    Copyright (c) 1993      lipka
-    Copyright (c) 1993      Brian Stempien <stempien@cs.wmich.edu>
-    Copyright (c) 1995      Raul Garcia Garcia <rgg@tid.es>
-    Copyright (c) 1995      Piet W. Plomp <piet@idefix.icce.rug.nl>
-    Copyright (c) 1997      Raul Garcia Garcia <rgg@tid.es>
-    Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
-    				- extensive modifications
-    Copyright (c) 1999      D J Hawkey Jr <hawkeyd@visi.com>
-   				- lastlog support
-    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
-    Copyright (c) 2006      Emanuele Giaquinta <e.giaquinta@glauco.it>
-
-    [main.C]
-    Copyright (c) 1992      John Bovey, University of Kent at Canterbury <jdb@ukc.ac.uk>
-                                 - original version
-    Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
-                                 - extensive modifications
-    Copyright (c) 1995      Garrett D'Amore <garrett@netcom.com>
-    Copyright (c) 1997      mj olesen <olesen@me.QueensU.CA>
-                                 - extensive modifications
-    Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
-    Copyright (c) 1998-2001 Geoff Wing <gcw@pobox.com>
-                                 - extensive modifications
-    Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
-
-    [misc.C]
-    Copyright (c) 1996      mj olesen <olesen@me.QueensU.CA> Queen's Univ at Kingston
-    Copyright (c) 1997,1998 Oezguer Kesim <kesim@math.fu-berlin.de>
-    Copyright (c) 1998-2000 Geoff Wing <gcw@pobox.com>
-    Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
-
-    [proxy.C]
-    Copyright (c) 2006      Marc Lehmann <pcg@goof.com>
-
-    [ptytty.C]
-    Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
-    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
-    Copyright (c) 2006      Emanuele Giaquinta <e.giaquinta@glauco.it>
-
-    [rxvtfont.C]
-    Copyright (c) 2003-2008 Marc Lehmann <pcg@goof.com>
-
-    [rxvttoolkit.C, rxvtdaemon.C, rxvtd.C]
-    Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
-
-    [rxvtutil.C]
-    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
-
-    [screen.C]
-    Copyright (c) 1997-2001 Geoff Wing <gcw@pobox.com>
-    Copyright (c) 2003-2007 Marc Lehmann <pcg@goof.com>
-
-    [scrollbar-plain.C, scrollbar-rxvt.C, scrollbar-xterm.C]
-    Copyright (c) 1997,1998 mj olesen <olesen@me.QueensU.CA>
-    Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
-    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
-
-    [scrollbar.C, scrollbar-next.C]
-    Copyright (c) 1997,1998 mj olesen <olesen@me.QueensU.CA>
-    Copyright (c) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
-   				- N*XTstep like scrollbars
-    Copyright (c) 1999-2001 Geoff Wing <gcw@pobox.com>
-    Copyright (c) 2004-2006 Marc Lehmann <pcg@goof.com>
-
-    [xdefaults.C]
-    Copyright (c) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
-                                 - original version
-    Copyright (c) 1997,1998 mj olesen <olesen@me.queensu.ca>
-    Copyright (c) 2003-2006 Marc Lehmann <pcg@goof.com>
-    Copyright (c) 2007      Emanuele Giaquinta <e.giaquinta@glauco.it>
+    Copyright (C) 1998      Alfredo K. Kojima <kojima@windowmaker.org>
+    Copyright (C) 1993      Brian Stempien <stempien@cs.wmich.edu>
+    Copyright (C) 1996      Chuck Blake <cblake@BBN.COM>
+    Copyright (C) 1999      D J Hawkey Jr <hawkeyd@visi.com>
+    Copyright (C) 1995      Garrett D'Amore <garrett@netcom.com>
+    Copyright (C) 1997-2001 Geoff Wing <gcw@pobox.com>
+    Copyright (C) 1995      Jakub Jelinek <jj@gnu.ai.mit.edu>
+    Copyright (C) 1992      John Bovey <jdb@ukc.ac.uk>
+    Copyright (C) 1997-1998 Kay Roemer & Arno Puder
+    Copyright (C) 1993      lipka
+    Copyright (C) 2001      Marius Gedminas
+    Copyright (C) 1996-1998 mj olesen <olesen@me.queensu.ca>
+    Copyright (C) 1997-1998 Oezguer Kesim <kesim@math.fu-berlin.de>
+    Copyright (C) 1995      Piet W. Plomp <piet@idefix.icce.rug.nl>
+    Copyright (C) 1995,1997 Raul Garcia Garcia <rgg@tid.es>
+    Copyright (C) 1994      Robert Nation <nation@rocket.sanders.lockheed.com>
+    Copyright (C) 2003      Rob McMullen <robm@flipturn.org>
+    Copyright (C) 2011      Ryan Kavanagh <ryanakca@kubuntu.org>
+    Copyright (C) 2006      Samuel Ljungkvist <salj@triplefusion.net>
+    Copyright (C) 2007      Sasha Vasko <sasha@aftercode.net>
+    Copyright (C) 1995      Steven Hirsch <hirsch@emba.uvm.edu>
+    Copyright (C) 2005      WU Fengguang
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -148,6 +46,34 @@ Copyright:
     You should have received a copy of the GNU General Public License
     along with this program; if not, write to the Free Software
     Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+
+The file libecb/ecb.h is:
+
+    Copyright (C) 2009-2011 Marc Alexander Lehmann <libecb@schmorp.de>
+    Copyright (C) 2011 Emanuele Giaquinta
+
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without modifica-
+    tion, are permitted provided that the following conditions are met:
+
+      1.  Redistributions of source code must retain the above copyright notice,
+          this list of conditions and the following disclaimer.
+
+      2.  Redistributions in binary form must reproduce the above copyright
+          notice, this list of conditions and the following disclaimer in the
+          documentation and/or other materials provided with the distribution.
+
+    THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
+    WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
+    CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
+    EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPE-
+    CIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+    OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+    WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTH-
+    ERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
+    OF THE POSSIBILITY OF SUCH DAMAGE.
 
 The Debian packaging is:
 
