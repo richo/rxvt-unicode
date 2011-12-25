@@ -1,3 +1,9 @@
+rxvt-unicode (9.14-2) unstable; urgency=low
+
+  * Imported upstream code and applied psych0tik patchset
+
+ -- Rich Healey <richo@psych0tik.net>  Sun, 25 Dec 2011 12:02:37 +1100
+
 rxvt-unicode (9.14-1) unstable; urgency=low
 
   * Imported Upstream version 9.14
