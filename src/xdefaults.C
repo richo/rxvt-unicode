@@ -36,6 +36,7 @@
 #define Optflag_Reverse              1
 #define Optflag_Boolean              2
 #define Optflag_Switch               4
+#define Optflag_Info                 8
 
 /* monolithic option/resource structure: */
 /*
@@ -46,7 +47,10 @@
 
 /* INFO () - descriptive information only */
 #define INFO(opt, arg, desc)					\
-    {0, 0, -1, NULL, (opt), (arg), (desc)}
+    {0, Optflag_Info, -1, NULL, (opt), (arg), (desc)}
+
+#define RINFO(kw, arg)						\
+    {0, Optflag_Info, -1, (kw), NULL, (arg), NULL}
 
 /* STRG () - command-line option, with/without resource */
 #define STRG(rsp, kw, opt, arg, desc)				\
@@ -71,6 +75,8 @@
     (optList[i].flag & Optflag_Boolean)
 #define optList_isReverse(i)						\
     (optList[i].flag & Optflag_Reverse)
+#define optList_isInfo(i)						\
+    (optList[i].flag & Optflag_Info)
 
 static const struct
   {
@@ -269,10 +275,17 @@ optList[] = {
 #ifdef HAVE_AFTERIMAGE
               STRG (Rs_blendtype, "blendType", "blt", "string", "background image blending type - alpha, tint, etc..."),
 #endif
+#ifndef NO_RESOURCES
+              RINFO ("xrm", "string"),
+#endif
+#ifdef KEYSYM_RESOURCE
+              RINFO ("keysym.sym", "keysym"),
+#endif
               INFO ("e", "command arg ...", "command to execute")
             };
 
 #undef INFO
+#undef RINFO
 #undef STRG
 #undef RSTRG
 #undef SWCH
@@ -452,11 +465,6 @@ rxvt_usage (int type)
                     optList[i].kw,
                     (INDENT - strlen (optList[i].kw)), "", /* XXX */
                     (optList_isBool (i) ? "boolean" : optList[i].arg));
-#ifdef KEYSYM_RESOURCE
-        rxvt_log ("  " "keysym.sym" ": %*s%s\n",
-                (INDENT - sizeof ("keysym.sym") + 1), "", /* XXX */
-                "keysym");
-#endif
         rxvt_log ("\n  -help to list options");
         break;
     }
@@ -468,7 +476,7 @@ rxvt_usage (int type)
 /*}}} */
 
 /*{{{ get command-line options before getting resources */
-void
+const char **
 rxvt_term::get_options (int argc, const char *const *argv)
 {
   int i, bad_option = 0;
@@ -515,7 +523,8 @@ rxvt_term::get_options (int argc, const char *const *argv)
                 && optList[entry].opt && !strcmp (opt, optList[entry].opt)))
           break;
 
-      if (entry < ecb_array_length (optList))
+      if (entry < ecb_array_length (optList)
+          && !optList_isInfo (entry))
         {
           if (optList_isReverse (entry))
             flag = !flag;
@@ -563,6 +572,13 @@ rxvt_term::get_options (int argc, const char *const *argv)
             }
         }
 #endif
+      else if (!strcmp (opt, "e"))
+        {
+          if (i+1 == argc)
+            rxvt_fatal ("option '-e' requires an argument, aborting.\n");
+
+          return (const char **)argv + i + 1;
+        }
       else
         {
           bad_option = 1;
@@ -572,6 +588,8 @@ rxvt_term::get_options (int argc, const char *const *argv)
 
   if (bad_option)
     rxvt_usage (0);
+
+  return 0;
 }
 
 /*}}} */
@@ -586,7 +604,7 @@ rxvt_term::get_options (int argc, const char *const *argv)
  *      "rxvt" "keysym" "0xFF01"
  *   value will be a string
  */
-int
+static int
 rxvt_define_key (XrmDatabase *database ecb_unused,
                  XrmBindingList bindings ecb_unused,
                  XrmQuarkList quarks,
@@ -665,7 +683,7 @@ rxvt_term::parse_keysym (const char *str, const char *arg)
     {
       unsigned int i;
 
-      for (i=0; i < ecb_array_length (keysym_vocabulary); ++i)
+      for (i = 0; i < ecb_array_length (keysym_vocabulary); ++i)
         {
           if (strncmp (str, keysym_vocabulary [i].name, keysym_vocabulary [i].len) == 0)
             {
@@ -692,7 +710,10 @@ rxvt_term::parse_keysym (const char *str, const char *arg)
         return -1;
     }
 
-  keyboard->register_user_translation (sym, state, arg);
+  wchar_t *ws = rxvt_mbstowcs (arg);
+  if (!HOOK_INVOKE ((this, HOOK_REGISTER_COMMAND, DT_INT, sym, DT_INT, state, DT_WCS_LEN, ws, wcslen (ws), DT_END)))
+    keyboard->register_user_translation (sym, state, ws);
+  free (ws);
   return 1;
 }
 
@@ -775,11 +796,18 @@ rxvt_term::extract_resources ()
             }
         }
     }
+#endif /* NO_RESOURCES */
+}
 
+void
+rxvt_term::extract_keysym_resources ()
+{
+#ifndef NO_RESOURCES
   /*
    * [R5 or later]: enumerate the resource database
    */
 #  ifdef KEYSYM_RESOURCE
+  XrmDatabase database = XrmGetDatabase (dpy);
   XrmName name_prefix[3];
   XrmClass class_prefix[3];
 
@@ -793,10 +821,7 @@ rxvt_term::extract_resources ()
   XrmEnumerateDatabase (database, name_prefix, class_prefix,
                         XrmEnumOneLevel, rxvt_define_key, NULL);
 #   ifdef RESFALLBACK
-  name_prefix[0] = XrmStringToName (RESFALLBACK);
-  name_prefix[1] = XrmStringToName ("keysym");
-  class_prefix[0] = XrmStringToName (RESFALLBACK);
-  class_prefix[1] = XrmStringToName ("Keysym");
+  name_prefix[0] = class_prefix[0] = XrmStringToName (RESFALLBACK);
   /* XXX: Need to check sizeof (rxvt_t) == sizeof (XPointer) */
   XrmEnumerateDatabase (database, name_prefix, class_prefix,
                         XrmEnumOneLevel, rxvt_define_key, NULL);

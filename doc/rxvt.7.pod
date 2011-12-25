@@ -1443,8 +1443,8 @@ Erase in Display (ED)
 
 =begin table
 
-	B<< C<Ps = 0> >>	Clear Below (default)
-	B<< C<Ps = 1> >>	Clear Above
+	B<< C<Ps = 0> >>	Clear Right and Below (default)
+	B<< C<Ps = 1> >>	Clear Left and Above
 	B<< C<Ps = 2> >>	Clear All
 
 =end table
@@ -2356,7 +2356,7 @@ Write user and tty to lastlog file (used by programs like
 F<lastlogin>) at start of rxvt execution.  This option requires
 --enable-utmp to also be specified.
 
-=item --enable-afterimage (default: on)
+=item --enable-afterimage (default: off)
 
 Add support for libAfterImage to be used for background
 images. It adds support for many file formats including JPG, PNG,
@@ -2373,6 +2373,11 @@ lowered if libAfterImage is configured without support for SVG.
 Add support for GDK-PixBuf to be used for background images.
 It adds support for many file formats including JPG, PNG,
 TIFF, GIF, XPM, BMP, ICO and TGA.
+
+=item --enable-startup-notification (default: on)
+
+Add support for freedesktop startup notifications. This allows window managers
+to display some kind of progress indicator during startup.
 
 =item --enable-transparency (default: on)
 

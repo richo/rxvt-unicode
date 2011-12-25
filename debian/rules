@@ -109,7 +109,7 @@ build-stamp: config.status
 		fi; \
 		$(MAKE); \
 		mkdir -p tmp/$$x; \
-		$(MAKE) -C doc; \
+		$(MAKE) -C doc clean alldoc; \
 		TERMINFO=$$y/etc/terminfo $(MAKE) DESTDIR=$$y install; \
 		ln -sf urxvt $$y/usr/bin/rxvt-unicode; \
 		ln -sf urxvt.1.gz $$y/usr/share/man/man1/rxvt-unicode.1.gz; \
@@ -223,4 +223,11 @@ binary-arch: build install
 	dh_builddeb
 
 binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install 
+
+copyright:
+	# Check to see if there's any changes in copyright
+	[ -d .git ] && git grep Copyright | \
+	    grep -v 'debian/' | \
+	    sed -e 's/.*: \* //g;s/.*:# //g;s/(c)/(C)/g' | \
+	    sort -k4,3 | uniq
+.PHONY: build clean binary-indep binary-arch binary install copyright

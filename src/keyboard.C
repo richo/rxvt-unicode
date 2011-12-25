@@ -30,7 +30,6 @@
 
 #include "rxvtperl.h"
 #include "keyboard.h"
-#include "command.h"
 
 /* an intro to the data structure:
  *
@@ -65,14 +64,14 @@
  */
 
 static void
-output_string (rxvt_term *rt, const char *str)
+output_string (rxvt_term *term, const char *str)
 {
   if (strncmp (str, "command:", 8) == 0)
-    rt->cmdbuf_append (str + 8, strlen (str) - 8);
+    term->cmdbuf_append (str + 8, strlen (str) - 8);
   else if (strncmp (str, "perl:", 5) == 0)
-    HOOK_INVOKE((rt, HOOK_USER_COMMAND, DT_STR, str + 5, DT_END));
+    HOOK_INVOKE((term, HOOK_USER_COMMAND, DT_STR, str + 5, DT_END));
   else
-    rt->tt_write (str, strlen (str));
+    term->tt_write (str, strlen (str));
 }
 
 // return: priority_of_a - priority_of_b
@@ -100,93 +99,28 @@ keyboard_manager::keyboard_manager ()
 
 keyboard_manager::~keyboard_manager ()
 {
-  clear ();
-}
-
-void
-keyboard_manager::clear ()
-{
-  hash [0] = 2;
-
   for (unsigned int i = 0; i < keymap.size (); ++i)
     {
-      free ((void *)keymap [i]->str);
+      free (keymap [i]->str);
       delete keymap [i];
-      keymap [i] = 0;
     }
-
-  keymap.clear ();
-}
-
-// a wrapper for register_translation that converts the input string
-// to utf-8 and expands 'list' syntax.
-void
-keyboard_manager::register_user_translation (KeySym keysym, unsigned int state, const char *trans)
-{
-  wchar_t *wc = rxvt_mbstowcs (trans);
-  char *translation = rxvt_wcstoutf8 (wc);
-  free (wc);
-
-  if (strncmp (translation, "list", 4) == 0 && translation [4]
-      && strlen (translation) < STRING_MAX)
-    {
-      char *prefix = translation + 4;
-      char *middle = strchr  (prefix + 1, translation [4]);
-      char *suffix = strrchr (prefix + 1, translation [4]);
-
-      if (suffix && middle && suffix > middle + 1)
-        {
-          int range = suffix - middle - 1;
-          int prefix_len = middle - prefix - 1;
-          char buf[STRING_MAX];
-
-          memcpy (buf, prefix + 1, prefix_len);
-          strcpy (buf + prefix_len + 1, suffix + 1);
-
-          for (int i = 0; i < range; i++)
-            {
-              buf [prefix_len] = middle [i + 1];
-              register_translation (keysym + i, state, strdup (buf));
-            }
-
-          free (translation);
-          return;
-        }
-      else
-        rxvt_warn ("cannot parse list-type keysym '%s', processing as normal keysym.\n", translation);
-    }
-
-  register_translation (keysym, state, translation);
 }
 
 void
-keyboard_manager::register_translation (KeySym keysym, unsigned int state, char *translation)
+keyboard_manager::register_user_translation (KeySym keysym, unsigned int state, const wchar_t *ws)
 {
+  char *translation = rxvt_wcstoutf8 (ws);
+
   keysym_t *key = new keysym_t;
 
-  if (key && translation)
-    {
-      key->keysym = keysym;
-      key->state  = state;
-      key->str    = translation;
-      key->type   = keysym_t::STRING;
+  key->keysym = keysym;
+  key->state  = state;
+  key->str    = translation;
+  key->type   = keysym_t::STRING;
 
-      if (strncmp (translation, "builtin:", 8) == 0)
-        key->type = keysym_t::BUILTIN;
+  if (strncmp (translation, "builtin:", 8) == 0)
+    key->type = keysym_t::BUILTIN;
 
-      register_keymap (key);
-    }
-  else
-    {
-      delete key;
-      free ((void *)translation);
-      rxvt_fatal ("out of memory, aborting.\n");
-    }
-}
-
-void
-keyboard_manager::register_keymap (keysym_t *key)
-{
   if (keymap.size () == keymap.capacity ())
     keymap.reserve (keymap.size () * 2);
 
@@ -194,16 +128,10 @@ keyboard_manager::register_keymap (keysym_t *key)
   hash[0] = 3;
 }
 
-void
-keyboard_manager::register_done ()
-{
-  setup_hash ();
-}
-
 bool
 keyboard_manager::dispatch (rxvt_term *term, KeySym keysym, unsigned int state)
 {
-  assert (hash[0] == 0 && "register_done() need to be called");
+  assert (("register_done() need to be called", hash[0] == 0));
 
   state &= OtherModMask; // mask out uninteresting modifiers
 
@@ -218,21 +146,16 @@ keyboard_manager::dispatch (rxvt_term *term, KeySym keysym, unsigned int state)
 
   if (index >= 0)
     {
-      const keysym_t &key = *keymap [index];
+      keysym_t *key = keymap [index];
 
-      if (key.type != keysym_t::BUILTIN)
+      if (key->type != keysym_t::BUILTIN)
         {
-          wchar_t *wc = rxvt_utf8towcs (key.str);
-          char *str = rxvt_wcstombs (wc);
+          wchar_t *ws = rxvt_utf8towcs (key->str);
+          char *str = rxvt_wcstombs (ws);
           // TODO: do (some) translations, unescaping etc, here (allow \u escape etc.)
-          free (wc);
+          free (ws);
 
-          switch (key.type)
-            {
-              case keysym_t::STRING:
-                output_string (term, str);
-                break;
-            }
+          output_string (term, str);
 
           free (str);
 
@@ -244,7 +167,7 @@ keyboard_manager::dispatch (rxvt_term *term, KeySym keysym, unsigned int state)
 }
 
 void
-keyboard_manager::setup_hash ()
+keyboard_manager::register_done ()
 {
   unsigned int i, index, hashkey;
   vector <keysym_t *> sorted_keymap;

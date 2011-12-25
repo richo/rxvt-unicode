@@ -30,8 +30,8 @@
 #include "ptytty.h"
 
 #include <cstdlib>
+#include <cstdio>
 #include <cstring>
-#include <csignal>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -41,7 +41,7 @@
 #ifdef HAVE_SYS_IOCTL_H
 # include <sys/ioctl.h>
 #endif
-#if defined(HAVE_DEV_PTMX) && defined(HAVE_SYS_STROPTS_H)
+#if defined(HAVE_SYS_STROPTS_H)
 # include <sys/stropts.h>      /* for I_PUSH */
 #endif
 #if defined(HAVE_ISASTREAM) && defined(HAVE_STROPTS_H)
@@ -58,7 +58,9 @@
 #include <grp.h>
 #endif
 
-#include <cstdio>
+#ifndef O_NOCTTY
+# define O_NOCTTY 0
+#endif
 
 /////////////////////////////////////////////////////////////////////////////
 
@@ -78,11 +80,15 @@
     int pfd;
 
 # if defined(HAVE_GETPT)
-    pfd = getpt();
+    pfd = getpt ();
 # elif defined(HAVE_POSIX_OPENPT)
-    pfd = posix_openpt (O_RDWR);
+    pfd = posix_openpt (O_RDWR | O_NOCTTY);
 # else
-    pfd = open (CLONE_DEVICE, O_RDWR | O_NOCTTY, 0);
+#  ifdef _AIX
+    pfd = open ("/dev/ptc", O_RDWR | O_NOCTTY, 0);
+#  else
+    pfd = open ("/dev/ptmx", O_RDWR | O_NOCTTY, 0);
+#  endif
 # endif
 
     if (pfd >= 0)
@@ -128,7 +134,7 @@
     int pfd;
     char *slave;
 
-    slave = _getpty (&pfd, O_RDWR | O_NONBLOCK | O_NOCTTY, 0622, 0);
+    slave = _getpty (&pfd, O_RDWR | O_NOCTTY, 0622, 0);
 
     if (slave != NULL)
       {
@@ -154,13 +160,13 @@
 
     for (i = 0; i < 256; i++)
       {
-        snprintf(pty_name, 32, "/dev/pty%c%c", majors[i / 16], minors[i % 16]);
-        snprintf(tty_name, 32, "/dev/tty%c%c", majors[i / 16], minors[i % 16]);
+        snprintf (pty_name, 32, "/dev/pty%c%c", majors[i / 16], minors[i % 16]);
+        snprintf (tty_name, 32, "/dev/tty%c%c", majors[i / 16], minors[i % 16]);
 
         if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) == -1)
           {
-            snprintf(pty_name, 32, "/dev/ptyp%d", i);
-            snprintf(tty_name, 32, "/dev/ttyp%d", i);
+            snprintf (pty_name, 32, "/dev/ptyp%d", i);
+            snprintf (tty_name, 32, "/dev/ttyp%d", i);
             if ((pfd = open (pty_name, O_RDWR | O_NOCTTY, 0)) == -1)
               continue;
           }
@@ -327,8 +333,6 @@ ptytty_unix::get ()
   if ((pty = get_pty (&tty, &name)) < 0)
     return false;
 
-  fcntl (pty, F_SETFL, O_NONBLOCK);
-
   /* get slave (tty) */
   if (tty < 0)
     {
@@ -347,7 +351,7 @@ ptytty_unix::get ()
         }
     }
 
-#if defined(HAVE_DEV_PTMX) && defined(I_PUSH)
+#if defined(I_PUSH)
   /*
    * Push STREAMS modules:
    *    ptem: pseudo-terminal hardware emulation module.
@@ -372,6 +376,18 @@ ptytty_unix::get ()
       ioctl (tty, I_PUSH, "ldterm");
       ioctl (tty, I_PUSH, "ttcompat");
     }
+#endif
+
+#if UTMP_SUPPORT
+# if defined(HAVE_STRUCT_UTMP) && !defined(HAVE_UTMP_PID)
+  int fd_stdin = dup (STDIN_FILENO);
+  dup2 (tty, STDIN_FILENO);
+
+  utmp_pos = ttyslot ();
+
+  dup2 (fd_stdin, STDIN_FILENO);
+  close (fd_stdin);
+# endif
 #endif
 
   return true;

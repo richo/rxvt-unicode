@@ -43,6 +43,8 @@ Description: RXVT-like terminal emulator with Unicode support
 
 Package: rxvt-unicode-ml
 Architecture: any
+Section: oldlibs
+Priority: extra
 Depends: ${shlibs:Depends}, ${misc:Depends}, rxvt-unicode (>= 9.10-2)
 Description: multi-lingual terminal emulator -- transitional package
  This is a transitional package depending on rxvt-unicode. Previously, some

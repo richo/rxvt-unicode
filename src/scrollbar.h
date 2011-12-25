@@ -2,17 +2,9 @@
 #define SCROLLBAR_H
 
 #include <X11/Xlib.h>
+#include "rxvtutil.h"
 
 struct rxvt_term;
-
-#define R_SB_NEXT               1
-#define R_SB_XTERM              2
-#define R_SB_PLAIN              4
-#define R_SB_RXVT               8
-
-#define R_SB_ALIGN_CENTRE       0
-#define R_SB_ALIGN_TOP          1
-#define R_SB_ALIGN_BOTTOM       2
 
 #define SB_WIDTH_NEXT           19
 #define SB_WIDTH_XTERM          15
@@ -40,65 +32,92 @@ struct rxvt_term;
 #define SB_THUMB_MIN_HEIGHT     (SB_BUTTON_WIDTH - (SB_PADDING * 2))
 
 enum sb_state {
-  STATE_IDLE = 1,
-  STATE_MOTION,
-  STATE_UP,
-  STATE_DOWN,
+  SB_STATE_OFF,
+  SB_STATE_IDLE,
+  SB_STATE_MOTION,
+  SB_STATE_UP,
+  SB_STATE_DOWN,
+};
+
+enum sb_style {
+  SB_STYLE_NEXT  = 1,
+  SB_STYLE_XTERM = 2,
+  SB_STYLE_PLAIN = 4,
+  SB_STYLE_RXVT  = 8,
+};
+
+enum sb_align {
+  SB_ALIGN_CENTRE,
+  SB_ALIGN_TOP,
+  SB_ALIGN_BOTTOM,
 };
 
 struct scrollBar_t
 {
   rxvt_term *term;
-  char            state;        /* scrollbar state                          */
+  sb_state        state;        /* scrollbar state                          */
   char            init;         /* scrollbar has been initialised           */
-  unsigned int    beg;          /* slider sub-window begin height           */
-  unsigned int    end;          /* slider sub-window end height             */
-  unsigned int    top;          /* slider top position                      */
-  unsigned int    bot;          /* slider bottom position                   */
-  unsigned int    style;        /* style: rxvt, xterm, next                 */
-  unsigned int    width;        /* scrollbar width                          */
+  int             beg;          /* slider sub-window begin height           */
+  int             end;          /* slider sub-window end height             */
+  int             top;          /* slider top position                      */
+  int             bot;          /* slider bottom position                   */
+  sb_style        style;        /* style: rxvt, xterm, next                 */
+  int             width;        /* scrollbar width                          */
   int             shadow;       /* scrollbar shadow width                   */
   int             last_bot;     /* scrollbar last bottom position           */
   int             last_top;     /* scrollbar last top position              */
   int             last_state;   /* scrollbar last state                     */
-  unsigned char   align;
+  sb_align        align;
   Window          win;
   Cursor          leftptr_cursor;
   int             (scrollBar_t::*update)(int);
   void setup (rxvt_term *);
   void resize ();
-  int map (int);
+  void map (int);
   int show (int);
   void destroy ();
 
   bool upButton (int y)
   {
-    if (style == R_SB_NEXT)
+    if (style == SB_STYLE_NEXT)
       return y > end && y <= end + width + 1;
-    if (style == R_SB_RXVT)
+    if (style == SB_STYLE_RXVT)
       return y < beg;
     return false;
   }
   bool dnButton (int y)
   {
-    if (style == R_SB_NEXT)
+    if (style == SB_STYLE_NEXT)
       return y > end + width + 1;
-    if (style == R_SB_RXVT)
+    if (style == SB_STYLE_RXVT)
       return y > end;
     return false;
   }
-  unsigned min_height ()
+  int min_height ()
   {
-    return style == R_SB_NEXT ? SB_THUMB_MIN_HEIGHT : 10;
+    return style == SB_STYLE_NEXT ? SB_THUMB_MIN_HEIGHT : 10;
   }
-  unsigned size ()
+  int size ()
   {
-    return end - beg - min_height ();
+    return max (end - beg, 0);
   }
-  unsigned total_width ()
+  int total_width ()
   {
     return width + shadow * 2;
   }
+  bool above_slider (int y)
+  {
+    return y < top;
+  }
+  bool below_slider (int y)
+  {
+    return y > bot;
+  }
+  int position (int y)
+  {
+    return y - beg;
+  }
+
 
 #if defined(NEXT_SCROLLBAR)
   GC              blackGC,
@@ -143,10 +162,6 @@ private:
 
   void init_next ();
 };
-
-#define scrollbar_above_slider(y)       ((y) < scrollBar.top)
-#define scrollbar_below_slider(y)       ((y) > scrollBar.bot)
-#define scrollbar_position(y)           ((y) - scrollBar.beg)
 
  /*
   *    +-------------+
