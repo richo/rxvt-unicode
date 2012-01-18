@@ -55,6 +55,7 @@ conf-unicode:
 	    --enable-mousewheel \
 	    --enable-slipwheeling \
 	    --enable-smart-resize \
+	    --enable-startup-notification \
 	    --with-term=rxvt-unicode
 
 conf-unicode-256color:
@@ -76,6 +77,7 @@ conf-unicode-256color:
 	    --enable-mousewheel \
 	    --enable-slipwheeling \
 	    --enable-smart-resize \
+	    --enable-startup-notification \
 	    --with-term=rxvt-unicode-256color
 
 conf-unicode-lite:
@@ -84,6 +86,7 @@ conf-unicode-lite:
 	    --disable-pixbuf\
 	    --disable-perl \
 	    --disable-iso14755 \
+	    --disable-startup-notification \
 	    --with-term=rxvt-unicode
 
 build: build-arch build-indep
