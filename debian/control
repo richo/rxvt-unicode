@@ -15,6 +15,7 @@ Build-Depends: debhelper (>= 7.0.0),
  chrpath,
  libperl-dev,
  libev-dev,
+ libstartup-notification0-dev,
  libgtk2.0-dev
 Standards-Version: 3.9.2
 Homepage: http://software.schmorp.de/pkg/rxvt-unicode.html
