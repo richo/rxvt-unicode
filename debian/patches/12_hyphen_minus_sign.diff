@@ -7,9 +7,9 @@ Last-Updated: 2011-03-11
 
 Index: pkg-urxvt/doc/rxvt.7.pod
 ===================================================================
---- pkg-urxvt.orig/doc/rxvt.7.pod	2011-06-22 07:30:08.062895455 -0400
-+++ pkg-urxvt/doc/rxvt.7.pod	2011-06-22 07:30:09.086900533 -0400
-@@ -1959,7 +1959,7 @@
+--- pkg-urxvt.orig/doc/rxvt.7.pod	2012-01-26 07:52:38.839065509 -0500
++++ pkg-urxvt/doc/rxvt.7.pod	2012-01-26 07:52:40.971076084 -0500
+@@ -1962,7 +1962,7 @@
  
  =begin table
  
@@ -20,8 +20,8 @@ Index: pkg-urxvt/doc/rxvt.7.pod
  =end table
 Index: pkg-urxvt/doc/rxvtc.1.pod
 ===================================================================
---- pkg-urxvt.orig/doc/rxvtc.1.pod	2011-06-22 07:29:07.030592813 -0400
-+++ pkg-urxvt/doc/rxvtc.1.pod	2011-06-22 07:30:09.086900533 -0400
+--- pkg-urxvt.orig/doc/rxvtc.1.pod	2012-01-26 07:51:19.502672106 -0500
++++ pkg-urxvt/doc/rxvtc.1.pod	2012-01-26 07:52:40.971076084 -0500
 @@ -34,8 +34,8 @@
  
     #!/bin/sh
