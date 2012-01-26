@@ -51,9 +51,6 @@
 /* Define to 1 to use the syscall interface for clock_gettime */
 #undef HAVE_CLOCK_SYSCALL
 
-/* Define to 1 if you have the <cwchar> header file. */
-#undef HAVE_CWCHAR
-
 /* Define to 1 if you have the `epoll_ctl' function. */
 #undef HAVE_EPOLL_CTL
 
@@ -132,9 +129,6 @@
 /* Define to 1 if you have the `seteuid' function. */
 #undef HAVE_SETEUID
 
-/* Define if plain old setlocale works */
-#undef HAVE_SETLOCALE
-
 /* Define to 1 if you have the `setresuid' function. */
 #undef HAVE_SETRESUID
 
@@ -207,9 +201,6 @@
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #undef HAVE_SYS_STAT_H
 
-/* Define to 1 if you have the <sys/stropts.h> header file. */
-#undef HAVE_SYS_STROPTS_H
-
 /* Define to 1 if you have the <sys/strredir.h> header file. */
 #undef HAVE_SYS_STRREDIR_H
 
@@ -243,9 +234,6 @@
 
 /* Define if struct utmpx contains ut_host */
 #undef HAVE_UTMPX_HOST
-
-/* Define if struct utmpx contains ut_session */
-#undef HAVE_UTMPX_SESSION
 
 /* Define to 1 if you have the <utmp.h> header file. */
 #undef HAVE_UTMP_H
@@ -457,8 +445,12 @@
    #define below would cause a syntax error. */
 #undef _UINT32_T
 
-/* Needed to get declarations for msg_control and msg_controllen on Solaris */
+/* Enable declarations of msg_control and msg_controllen on Solaris */
 #undef _XOPEN_SOURCE
+
+/* Enable declarations in utmp.h on Solaris when the XPG4v2 namespace is
+   active */
+#undef __EXTENSIONS__
 
 /* Define to `int' if <sys/types.h> doesn't define. */
 #undef gid_t

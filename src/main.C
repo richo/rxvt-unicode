@@ -38,9 +38,9 @@
 
 #include <limits>
 
-#include <cassert>
-#include <csignal>
-#include <cstring>
+#include <assert.h>
+#include <signal.h>
+#include <string.h>
 
 #include <termios.h>
 
@@ -48,9 +48,7 @@
 # define X_LOCALE
 # include <X11/Xlocale.h>
 #else
-# ifdef HAVE_SETLOCALE
-#  include <clocale>
-# endif
+# include <locale.h>
 #endif
 
 struct termios rxvt_term::def_tio;
@@ -269,9 +267,6 @@ rxvt_term::~rxvt_term ()
 
   free (selection.text);
   free (selection.clip_text);
-  // TODO: manage env vars in child only(!)
-  free (env_display);
-  free (env_term);
   free (locale);
   free (v_buffer);
 
@@ -355,7 +350,7 @@ rxvt_term::destroy_cb (ev::idle &w, int revents)
 }
 
 void
-rxvt_term::set_option (uint8_t opt, bool set)
+rxvt_term::set_option (uint8_t opt, bool set) NOTHROW
 {
   if (!opt)
     return;
@@ -715,8 +710,8 @@ rxvt_term::window_calc (unsigned int newwidth, unsigned int newheight)
   // bg pixmap is set, would have to be cleared manually to properly
   // refresh the background. We take the simpler route and shrink the
   // vt window so as to avoid creating gaps.
-  width  = ncol * fwidth;
-  height = nrow * fheight;
+  vt_width  = ncol * fwidth;
+  vt_height = nrow * fheight;
 }
 
 /*----------------------------------------------------------------------*/
@@ -734,8 +729,8 @@ rxvt_term::tt_winch ()
 
   ws.ws_col = ncol;
   ws.ws_row = nrow;
-  ws.ws_xpixel = width;
-  ws.ws_ypixel = height;
+  ws.ws_xpixel = vt_width;
+  ws.ws_ypixel = vt_height;
   ioctl (pty->pty, TIOCSWINSZ, &ws);
 
 #if 0
@@ -949,13 +944,14 @@ rxvt_term::recolour_cursor ()
 /*
  * find if fg/bg matches any of the normal (low-intensity) colors
  */
-void
-rxvt_term::set_colorfgbg ()
+char *
+rxvt_term::get_colorfgbg ()
 {
   unsigned int i;
   const char *xpmb = "";
   char fstr[] = "default";
   char bstr[] = "default";
+  char *env_colorfgbg;
 
   for (i = Color_Black; i <= Color_White; i++)
     if (pix_colors[Color_fg] == pix_colors[i])
@@ -974,7 +970,9 @@ rxvt_term::set_colorfgbg ()
         break;
       }
 
+  env_colorfgbg = (char *)rxvt_malloc (sizeof ("COLORFGBG=default;default;bg"));
   sprintf (env_colorfgbg, "COLORFGBG=%s;%s%s", fstr, xpmb, bstr);
+  return env_colorfgbg;
 }
 
 /*----------------------------------------------------------------------*/
@@ -1077,7 +1075,7 @@ rxvt_term::resize_all_windows (unsigned int newwidth, unsigned int newheight, in
 
       XMoveResizeWindow (dpy, vt,
                          window_vt_x, window_vt_y,
-                         width, height);
+                         vt_width, vt_height);
 
 #ifdef HAVE_BG_PIXMAP
       if (bg_window_size_sensitive ())
@@ -1112,7 +1110,7 @@ rxvt_term::set_widthheight (unsigned int newwidth, unsigned int newheight)
         newheight = wattr.height - szHint.base_height;
     }
 
-  if (newwidth != width || newheight != height)
+  if (newwidth != vt_width || newheight != vt_height)
     {
       newwidth += szHint.base_width;
       newheight += szHint.base_height;
@@ -1530,10 +1528,8 @@ rxvt_term::im_cb ()
   if (Input_Context)
     return;
 
-#if defined(HAVE_XSETLOCALE) || defined(HAVE_SETLOCALE)
   if (rs[Rs_imLocale])
     SET_LOCALE (rs[Rs_imLocale]);
-#endif
 
   p = rs[Rs_inputMethod];
   if (p && *p)
@@ -1571,10 +1567,8 @@ rxvt_term::im_cb ()
     goto done;
 
 done:
-#if defined(HAVE_XSETLOCALE) || defined(HAVE_SETLOCALE)
   if (rs[Rs_imLocale])
     SET_LOCALE (locale);
-#endif
 }
 
 void

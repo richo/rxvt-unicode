@@ -11,8 +11,8 @@ AC_CANONICAL_HOST
 
 dnl RXVT version
 changequote(, )dnl
-VERSION=`sed -n -e 's/^.*[ \t]VERSION.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
-DATE=`sed -n -e 's/^.*[ \t]DATE.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
+VERSION=`sed -n -e 's/^.* VERSION.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
+DATE=`sed -n -e 's/^.* DATE.*"\(.*\)"$/\1/p' ${srcdir}/src/version.h`
 changequote([, ])dnl
 AC_SUBST(VERSION)dnl
 AC_SUBST(DATE)dnl
@@ -26,7 +26,6 @@ orig_CXXFLAGS="$CXXFLAGS"
 dnl# Checks for programs.
 AC_PROG_CC
 AC_PROG_CXX
-AC_PROG_CPP
 AC_PROG_INSTALL
 
 AC_AIX
@@ -34,6 +33,7 @@ AC_GNU_SOURCE
 AC_ISC_POSIX
 AC_LANG(C++)
 
+LINKER="$CXX"
 dnl check whether we can link with gcc -lsupc++
 if test x$GCC = xyes && test x$GXX = xyes; then
    dnl FreeBSD (at least up to 5.3) has a broken GCC, workaround it
@@ -42,14 +42,13 @@ if test x$GCC = xyes && test x$GXX = xyes; then
    save_LIBS="$LIBS"
    CXX="$CC"
    LIBS="$LIBS -lsupc++"
-   LINKER="$CC"
    AC_LINK_IFELSE(
       [AC_LANG_PROGRAM([struct test { }; void f() try { throw new test; } catch (...) { throw; }],[])],
-      [AC_MSG_RESULT(ok)],
+      [AC_MSG_RESULT(ok)
+       LINKER="$CC"],
       [
          AC_MSG_RESULT([no, making everything bigger and slower])
          LIBS="$save_LIBS"
-         LINKER="$save_CXX"
       ]
    )
    CXX="$save_CXX"
@@ -68,12 +67,6 @@ if test -z "$orig_CXXFLAGS"; then
   fi
   CFLAGS="$CXXFLAGS"
 fi
-
-case $host in
-   *-*-solaris* )
-      AC_DEFINE(_XOPEN_SOURCE, 500, Needed to get declarations for msg_control and msg_controllen on Solaris)
-      ;;
-esac
 
 dnl# FreeBSD needs to link libxpg4
 AC_SEARCH_LIBS(setlocale,     xpg4)
@@ -544,7 +537,6 @@ AC_CHECK_HEADERS( \
 	sys/strredir.h \
 	stdint.h \
 	wchar.h \
-	cwchar \
 )
 
 AC_CACHE_CHECK([for XLIB_ILLEGAL_ACCESS], rxvt_cv_xlib_illegal_access,
@@ -632,12 +624,6 @@ if test x$rxvt_cv_func_xsetlocale = xyes; then
 fi
 LIBS=$save_LIBS
 CFLAGS=$save_CFLAGS
-
-AC_CACHE_CHECK(for working plain setlocale, rxvt_cv_func_setlocale,
-[AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <clocale>]], [[setlocale(LC_CTYPE, "");]])],[rxvt_cv_func_setlocale=yes],[rxvt_cv_func_setlocale=no])])
-if test x$rxvt_cv_func_setlocale = xyes; then
-  AC_DEFINE(HAVE_SETLOCALE, 1, Define if plain old setlocale works)
-fi
 
 AC_CACHE_CHECK(for working nl_langinfo, rxvt_cv_func_nl_langinfo,
 [AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include <langinfo.h>]], [[nl_langinfo(CODESET);]])],[rxvt_cv_func_nl_langinfo=yes],[rxvt_cv_func_nl_langinfo=no])])

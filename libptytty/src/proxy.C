@@ -1,6 +1,3 @@
-// This file is part of libptytty. Do not make local modifications.
-// http://software.schmorp.de/pkg/libptytty
-
 /*----------------------------------------------------------------------*
  * File:	proxy.C
  *----------------------------------------------------------------------*
@@ -33,9 +30,9 @@
 using namespace std;
 #endif
 
-#include <cstdio>
-#include <cstring>
-#include <csignal>
+#include <stdio.h>
+#include <string.h>
+#include <signal.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>

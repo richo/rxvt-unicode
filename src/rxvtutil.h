@@ -1,11 +1,9 @@
 #ifndef RXVT_UTIL_H
 #define RXVT_UTIL_H
 
-#include <cstdlib>
-#include <cstring>
+#include <stdlib.h>
+#include <string.h>
 #include "ecb.h"
-
-using namespace std;
 
 // increases code size unless -fno-enforce-eh-specs
 #if __GNUC__

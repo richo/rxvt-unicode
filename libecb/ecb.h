@@ -1,7 +1,7 @@
 /*
  * libecb - http://software.schmorp.de/pkg/libecb
  *
- * Copyright (©) 2009-2011 Marc Alexander Lehmann <libecb@schmorp.de>
+ * Copyright (©) 2009-2012 Marc Alexander Lehmann <libecb@schmorp.de>
  * Copyright (©) 2011 Emanuele Giaquinta
  * All rights reserved.
  *
@@ -73,12 +73,12 @@
 #endif
 
 #ifndef ECB_MEMORY_FENCE
-  #if ECB_GCC_VERSION(2,5) || defined(__INTEL_COMPILER) || defined(__clang__)
-    #if __i386__
+  #if ECB_GCC_VERSION(2,5) || defined(__INTEL_COMPILER) || defined(__clang__) || __SUNPRO_C >= 0x5110 || __SUNPRO_CC >= 0x5110
+    #if __i386 || __i386__
       #define ECB_MEMORY_FENCE         __asm__ __volatile__ ("lock; orb $0, -1(%%esp)" : : : "memory")
       #define ECB_MEMORY_FENCE_ACQUIRE ECB_MEMORY_FENCE /* non-lock xchg might be enough */
       #define ECB_MEMORY_FENCE_RELEASE do { } while (0) /* unlikely to change in future cpus */
-    #elif __amd64
+    #elif __amd64 || __amd64__ || __x86_64 || __x86_64__
       #define ECB_MEMORY_FENCE         __asm__ __volatile__ ("mfence" : : : "memory")
       #define ECB_MEMORY_FENCE_ACQUIRE __asm__ __volatile__ ("lfence" : : : "memory")
       #define ECB_MEMORY_FENCE_RELEASE __asm__ __volatile__ ("sfence") /* play safe - not needed in any current cpu */
@@ -90,6 +90,10 @@
     #elif defined(__ARM_ARCH_7__ ) || defined(__ARM_ARCH_7A__ ) \
        || defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7R__ )
       #define ECB_MEMORY_FENCE         __asm__ __volatile__ ("dmb" : : : "memory")
+    #elif __sparc || __sparc__
+      #define ECB_MEMORY_FENCE         __asm__ __volatile__ ("membar #LoadStore | #LoadLoad | #StoreStore | #StoreLoad | " : : : "memory")
+      #define ECB_MEMORY_FENCE_ACQUIRE __asm__ __volatile__ ("membar #LoadStore | #LoadLoad" : : : "memory")
+      #define ECB_MEMORY_FENCE_RELEASE __asm__ __volatile__ ("membar #LoadStore |             #StoreStore")
     #endif
   #endif
 #endif
@@ -107,6 +111,11 @@
   #elif defined(_WIN32)
     #include <WinNT.h>
     #define ECB_MEMORY_FENCE         MemoryBarrier () /* actually just xchg on x86... scary */
+  #elif __SUNPRO_C >= 0x5110 || __SUNPRO_CC >= 0x5110
+    #include <mbarrier.h>
+    #define ECB_MEMORY_FENCE         __machine_rw_barrier ()
+    #define ECB_MEMORY_FENCE_ACQUIRE __machine_r_barrier  ()
+    #define ECB_MEMORY_FENCE_RELEASE __machine_w_barrier  ()
   #endif
 #endif
 
