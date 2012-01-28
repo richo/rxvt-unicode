@@ -1,3 +1,14 @@
+rxvt-unicode (9.15-1) unstable; urgency=low
+
+  * Imported Upstream version 9.15
+    - Update people's copyright years
+    - Refresh patches
+  * Enable startup-notification for rxvt-unicode and rxvt-unicode-256color but
+    not for rxvt-unicode-light (Closes: #656253)
+    - Add libstartup-notification0-dev to B-D
+
+ -- Ryan Kavanagh <rak@debian.org>  Mon, 30 Jan 2012 06:35:19 -0500
+
 rxvt-unicode (9.14-1) unstable; urgency=low
 
   * Imported Upstream version 9.14
