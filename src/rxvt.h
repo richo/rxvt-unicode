@@ -1,17 +1,17 @@
 #ifndef RXVT_H_                /* include once only */
 #define RXVT_H_
 
-#include <cstdio>
-#include <cctype>
-#include <cerrno>
-#include <cstdarg>
-#include <cstdlib>
+#include <stdio.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdlib.h>
 #ifdef HAVE_STDINT_H
 #include <stdint.h>
 #endif
 #include <sys/types.h>
 #include <unistd.h>
-#include <cstring>
+#include <string.h>
 #include <assert.h>
 #ifdef HAVE_SYS_IOCTL_H
 #include <sys/ioctl.h>
@@ -20,15 +20,11 @@
 #include <sys/strredir.h>
 #endif
 
-#if HAVE_CWCHAR
-# include <cwchar>
-#elif HAVE_WCHAR_H
+#if HAVE_WCHAR_H
 # include <wchar.h>
 #else
 // stdlib.h might provide it
 #endif
-
-using namespace std;
 
 // we assume that Xlib.h defines XPointer, and it does since at least 1994...
 
@@ -875,6 +871,8 @@ typedef struct
 
 struct TermWin_t
 {
+  int            vt_width;      /* actual window width             [pixels] */
+  int            vt_height;     /* actual window height            [pixels] */
   int            width;         /* window width                    [pixels] */
   int            height;        /* window height                   [pixels] */
   int            fwidth;        /* font width                      [pixels] */
@@ -896,7 +894,6 @@ struct TermWin_t
   Window         parent;        /* parent identifier                        */
   Window         vt;            /* vt100 window                             */
   GC             gc;            /* GC for drawing                           */
-  Pixmap         pixmap;
   rxvt_drawable *drawable;
   rxvt_fontset  *fontset[4];
 };
@@ -1033,6 +1030,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
                   enc_utf8:1,		/* whether locale uses utf-8 */
                   seen_input:1,         /* whether we have seen some program output yet */
                   seen_resize:1,	/* whether we had a resize event */
+                  init_done:1,
                   parsed_geometry:1;
 
   unsigned char   refresh_type,
@@ -1076,8 +1074,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   unsigned int    ModLevel3Mask,
                   ModMetaMask,
                   ModNumLockMask;
-  int             old_width,  /* last used width in screen resize          */
-                  old_height; /* last used height in screen resize         */
   unsigned long   priv_modes,
                   SavedModes;
 /* ---------- */
@@ -1164,8 +1160,9 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   bool bg_set_shade (const char *shade_str);
   bool bg_set_blur (const char *geom);
 
-  bool blur_pixmap (Pixmap pixmap, Visual *visual, int width, int height);
+  bool blur_pixmap (Pixmap pixmap, Visual *visual, int width, int height, int depth);
   bool tint_pixmap (Pixmap pixmap, Visual *visual, int width, int height);
+  void tint_ximage (Visual *visual, XImage *ximage);
   unsigned long make_transparency_pixmap ();
 # endif
 
@@ -1218,11 +1215,6 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
 #endif
 
   vector<void *> allocated;           // free these memory blocks with free()
-
-  char            env_windowid[21];   /* environmental variable WINDOWID */
-  char            env_colorfgbg[sizeof ("COLORFGBG=default;default;bg") + 1];
-  char           *env_display;        /* environmental variable DISPLAY  */
-  char           *env_term;           /* environmental variable TERM     */
 
   char           *locale;
   char            charsets[4];
@@ -1419,7 +1411,7 @@ struct rxvt_term : zero_initialized, rxvt_vars, rxvt_screen
   void set_title (const char *str);
   void set_icon_name (const char *str);
   void set_window_color (int idx, const char *color);
-  void set_colorfgbg ();
+  char *get_colorfgbg ();
   bool set_color (rxvt_color &color, const char *name);
   void alias_color (int dst, int src);
   void set_widthheight (unsigned int newwidth, unsigned int newheight);

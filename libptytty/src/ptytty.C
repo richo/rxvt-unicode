@@ -1,6 +1,3 @@
-// This file is part of libptytty. Do not make local modifications.
-// http://software.schmorp.de/pkg/libptytty
-
 /*----------------------------------------------------------------------*
  * File:	ptytty.C
  *----------------------------------------------------------------------*
@@ -29,9 +26,9 @@
 
 #include "ptytty.h"
 
-#include <cstdlib>
-#include <cstdio>
-#include <cstring>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -41,10 +38,7 @@
 #ifdef HAVE_SYS_IOCTL_H
 # include <sys/ioctl.h>
 #endif
-#if defined(HAVE_SYS_STROPTS_H)
-# include <sys/stropts.h>      /* for I_PUSH */
-#endif
-#if defined(HAVE_ISASTREAM) && defined(HAVE_STROPTS_H)
+#ifdef HAVE_STROPTS_H
 # include <stropts.h>
 #endif
 #if defined(HAVE_PTY_H)

@@ -25,11 +25,12 @@
 #include <perl.h>
 #include <XSUB.h>
 #undef line_t
+#undef bool // perl defines it's own bool type, except with g++... what a trap
 
 #include "../config.h"
 
-#include <cstddef>
-#include <cstdarg>
+#include <stddef.h>
+#include <stdarg.h>
 
 #include "unistd.h"
 
@@ -1101,13 +1102,6 @@ rxvt_term::locale_decode (SV *octets)
 	OUTPUT:
         RETVAL
 
-char *
-rxvt_term::locale ()
-	CODE:
-        RETVAL = THIS->locale;
-	OUTPUT:
-        RETVAL
-
 #define TERM_OFFSET(sym) offsetof (TermWin_t, sym)
 
 #define TERM_OFFSET_width       TERM_OFFSET(width)
@@ -1552,7 +1546,7 @@ rxvt_term::option (U8 optval, int set = -1)
           {
             THIS->set_option (optval, set);
 
-            if (THIS->env_colorfgbg [0]) // avoid doing this before START
+            if (THIS->init_done) // avoid doing this before START
               switch (optval)
                 {
                   case Opt_skipBuiltinGlyphs:

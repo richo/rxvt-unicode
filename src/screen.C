@@ -457,7 +457,7 @@ rxvt_term::scr_poweron ()
 }
 
 void
-rxvt_term::scr_soft_reset ()
+rxvt_term::scr_soft_reset () NOTHROW
 {
   /* only affects modes, nothing drastic such as clearing the screen */
 #if ENABLE_OVERLAY
@@ -522,7 +522,7 @@ rxvt_term::scr_cursor (cursor_mode mode) NOTHROW
 }
 
 void
-rxvt_term::scr_swap_screen ()
+rxvt_term::scr_swap_screen () NOTHROW
 {
   if (!option (Opt_secondaryScreen))
     return;
@@ -1369,7 +1369,7 @@ rxvt_term::scr_erase_screen (int mode) NOTHROW
 
       if (mapped)
         XClearArea (dpy, vt, 0,
-                    Row2Pixel (row - view_start), (unsigned int)width,
+                    Row2Pixel (row - view_start), (unsigned int)vt_width,
                     (unsigned int)Height2Pixel (num), False);
     }
   else
@@ -1382,7 +1382,7 @@ rxvt_term::scr_erase_screen (int mode) NOTHROW
           XChangeGC (dpy, gc, GCForeground, &gcvalue);
           XFillRectangle (dpy, vt, gc,
                           0, Row2Pixel (row - view_start),
-                          (unsigned int)width,
+                          (unsigned int)vt_width,
                           (unsigned int)Height2Pixel (num));
           gcvalue.foreground = pix_colors[Color_fg];
           XChangeGC (dpy, gc, GCForeground, &gcvalue);
@@ -1878,7 +1878,7 @@ rxvt_term::scr_expose (int x, int y, int ewidth, int eheight, bool refresh) NOTH
 void
 rxvt_term::scr_touch (bool refresh) NOTHROW
 {
-  scr_expose (0, 0, width, height, refresh);
+  scr_expose (0, 0, vt_width, vt_height, refresh);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -2706,12 +2706,12 @@ rxvt_term::tt_paste (char *data, unsigned int len) NOTHROW
       data[i] = C0_CR;
 
   if (priv_modes & PrivMode_BracketPaste)
-    tt_printf ("\e[200~");
+    tt_printf ("\x1b[200~");
 
   tt_write (data, len);
 
   if (priv_modes & PrivMode_BracketPaste)
-    tt_printf ("\e[201~");
+    tt_printf ("\x1b[201~");
 }
 
 void

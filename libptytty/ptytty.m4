@@ -1,6 +1,3 @@
-dnl this file is part of libptytty, do not make local modifications
-dnl http://software.schmorp.de/pkg/libptytty
-
 AC_DEFUN([PT_FIND_FILE],
 [AC_CACHE_CHECK(for a fallback location of $1, pt_cv_path_$1, [
 if test "$cross_compiling" != yes; then
@@ -24,7 +21,6 @@ AC_CHECK_HEADERS( \
   util.h \
   libutil.h \
   sys/ioctl.h \
-  sys/stropts.h \
   stropts.h \
 )
 
@@ -97,6 +93,12 @@ AC_CHECK_FUNCS( \
 
 AC_CHECK_HEADERS(lastlog.h)
 
+case $host in
+   *-*-solaris*)
+      AC_DEFINE(__EXTENSIONS__, 1, Enable declarations in utmp.h on Solaris when the XPG4v2 namespace is active)
+      ;;
+esac
+
 dnl# --------------------------------------------------------------------------
 dnl# DO ALL UTMP AND WTMP CHECKING
 dnl# --------------------------------------------------------------------------
@@ -132,12 +134,6 @@ AC_CHECK_TYPES([struct utmpx], [], [], [
 
 AC_CHECK_MEMBER([struct utmpx.ut_host],
 [AC_DEFINE(HAVE_UTMPX_HOST, 1, Define if struct utmpx contains ut_host)], [], [
-#include <sys/types.h>
-#include <utmpx.h>
-])
-
-AC_CHECK_MEMBER([struct utmpx.ut_session],
-[AC_DEFINE(HAVE_UTMPX_SESSION, 1, Define if struct utmpx contains ut_session)], [], [
 #include <sys/types.h>
 #include <utmpx.h>
 ])
@@ -184,7 +180,7 @@ dnl# --------------------------------------------------------------------------
 
 dnl# find lastlog
 PT_FIND_FILE([lastlog], [PT_LASTLOG_FILE],
-["/var/log/lastlog"])
+["/var/log/lastlog" "/var/adm/lastlog"])
 dnl# --------------------------------------------------------------------------
 
 dnl# find lastlogx
@@ -194,9 +190,16 @@ PT_FIND_FILE([lastlogx], [PT_LASTLOGX_FILE],
 
 AC_DEFUN([SCM_RIGHTS_CHECK],
 [
+case $host in
+   *-*-solaris*)
+      AC_DEFINE(_XOPEN_SOURCE, 500, Enable declarations of msg_control and msg_controllen on Solaris)
+      AC_SEARCH_LIBS(sendmsg, socket)
+      ;;
+esac
+
 AC_CACHE_CHECK(for unix-compliant filehandle passing ability, pt_cv_can_pass_fds,
 [AC_LINK_IFELSE([AC_LANG_PROGRAM([[
-#include <cstddef> // broken bsds (is that redundant?) need this
+#include <stddef.h> // broken bsds (is that redundant?) need this
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/uio.h>

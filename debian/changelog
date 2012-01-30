@@ -1,3 +1,20 @@
+rxvt-unicode (9.15-2~psych0tik.1) unstable; urgency=low
+
+  * Upstream merge
+
+ -- Rich Healey <richo@psych0tik.net>  Tue, 31 Jan 2012 09:00:25 +1100
+
+rxvt-unicode (9.15-1) unstable; urgency=low
+
+  * Imported Upstream version 9.15
+    - Update people's copyright years
+    - Refresh patches
+  * Enable startup-notification for rxvt-unicode and rxvt-unicode-256color but
+    not for rxvt-unicode-light (Closes: #656253)
+    - Add libstartup-notification0-dev to B-D
+
+ -- Ryan Kavanagh <rak@debian.org>  Mon, 30 Jan 2012 06:35:19 -0500
+
 rxvt-unicode (9.14-2) unstable; urgency=low
 
   * Imported upstream code and applied psych0tik patchset

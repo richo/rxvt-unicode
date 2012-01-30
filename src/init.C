@@ -40,7 +40,7 @@
 
 #include <limits>
 
-#include <csignal>
+#include <signal.h>
 
 #include <fcntl.h>
 
@@ -48,9 +48,7 @@
 # define X_LOCALE
 # include <X11/Xlocale.h>
 #else
-# ifdef HAVE_SETLOCALE
-#  include <clocale>
-# endif
+# include <locale.h>
 #endif
 
 #ifdef HAVE_NL_LANGINFO
@@ -854,7 +852,7 @@ rxvt_term::init2 (int argc, const char *const *argv)
   rootwin_ev.start (display, display->root);
 #endif
 
-  set_colorfgbg ();
+  init_done = 1;
 
   init_command (cmd_argv);
 
@@ -908,6 +906,10 @@ void
 rxvt_term::init_env ()
 {
   char *val;
+  char *env_display;
+  char *env_windowid;
+  char *env_colorfgbg;
+  char *env_term;
 
 #ifdef DISPLAY_IS_IP
   /* Fixup display_name for export over pty to any interested terminal
@@ -934,6 +936,7 @@ rxvt_term::init_env ()
 
   sprintf (env_display, "DISPLAY=%s", val);
 
+  env_windowid = (char *)rxvt_malloc (21);
   sprintf (env_windowid, "WINDOWID=%lu", (unsigned long)parent);
 
   /* add entries to the environment:
@@ -947,8 +950,8 @@ rxvt_term::init_env ()
   putenv (env_display);
   putenv (env_windowid);
 
-  if (env_colorfgbg)
-    putenv (env_colorfgbg);
+  env_colorfgbg = get_colorfgbg ();
+  putenv (env_colorfgbg);
 
 #ifdef RXVT_TERMINFO
   putenv ("TERMINFO=" RXVT_TERMINFO);
@@ -982,7 +985,6 @@ rxvt_term::set_locale (const char *locale)
 {
   set_environ (envv);
 
-#if HAVE_XSETLOCALE || HAVE_SETLOCALE
   free (this->locale);
   this->locale = setlocale (LC_CTYPE, locale);
 
@@ -1003,7 +1005,6 @@ rxvt_term::set_locale (const char *locale)
   this->locale = strdup (this->locale);
   SET_LOCALE (this->locale);
   mbstate.reset ();
-#endif
 
 #if HAVE_NL_LANGINFO
   char *codeset = nl_langinfo (CODESET);
@@ -1190,7 +1191,7 @@ rxvt_term::get_colours ()
 void
 rxvt_term::color_aliases (int idx)
 {
-  if (rs[Rs_color + idx] && isdigit (* (rs[Rs_color + idx])))
+  if (rs[Rs_color + idx] && isdigit (*rs[Rs_color + idx]))
     {
       int i = atoi (rs[Rs_color + idx]);
 
@@ -1476,9 +1477,6 @@ rxvt_term::create_windows (int argc, const char *const *argv)
 
   this->parent = top;
 
-  old_width = szHint.width;
-  old_height = szHint.height;
-
   set_title     (rs [Rs_title]);
   set_icon_name (rs [Rs_iconName]);
 
@@ -1550,7 +1548,7 @@ rxvt_term::create_windows (int argc, const char *const *argv)
   /* the vt window */
   vt = XCreateSimpleWindow (dpy, top,
                             window_vt_x, window_vt_y,
-                            width, height,
+                            vt_width, vt_height,
                             0,
                             pix_colors_focused[Color_fg],
                             pix_colors_focused[Color_bg]);
@@ -1678,7 +1676,14 @@ rxvt_term::run_command (const char *const *argv)
 
       default:
         if (!option (Opt_utmpInhibit))
-          pty->login (cmd_pid, option (Opt_loginShell), rs[Rs_display_name]);
+          {
+#ifdef LOG_ONLY_ON_LOGIN
+            bool login_shell = option (Opt_loginShell);
+#else
+            bool login_shell = true;
+#endif
+            pty->login (cmd_pid, login_shell, rs[Rs_display_name]);
+          }
 
         pty->close_tty ();
 
@@ -1713,8 +1718,10 @@ rxvt_term::run_child (const char *const *argv)
 
       fd = open (CONSOLE, O_WRONLY, 0);
       if (fd >= 0)
-        if (ioctl (fd, SRIOCSREDIR, NULL) < 0)
+        {
+          ioctl (fd, SRIOCSREDIR, STDIN_FILENO);
           close (fd);
+        }
 #endif /* SRIOCSREDIR */
     }
 

@@ -56,10 +56,10 @@
 # include "keyboard.h"
 #endif
 
-#include <csignal>
+#include <signal.h>
 
 #if LINUX_YIELD_HACK
-# include <ctime>
+# include <time.h>
 #endif
 
 #include <time.h>
@@ -1638,7 +1638,7 @@ rxvt_term::x_cb (XEvent &ev)
                         else
                           {
                             scroll_selection_dir = DN;
-                            dist = ev.xbutton.y - (int_bwidth + height);
+                            dist = ev.xbutton.y - (int_bwidth + vt_height);
                           }
 
                         scroll_selection_lines = Pixel2Height (dist)
@@ -2167,7 +2167,7 @@ rxvt_term::button_release (XButtonEvent &ev)
             break;
 
           case Button2:
-            if (IN_RANGE_EXC (ev.x, 0, width) && IN_RANGE_EXC (ev.y, 0, height)) // inside window?
+            if (IN_RANGE_EXC (ev.x, 0, vt_width) && IN_RANGE_EXC (ev.y, 0, vt_height)) // inside window?
               selection_request (ev.time, ev.state & ModMetaMask ? Sel_Clipboard : Sel_Primary);
             break;
 
@@ -3138,7 +3138,7 @@ rxvt_term::process_window_ops (const int *args, unsigned int nargs)
       //case 9: NYI, TODO, restore maximized window or maximize window
       default:
         if (args[0] >= 24)	/* set height (chars) */
-          set_widthheight ((unsigned int)width,
+          set_widthheight ((unsigned int)vt_width,
                            (unsigned int) (args[1] * fheight));
         break;
 

@@ -24,7 +24,7 @@
 #include "rxvtutil.h"
 #include "rxvtfont.h"
 
-#include <cstdlib>
+#include <stdlib.h>
 
 #include <inttypes.h>
 
@@ -818,10 +818,10 @@ rxvt_font_x11::load (const rxvt_fontprop &prop, bool force_prop)
   // this loop only iterates when the guessed font-size is too small
   for (;;)
     {
-      font_weight *best = fonts + count - 1;
+      font_weight *best = fonts;
 
-      for (font_weight *w = fonts; w < best; w++)
-        if (w->diff <= best->diff)
+      for (font_weight *w = fonts + 1; w < fonts + count; w++)
+        if (w->diff < best->diff)
           best = w;
 
       if (!best->name
