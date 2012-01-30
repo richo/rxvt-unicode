@@ -2,7 +2,7 @@ Source: rxvt-unicode
 Section: x11
 Priority: optional
 Maintainer: Debian rxvt-unicode Maintainers <pkg-urxvt-maintainers@lists.alioth.debian.org>
-Uploaders: Ryan Kavanagh <ryanakca@kubuntu.org>, Yaroslav Halchenko <debian@onerussian.com>
+Uploaders: Ryan Kavanagh <rak@debian.org>, Yaroslav Halchenko <debian@onerussian.com>
 Build-Depends: debhelper (>= 7.0.0),
  libxt-dev,
  libxrender-dev,
@@ -21,7 +21,6 @@ Standards-Version: 3.9.2
 Homepage: http://software.schmorp.de/pkg/rxvt-unicode.html
 Vcs-Browser: http://git.debian.org/?p=pkg-urxvt/pkg-urxvt.git
 Vcs-Git: git://git.debian.org/pkg-urxvt/pkg-urxvt.git
-DM-Upload-Allowed: yes
 
 Package: rxvt-unicode
 Architecture: any
